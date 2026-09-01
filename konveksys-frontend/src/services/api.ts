@@ -41,12 +41,12 @@ export async function apiFetch<T>(
       headers,
     });
 
-    if (res.status === 401) {
+    const json = await res.json().catch(() => ({}));
+
+    if (res.status === 401 && !endpoint.startsWith('/api/auth/login')) {
       clearToken();
       return { data: null, error: 'Sesi berakhir, silakan login kembali.' };
     }
-
-    const json = await res.json();
 
     if (!res.ok) {
       return { data: null, error: json.error || 'Terjadi kesalahan.' };
