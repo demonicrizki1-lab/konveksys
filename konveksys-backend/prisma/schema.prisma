@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  BRAND
+}
+
+enum RolStatus {
+  MENUNGGU_FISIK
+  DI_GUDANG
+  DIPROSES
+  SELESAI
+}
+
+enum SpkStatus {
+  DRAFT
+  IN_PRODUCTION
+  PARTIAL_DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum KasbonTipe {
+  PINJAMAN
+  PELUNASAN
+}
+
+enum MetodePembayaran {
+  TRANSFER
+  TUNAI
+  CEK
+  GIRO
+}
+
+model Brand {
+  id             String  @id @default(cuid())
+  name           String  @unique
+  code           String  @unique
+  contactPerson  String?
+  phone          String?
+  supabaseUid    String? @unique
+
+  inboundRolls   InboundRoll[]
+  spkList        SpkCutting[]
+  suratJalanList SuratJalan[]
+  pembayaranList PembayaranBrand[]
+  hargaBuyer     HargaBuyer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Vendor {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  specialty    String?
+  contact      String?
+
+  hargaKonveksi    HargaKonveksi[]
+  spkList          SpkCutting[]
+  kasbonList       KasbonTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HargaKonveksi {
+  id      String  @id @default(cuid())
+  vendor  String
+  brand   String
+  produk  String
+  harga   Decimal @db.Decimal(12, 2)
+
+  vendorRef Vendor @relation(fields: [vendor], references: [name], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendor, brand, produk])
+}
+
+model HargaBuyer {
+  id           String  @id @default(cuid())
+  brand        String
+  produk       String
+  rateSML      Decimal @db.Decimal(12, 2) @default(0)
+  rateXL       Decimal @db.Decimal(12, 2) @default(0)
+  rateAnak4_10  Decimal @db.Decimal(12, 2) @default(0)
+  rateAnak12_16 Decimal @db.Decimal(12, 2) @default(0)
+
+  brandRef Brand @relation(fields: [brand], references: [name], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([brand, produk])
+}
+
+model InboundRoll {
+  id              String    @id @default(cuid())
+  rollCode        String    @unique
+  brand           String
+  jenisKain       String
+  meterLength     Decimal   @db.Decimal(8, 2)
+  meterUsed       Decimal   @db.Decimal(8, 2) @default(0)
+  hargaModalMeter Decimal   @db.Decimal(12, 2)
+  status          RolStatus @default(DI_GUDANG)
+  tanggalMasuk    DateTime
+  keterangan      String?
+
+  brandRef  Brand    @relation(fields: [brand], references: [name])
+  spkRols   SpkRol[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SpkCutting {
+  id            String    @id @default(cuid())
+  spkNumber     String    @unique
+  brand         String
+  produk        String
+  vendor        String
+  status        SpkStatus @default(DRAFT)
+  tanggalSPK    DateTime
+  targetSelesai DateTime?
+  catatan       String?
+
+  targetS       Int @default(0)
+  targetM       Int @default(0)
+  targetL       Int @default(0)
+  targetXL      Int @default(0)
+  targetXXL     Int @default(0)
+  targetAnak4_10  Int @default(0)
+  targetAnak12_16 Int @default(0)
+
+  deliveredS       Int @default(0)
+  deliveredM       Int @default(0)
+  deliveredL       Int @default(0)
+  deliveredXL      Int @default(0)
+  deliveredXXL     Int @default(0)
+  deliveredAnak4_10  Int @default(0)
+  deliveredAnak12_16 Int @default(0)
+
+  brandRef       Brand      @relation(fields: [brand], references: [name])
+  vendorRef      Vendor     @relation(fields: [vendor], references: [name])
+  rolsDigunakan  SpkRol[]
+  suratJalanList SuratJalan[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SpkRol {
+  spkId String
+  rolId String
+
+  spk SpkCutting  @relation(fields: [spkId], references: [id], onDelete: Cascade)
+  rol InboundRoll @relation(fields: [rolId], references: [id])
+
+  @@id([spkId, rolId])
+}
+
+model SuratJalan {
+  id            String   @id @default(cuid())
+  noSuratJalan  String   @unique
+  spkId         String
+  brand         String
+  produk        String
+  vendor        String
+  tanggal       DateTime
+  driverName    String?
+  nomorKendaraan String?
+  catatan       String?
+  status        String   @default("DELIVERED")
+
+  qtySML        Int @default(0)
+  qtyM          Int @default(0)
+  qtyL          Int @default(0)
+  qtyXL         Int @default(0)
+  qtyXXL        Int @default(0)
+  qtyAnak4_10   Int @default(0)
+  qtyAnak12_16  Int @default(0)
+  totalPcs      Int @default(0)
+
+  spk      SpkCutting @relation(fields: [spkId], references: [id])
+  brandRef Brand      @relation(fields: [brand], references: [name])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model KasbonTransaction {
+  id         String     @id @default(cuid())
+  vendor     String
+  tanggal    DateTime
+  jumlah     Decimal    @db.Decimal(12, 2)
+  tipe       KasbonTipe @default(PINJAMAN)
+  keterangan String
+
+  vendorRef Vendor @relation(fields: [vendor], references: [name])
+
+  createdAt DateTime @default(now())
+}
+
+model PembayaranBrand {
+  id             String           @id @default(cuid())
+  brand          String
+  tanggal        DateTime
+  jumlah         Decimal          @db.Decimal(14, 2)
+  metode         MetodePembayaran
+  keterangan     String
+  referensiNomor String?
+
+  brandRef Brand @relation(fields: [brand], references: [name])
+
+  createdAt DateTime @default(now())
+}

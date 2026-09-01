@@ -1,0 +1,311 @@
+import React from 'react';
+import { useApp, ActiveTab } from '../../context/AppContext';
+import {
+  LayoutDashboard,
+  Coins,
+  PackageCheck,
+  Scissors,
+  Truck,
+  ReceiptText,
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Building2,
+  ShieldCheck,
+} from 'lucide-react';
+
+export const Sidebar: React.FC = () => {
+  const {
+    activeTab,
+    setActiveTab,
+    userRole,
+    activeBrand,
+    currentUser,
+    inboundRolls,
+    spkList,
+    suratJalanList,
+    isSidebarCollapsed,
+    toggleSidebar,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
+    getArusKasSummary,
+  } = useApp();
+
+  // Stats untuk badge
+  const filteredRolls = userRole === 'BRAND' ? inboundRolls.filter(r => r.brand === activeBrand) : inboundRolls;
+  const filteredSJ = userRole === 'BRAND' ? suratJalanList.filter(s => s.brand === activeBrand) : suratJalanList;
+
+  const rollsInStock = filteredRolls.filter(r => r.status === 'DI_GUDANG').length;
+  const activeSPKs = spkList.filter(s => s.status === 'IN_PRODUCTION' || s.status === 'PARTIAL_DELIVERED').length;
+  const recentSJ = filteredSJ.length;
+
+  // Outstanding arus kas untuk badge
+  const arusKasSummary = getArusKasSummary();
+  const visibleSummary = userRole === 'BRAND' ? arusKasSummary.filter(s => s.brand === activeBrand) : arusKasSummary;
+  const totalOutstanding = visibleSummary.reduce((a, b) => a + b.outstanding, 0);
+  const hasOutstanding = totalOutstanding > 0;
+
+  interface NavItem {
+    id: ActiveTab;
+    label: string;
+    description: string;
+    icon: React.ElementType;
+    badge?: number | string;
+    roles: ('ADMIN' | 'BRAND')[];
+  }
+
+  const allNavItems: NavItem[] = [
+    {
+      id: 'dashboard',
+      label: userRole === 'ADMIN' ? 'Dashboard Utama' : 'Dashboard Brand',
+      description: userRole === 'ADMIN' ? 'KPI & Monitoring Operasional' : `Status ${activeBrand}`,
+      icon: LayoutDashboard,
+      roles: ['ADMIN', 'BRAND'],
+    },
+    {
+      id: 'master-harga',
+      label: 'Master Harga',
+      description: 'Ongkos Jahit & Rate Buyer',
+      icon: Coins,
+      roles: ['ADMIN'],
+    },
+    {
+      id: 'inbound',
+      label: userRole === 'ADMIN' ? 'Inbound Stok Kain' : 'Stok Kain Saya',
+      description: userRole === 'ADMIN' ? 'Pelacakan Rol Semua Brand' : 'Tracking Rol di Gudang',
+      icon: PackageCheck,
+      badge: rollsInStock > 0 ? `${rollsInStock} Rol` : undefined,
+      roles: ['ADMIN', 'BRAND'],
+    },
+    {
+      id: 'spk',
+      label: 'SPK & Cutting',
+      description: 'Pooling Rol & Alokasi Vendor',
+      icon: Scissors,
+      badge: activeSPKs > 0 ? `${activeSPKs} Aktif` : undefined,
+      roles: ['ADMIN'],
+    },
+    {
+      id: 'outbound',
+      label: userRole === 'ADMIN' ? 'Outbound Surat Jalan' : 'Surat Jalan',
+      description: userRole === 'ADMIN' ? 'Pengiriman & Auto-Deduct' : 'Riwayat Pengiriman',
+      icon: Truck,
+      badge: recentSJ > 0 ? `${recentSJ} SJ` : undefined,
+      roles: ['ADMIN', 'BRAND'],
+    },
+    {
+      id: 'finance',
+      label: userRole === 'ADMIN' ? 'Finance & Tagihan' : 'Tagihan & Invoice',
+      description: userRole === 'ADMIN' ? 'Slip Gaji & Invoice Brand' : 'Invoice Makloon',
+      icon: ReceiptText,
+      roles: ['ADMIN', 'BRAND'],
+    },
+    {
+      id: 'arus-kas',
+      label: 'Arus Kas',
+      description: userRole === 'ADMIN' ? 'Pembayaran Masuk dari Brand' : 'Riwayat Pembayaran Saya',
+      icon: TrendingUp,
+      badge: hasOutstanding ? 'Ada Saldo' : undefined,
+      roles: ['ADMIN', 'BRAND'],
+    },
+  ];
+
+  const visibleNavItems = allNavItems.filter(item => item.roles.includes(userRole));
+
+  const handleSelectNav = (tabId: ActiveTab) => {
+    setActiveTab(tabId);
+    setIsMobileMenuOpen(false);
+  };
+
+  const renderNavContent = (isMobile: boolean = false) => {
+    const isCollapsed = !isMobile && isSidebarCollapsed;
+
+    return (
+      <div className="flex flex-col h-full justify-between">
+        <div className="space-y-1.5">
+          
+          {/* Header sidebar */}
+          <div className={`px-2 py-2 flex items-center justify-between border-b border-slate-100 mb-2 ${isCollapsed ? 'justify-center' : ''}`}>
+            {!isCollapsed ? (
+              <>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  {userRole === 'ADMIN' ? 'Menu Admin' : 'Brand Portal'}
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                  {userRole === 'ADMIN' ? 'Admin' : activeBrand}
+                </span>
+              </>
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-indigo-500" title="KonvekSys Menu"></span>
+            )}
+          </div>
+
+          {/* Daftar Navigasi */}
+          <div className="space-y-1">
+            {visibleNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSelectNav(item.id)}
+                  title={isCollapsed ? `${item.label} - ${item.description}` : undefined}
+                  className={`w-full flex items-center rounded-xl transition-base btn-press focus-ring relative group ${
+                    isCollapsed
+                      ? 'justify-center p-3'
+                      : 'gap-3 p-3 text-left'
+                  } ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className={`p-2 rounded-lg shrink-0 transition-transform ${
+                    isActive
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-100 text-slate-600 group-hover:scale-105'
+                  }`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+
+                  {!isCollapsed && (
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-semibold truncate ${isActive ? 'text-white' : 'text-slate-800'}`}>
+                          {item.label}
+                        </span>
+                        {item.badge && (
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                            isActive
+                              ? 'bg-white/25 text-white'
+                              : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                          }`}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-[11px] truncate mt-0.5 ${
+                        isActive ? 'text-indigo-100' : 'text-slate-400'
+                      }`}>
+                        {item.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Indikator badge mini saat collapsed */}
+                  {isCollapsed && item.badge && (
+                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-indigo-500 border border-white"></span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+        </div>
+
+        {/* Footer Sidebar */}
+        <div className="mt-6 space-y-3">
+          
+          {/* Tombol Collapse/Expand untuk Desktop */}
+          {!isMobile && (
+            <button
+              onClick={toggleSidebar}
+              className={`w-full flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-base btn-press focus-ring text-xs font-medium gap-1.5 ${
+                isCollapsed ? 'py-2.5' : ''
+              }`}
+              title={isCollapsed ? 'Perbesar Sidebar' : 'Kecilkan Sidebar'}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="w-4 h-4 text-indigo-600" />
+              ) : (
+                <>
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Sembunyikan Sidebar</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Info Peran / Akses */}
+          {!isCollapsed ? (
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-600">Akses:</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  userRole === 'ADMIN' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {userRole === 'ADMIN' ? 'Admin / Owner' : `Brand ${activeBrand}`}
+                </span>
+              </div>
+              {currentUser && (
+                <p className="text-[11px] text-slate-500 truncate mt-1">
+                  {currentUser.name}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div
+              className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700"
+              title={`Akses: ${userRole === 'ADMIN' ? 'Admin / Owner' : activeBrand}`}
+            >
+              {userRole === 'ADMIN' ? (
+                <ShieldCheck className="w-4 h-4 text-indigo-600" />
+              ) : (
+                <Building2 className="w-4 h-4 text-emerald-600" />
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {/* 1. Desktop Sidebar */}
+      <aside
+        className={`hidden lg:flex flex-col bg-white border-r border-slate-200 p-4 transition-all duration-300 ease-in-out shrink-0 no-print ${
+          isSidebarCollapsed ? 'w-20' : 'w-72'
+        } min-h-[calc(100vh-4rem)]`}
+      >
+        {renderNavContent(false)}
+      </aside>
+
+      {/* 2. Mobile Drawer (Overlay) */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+          ></div>
+
+          {/* Konten Drawer */}
+          <div className="relative w-72 max-w-[80vw] bg-white h-full p-4 shadow-lg flex flex-col justify-between z-10 animate-slideRight">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="bg-indigo-600 text-white font-bold px-2.5 py-1 rounded-lg text-sm">
+                  KonvekSys
+                </div>
+                <span className="text-xs font-semibold text-slate-700">Navigasi</span>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 btn-press focus-ring"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {renderNavContent(true)}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};

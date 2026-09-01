@@ -1,0 +1,349 @@
+// ============================================================
+// KonvekSys API Service
+// Centralized fetch wrapper for all backend API calls
+// ============================================================
+
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// Ambil token dari localStorage
+export function getToken(): string | null {
+  return localStorage.getItem('konvek_token');
+}
+
+// Simpan token ke localStorage
+export function saveToken(token: string): void {
+  localStorage.setItem('konvek_token', token);
+}
+
+// Hapus token dari localStorage
+export function clearToken(): void {
+  localStorage.removeItem('konvek_token');
+}
+
+// Base fetch wrapper dengan auto-inject Authorization header
+export async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<{ data: T | null; error: string | null }> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const res = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (res.status === 401) {
+      clearToken();
+      return { data: null, error: 'Sesi berakhir, silakan login kembali.' };
+    }
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      return { data: null, error: json.error || 'Terjadi kesalahan.' };
+    }
+
+    return { data: json as T, error: null };
+  } catch (err) {
+    console.error('[API Error]', err);
+    return { data: null, error: 'Tidak dapat terhubung ke server.' };
+  }
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+
+export interface LoginResponse {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: 'ADMIN' | 'BRAND';
+    brandName?: string;
+  };
+}
+
+export async function apiLogin(
+  email: string,
+  password: string
+): Promise<{ data: LoginResponse | null; error: string | null }> {
+  return apiFetch<LoginResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function apiGetMe() {
+  return apiFetch<{ user: LoginResponse['user'] }>('/api/auth/me');
+}
+
+// ============================================================
+// BRANDS
+// ============================================================
+
+export interface ApiBrand {
+  id: string;
+  name: string;
+  code: string;
+  contactPerson?: string;
+  phone?: string;
+}
+
+export async function apiGetBrands() {
+  return apiFetch<ApiBrand[]>('/api/brands');
+}
+
+// ============================================================
+// VENDORS
+// ============================================================
+
+export interface ApiVendor {
+  id: string;
+  name: string;
+  specialty?: string;
+  contact?: string;
+}
+
+export async function apiGetVendors() {
+  return apiFetch<ApiVendor[]>('/api/vendors');
+}
+
+export async function apiAddVendor(data: Omit<ApiVendor, 'id'>) {
+  return apiFetch<ApiVendor>('/api/vendors', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateVendor(id: string, data: Partial<ApiVendor>) {
+  return apiFetch<ApiVendor>(`/api/vendors/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteVendor(id: string) {
+  return apiFetch<{ message: string }>(`/api/vendors/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================
+// HARGA KONVEKSI
+// ============================================================
+
+export interface ApiHargaKonveksi {
+  id: string;
+  vendor: string;
+  brand: string;
+  produk: string;
+  harga: number | string;
+}
+
+export async function apiGetHargaKonveksi() {
+  return apiFetch<ApiHargaKonveksi[]>('/api/harga/konveksi');
+}
+
+export async function apiAddHargaKonveksi(data: Omit<ApiHargaKonveksi, 'id'>) {
+  return apiFetch<ApiHargaKonveksi>('/api/harga/konveksi', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateHargaKonveksi(id: string, data: Partial<ApiHargaKonveksi>) {
+  return apiFetch<ApiHargaKonveksi>(`/api/harga/konveksi/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteHargaKonveksi(id: string) {
+  return apiFetch<{ message: string }>(`/api/harga/konveksi/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================
+// HARGA BUYER
+// ============================================================
+
+export interface ApiHargaBuyer {
+  id: string;
+  brand: string;
+  produk: string;
+  rateSML: number | string;
+  rateXL: number | string;
+  rateAnak4_10: number | string;
+  rateAnak12_16: number | string;
+}
+
+export async function apiGetHargaBuyer() {
+  return apiFetch<ApiHargaBuyer[]>('/api/harga/buyer');
+}
+
+export async function apiAddHargaBuyer(data: Omit<ApiHargaBuyer, 'id'>) {
+  return apiFetch<ApiHargaBuyer>('/api/harga/buyer', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateHargaBuyer(id: string, data: Partial<ApiHargaBuyer>) {
+  return apiFetch<ApiHargaBuyer>(`/api/harga/buyer/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteHargaBuyer(id: string) {
+  return apiFetch<{ message: string }>(`/api/harga/buyer/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================
+// INBOUND ROLLS
+// ============================================================
+
+export interface ApiInboundRoll {
+  id: string;
+  rollCode: string;
+  brand: string;
+  jenisKain: string;
+  meterLength: number | string;
+  meterUsed: number | string;
+  hargaModalMeter: number | string;
+  status: 'MENUNGGU_FISIK' | 'DI_GUDANG' | 'DIPROSES' | 'SELESAI';
+  tanggalMasuk: string;
+  keterangan?: string;
+}
+
+export async function apiGetInboundRolls(brand?: string) {
+  const q = brand ? `?brand=${encodeURIComponent(brand)}` : '';
+  return apiFetch<ApiInboundRoll[]>(`/api/inbound${q}`);
+}
+
+export async function apiAddInboundRoll(data: Omit<ApiInboundRoll, 'id' | 'meterUsed'>) {
+  return apiFetch<ApiInboundRoll>('/api/inbound', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateInboundStatus(id: string, status: ApiInboundRoll['status']) {
+  return apiFetch<ApiInboundRoll>(`/api/inbound/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function apiDeleteInboundRoll(id: string) {
+  return apiFetch<{ message: string }>(`/api/inbound/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================
+// SPK
+// ============================================================
+
+export async function apiGetSpk(brand?: string) {
+  const q = brand ? `?brand=${encodeURIComponent(brand)}` : '';
+  return apiFetch<unknown[]>(`/api/spk${q}`);
+}
+
+export async function apiCreateSpk(data: unknown) {
+  return apiFetch<unknown>('/api/spk', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ============================================================
+// SURAT JALAN
+// ============================================================
+
+export async function apiGetSuratJalan(brand?: string) {
+  const q = brand ? `?brand=${encodeURIComponent(brand)}` : '';
+  return apiFetch<unknown[]>(`/api/outbound${q}`);
+}
+
+export async function apiCreateSuratJalan(data: unknown) {
+  return apiFetch<unknown>('/api/outbound', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ============================================================
+// FINANCE - KASBON
+// ============================================================
+
+export interface ApiKasbon {
+  id: string;
+  vendor: string;
+  tanggal: string;
+  jumlah: number | string;
+  tipe: 'PINJAMAN' | 'PELUNASAN';
+  keterangan: string;
+}
+
+export async function apiGetKasbon(vendor?: string) {
+  const q = vendor ? `?vendor=${encodeURIComponent(vendor)}` : '';
+  return apiFetch<ApiKasbon[]>(`/api/finance/kasbon${q}`);
+}
+
+export async function apiAddKasbon(data: Omit<ApiKasbon, 'id'>) {
+  return apiFetch<ApiKasbon>('/api/finance/kasbon', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ============================================================
+// FINANCE - PEMBAYARAN BRAND & ARUS KAS
+// ============================================================
+
+export interface ApiPembayaran {
+  id: string;
+  brand: string;
+  tanggal: string;
+  jumlah: number | string;
+  metode: 'TRANSFER' | 'TUNAI' | 'CEK' | 'GIRO';
+  keterangan: string;
+  referensiNomor?: string;
+}
+
+export async function apiGetPembayaran(brand?: string) {
+  const q = brand ? `?brand=${encodeURIComponent(brand)}` : '';
+  return apiFetch<ApiPembayaran[]>(`/api/arus-kas${q}`);
+}
+
+export async function apiAddPembayaran(data: Omit<ApiPembayaran, 'id'>) {
+  return apiFetch<ApiPembayaran>('/api/arus-kas', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeletePembayaran(id: string) {
+  return apiFetch<{ message: string }>(`/api/arus-kas/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function apiGetArusKasSummary() {
+  return apiFetch<unknown[]>('/api/arus-kas/summary');
+}
