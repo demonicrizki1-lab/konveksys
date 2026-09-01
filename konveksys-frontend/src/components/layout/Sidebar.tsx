@@ -39,7 +39,13 @@ export const Sidebar: React.FC = () => {
   const filteredSJ = userRole === 'BRAND' ? suratJalanList.filter(s => s.brand === activeBrand) : suratJalanList;
 
   const rollsInStock = filteredRolls.filter(r => r.status === 'DI_GUDANG').length;
-  const activeSPKs = spkList.filter(s => s.status === 'IN_PRODUCTION' || s.status === 'PARTIAL_DELIVERED').length;
+  const activeSPKs = spkList.filter(s => {
+    if (s.status === 'COMPLETED') return false;
+    const targetTotal = Object.values(s.targetCutQty || {}).reduce((a, b) => a + b, 0);
+    const delivTotal = Object.values(s.deliveredQty || {}).reduce((a, b) => a + b, 0);
+    if (targetTotal > 0 && delivTotal >= targetTotal) return false;
+    return s.status === 'IN_PRODUCTION' || s.status === 'PARTIAL_DELIVERED';
+  }).length;
   const recentSJ = filteredSJ.length;
 
   // Outstanding arus kas untuk badge

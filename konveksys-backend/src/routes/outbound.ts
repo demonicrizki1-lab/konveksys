@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+﻿import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
@@ -28,7 +28,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
   });
 
   // Update delivered qty di SPK
-  await prisma.spkCutting.update({
+  const updatedSpk = await prisma.spkCutting.update({
     where: { id: body.spkId },
     data: {
       deliveredS: { increment: body.qtySML || 0 },
@@ -40,6 +40,32 @@ outboundRoutes.post('/', adminOnly, async (c) => {
       deliveredAnak12_16: { increment: body.qtyAnak12_16 || 0 },
     },
   });
+
+  // Cek apakah SPK sudah selesai 100%
+  const targetTotal =
+    (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
+    (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
+    (updatedSpk.targetAnak4_10 || 0) + (updatedSpk.targetAnak12_16 || 0);
+
+  const deliveredTotal =
+    (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
+    (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
+    (updatedSpk.deliveredAnak4_10 || 0) + (updatedSpk.deliveredAnak12_16 || 0);
+
+  const newStatus =
+    targetTotal > 0 && deliveredTotal >= targetTotal
+      ? 'COMPLETED'
+      : deliveredTotal > 0
+      ? 'PARTIAL_DELIVERED'
+      : updatedSpk.status;
+
+  if (newStatus !== updatedSpk.status) {
+    await prisma.spkCutting.update({
+      where: { id: updatedSpk.id },
+      data: { status: newStatus },
+    });
+  }
+
   return c.json(sj, 201);
 });
 
