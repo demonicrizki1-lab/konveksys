@@ -40,7 +40,7 @@ export const Sidebar: React.FC = () => {
 
   const rollsInStock = filteredRolls.filter(r => r.status === 'DI_GUDANG').length;
   const activeSPKs = spkList.filter(s => {
-    if (s.status === 'COMPLETED') return false;
+    if (s.status === 'COMPLETED' || s.status === 'OVER_DELIVERY') return false;
     const targetTotal = Object.values(s.targetCutQty || {}).reduce((a, b) => a + b, 0);
     const delivTotal = Object.values(s.deliveredQty || {}).reduce((a, b) => a + b, 0);
     if (targetTotal > 0 && delivTotal >= targetTotal) return false;

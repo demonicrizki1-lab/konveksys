@@ -792,24 +792,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'SPK tidak ditemukan.' };
     }
 
-    // Auto-Deduct Validation: Check if sending more than remaining
-    const remaining = getSPKRemainingQty(targetSPK);
     const deliv = sjData.qtyDelivered;
-
-    if (
-      deliv.s > remaining.s ||
-      deliv.m > remaining.m ||
-      deliv.l > remaining.l ||
-      deliv.xl > remaining.xl ||
-      deliv.xxl > remaining.xxl ||
-      deliv.anak4_10 > remaining.anak4_10 ||
-      deliv.anak12_16 > remaining.anak12_16
-    ) {
-      return {
-        success: false,
-        message: 'Gagal! Kuantitas pengiriman melebihi sisa hasil potong di konveksi (Anti Over-Delivery).',
-      };
-    }
 
     const noSuratJalan = `SJ/${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}/${String(suratJalanList.length + 1).padStart(3, '0')}`;
     const tempId = `sj-${Date.now()}`;
@@ -820,7 +803,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'DELIVERED',
     };
 
-    // Update SPK Delivered Quantities
+    // Update SPK Delivered Quantities (mendukung over-delivery)
     const updatedDelivered: SizeBreakdown = {
       s: targetSPK.deliveredQty.s + deliv.s,
       m: targetSPK.deliveredQty.m + deliv.m,
@@ -835,7 +818,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newTotalDelivered = Object.values(updatedDelivered).reduce((a, b) => a + b, 0);
 
     const newStatus: SPKCutting['status'] =
-      newTotalDelivered >= targetTotal ? 'COMPLETED' : 'PARTIAL_DELIVERED';
+      targetTotal > 0 && newTotalDelivered > targetTotal
+        ? 'OVER_DELIVERY'
+        : newTotalDelivered === targetTotal
+        ? 'COMPLETED'
+        : 'PARTIAL_DELIVERED';
 
     setSpkList(prev =>
       prev.map(spk =>

@@ -195,6 +195,7 @@ export const SPKView: React.FC = () => {
               <option value="IN_PRODUCTION">In Production</option>
               <option value="PARTIAL_DELIVERED">Partial Delivered</option>
               <option value="COMPLETED">Completed</option>
+              <option value="OVER_DELIVERY">Over Delivery</option>
             </select>
           </div>
         </div>
@@ -212,8 +213,15 @@ export const SPKView: React.FC = () => {
             const delivTotal = Object.values(spk.deliveredQty).reduce((a, b) => a + b, 0);
             const percent = targetTotal > 0 ? Math.round((delivTotal / targetTotal) * 100) : 0;
             const remaining = getSPKRemainingQty(spk);
-            const isCompleted = spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal >= targetTotal);
-            const displayStatus = isCompleted ? 'COMPLETED' : (delivTotal > 0 ? 'PARTIAL_DELIVERED' : spk.status);
+            const isOverDelivery = spk.status === 'OVER_DELIVERY' || (targetTotal > 0 && delivTotal > targetTotal);
+            const isCompleted = spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal === targetTotal);
+            const displayStatus = isOverDelivery
+              ? 'OVER_DELIVERY'
+              : isCompleted
+              ? 'COMPLETED'
+              : delivTotal > 0
+              ? 'PARTIAL_DELIVERED'
+              : spk.status;
 
             return (
               <div
@@ -233,7 +241,9 @@ export const SPKView: React.FC = () => {
 
                   <span
                     className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
-                      isCompleted
+                      isOverDelivery
+                        ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                        : isCompleted
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         : delivTotal > 0
                         ? 'bg-amber-100 text-amber-800 border border-amber-200'
@@ -267,20 +277,26 @@ export const SPKView: React.FC = () => {
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs font-bold">
                     <span className="text-slate-600">Progress Pengiriman (Surat Jalan):</span>
-                    <span className="text-indigo-600">
-                      {delivTotal} / {targetTotal} Pcs ({percent}%)
+                    <span className={isOverDelivery ? 'text-purple-600 font-extrabold' : 'text-indigo-600'}>
+                      {delivTotal} / {targetTotal} Pcs ({percent}%) {isOverDelivery && `(+${delivTotal - targetTotal} Pcs Over)`}
                     </span>
                   </div>
                   <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-500 ${
-                        percent >= 100 ? 'bg-emerald-500' : 'bg-indigo-600'
+                        isOverDelivery ? 'bg-purple-600' : percent >= 100 ? 'bg-emerald-500' : 'bg-indigo-600'
                       }`}
                       style={{ width: `${Math.min(100, percent)}%` }}
                     ></div>
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400">
-                    <span>Sisa di Konveksi: <strong>{remaining.totalRemaining} Pcs</strong></span>
+                    <span>
+                      {isOverDelivery ? (
+                        <span className="text-purple-600 font-bold">Over-Kirim: +{delivTotal - targetTotal} Pcs</span>
+                      ) : (
+                        <span>Sisa di Konveksi: <strong>{remaining.totalRemaining} Pcs</strong></span>
+                      )}
+                    </span>
                     {spk.catatan && <span className="truncate max-w-[200px]">Note: {spk.catatan}</span>}
                   </div>
                 </div>

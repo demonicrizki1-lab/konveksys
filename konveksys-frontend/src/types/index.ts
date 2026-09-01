@@ -95,7 +95,7 @@ export interface SPKCutting {
   deliveredQty: SizeBreakdown;
   tanggalSPK: string;
   targetSelesai: string;
-  status: 'DRAFT' | 'IN_PRODUCTION' | 'PARTIAL_DELIVERED' | 'COMPLETED';
+  status: 'DRAFT' | 'IN_PRODUCTION' | 'PARTIAL_DELIVERED' | 'COMPLETED' | 'OVER_DELIVERY';
   catatan?: string;
 }
 

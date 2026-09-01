@@ -298,8 +298,15 @@ export const Dashboard: React.FC = () => {
                 const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
                 const delivTotal = Object.values(spk.deliveredQty).reduce((a, b) => a + b, 0);
                 const percent = targetTotal > 0 ? Math.round((delivTotal / targetTotal) * 100) : 0;
-                const isCompleted = spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal >= targetTotal);
-                const displayStatus = isCompleted ? 'COMPLETED' : (delivTotal > 0 ? 'PARTIAL_DELIVERED' : spk.status);
+                const isOverDelivery = spk.status === 'OVER_DELIVERY' || (targetTotal > 0 && delivTotal > targetTotal);
+                const isCompleted = spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal === targetTotal);
+                const displayStatus = isOverDelivery
+                  ? 'OVER_DELIVERY'
+                  : isCompleted
+                  ? 'COMPLETED'
+                  : delivTotal > 0
+                  ? 'PARTIAL_DELIVERED'
+                  : spk.status;
 
                 return (
                   <div key={spk.id} className="p-3.5 rounded-lg bg-slate-50 border border-slate-100 space-y-2 text-xs">
@@ -311,7 +318,9 @@ export const Dashboard: React.FC = () => {
                         </span>
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isCompleted
+                        isOverDelivery
+                          ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                          : isCompleted
                           ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                           : delivTotal > 0
                           ? 'bg-amber-100 text-amber-700 border border-amber-200'
@@ -323,13 +332,15 @@ export const Dashboard: React.FC = () => {
 
                     <div className="flex justify-between text-[11px] text-slate-500">
                       <span>{spk.produk} · {spk.vendor}</span>
-                      <span className="font-medium text-slate-700">{delivTotal}/{targetTotal} Pcs ({percent}%)</span>
+                      <span className="font-medium text-slate-700">
+                        {delivTotal}/{targetTotal} Pcs ({percent}%) {isOverDelivery && `(+${delivTotal - targetTotal} Over)`}
+                      </span>
                     </div>
 
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                       <div
                         className={`h-full transition-all duration-500 rounded-full ${
-                          percent >= 100 ? 'bg-emerald-500' : 'bg-indigo-600'
+                          isOverDelivery ? 'bg-purple-600' : percent >= 100 ? 'bg-emerald-500' : 'bg-indigo-600'
                         }`}
                         style={{ width: `${Math.min(100, percent)}%` }}
                       ></div>

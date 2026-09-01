@@ -27,7 +27,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
     data: { ...body, tanggal: new Date(body.tanggal), totalPcs },
   });
 
-  // Update delivered qty di SPK
+  // Update delivered qty di SPK (bisa melebihi target cut / over-delivery)
   const updatedSpk = await prisma.spkCutting.update({
     where: { id: body.spkId },
     data: {
@@ -41,7 +41,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
     },
   });
 
-  // Cek apakah SPK sudah selesai 100%
+  // Hitung status: OVER_DELIVERY jika terkirim > target, COMPLETED jika pas, PARTIAL jika kurang
   const targetTotal =
     (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
     (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
@@ -53,7 +53,9 @@ outboundRoutes.post('/', adminOnly, async (c) => {
     (updatedSpk.deliveredAnak4_10 || 0) + (updatedSpk.deliveredAnak12_16 || 0);
 
   const newStatus =
-    targetTotal > 0 && deliveredTotal >= targetTotal
+    targetTotal > 0 && deliveredTotal > targetTotal
+      ? 'OVER_DELIVERY'
+      : targetTotal > 0 && deliveredTotal === targetTotal
       ? 'COMPLETED'
       : deliveredTotal > 0
       ? 'PARTIAL_DELIVERED'

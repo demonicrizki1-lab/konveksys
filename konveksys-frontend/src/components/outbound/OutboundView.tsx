@@ -124,11 +124,6 @@ export const OutboundView: React.FC = () => {
       return;
     }
 
-    if (isOverDelivering) {
-      alert('Kuantitas kirim melebihi sisa hasil potong di konveksi!');
-      return;
-    }
-
     const result = await createSuratJalan({
       spkId: currentSPK.id,
       brand: currentSPK.brand,
@@ -333,9 +328,11 @@ export const OutboundView: React.FC = () => {
                 </div>
 
                 {isOverDelivering && (
-                  <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-xl flex items-center gap-2 font-bold text-xs">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>Peringatan Over-Delivery: Kuantitas kirim melebihi sisa hasil potong di konveksi!</span>
+                  <div className="bg-purple-50 border border-purple-200 text-purple-900 p-3 rounded-xl flex items-center gap-2 font-semibold text-xs">
+                    <AlertTriangle className="w-4 h-4 text-purple-600 shrink-0" />
+                    <span>
+                      <strong>Info Over-Delivery:</strong> Kuantitas kirim melebihi estimasi potong di SPK. Surat Jalan tetap dapat diterbitkan dan status SPK otomatis diset ke <strong>OVER_DELIVERY</strong>.
+                    </span>
                   </div>
                 )}
 
@@ -350,7 +347,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.s}
                       onChange={(e) => setQtySend({ ...qtySend, s: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.s > remaining.s ? 'bg-rose-50 border-rose-400 text-rose-700' : 'bg-white border-slate-200'
+                        qtySend.s > remaining.s ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -365,7 +362,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.m}
                       onChange={(e) => setQtySend({ ...qtySend, m: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.m > remaining.m ? 'bg-rose-50 border-rose-400 text-rose-700' : 'bg-white border-slate-200'
+                        qtySend.m > remaining.m ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -380,7 +377,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.l}
                       onChange={(e) => setQtySend({ ...qtySend, l: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.l > remaining.l ? 'bg-rose-50 border-rose-400 text-rose-700' : 'bg-white border-slate-200'
+                        qtySend.l > remaining.l ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -395,7 +392,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.xl}
                       onChange={(e) => setQtySend({ ...qtySend, xl: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.xl > remaining.xl ? 'bg-rose-50 border-rose-400 text-rose-700' : 'bg-white border-slate-200'
+                        qtySend.xl > remaining.xl ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -410,7 +407,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.xxl}
                       onChange={(e) => setQtySend({ ...qtySend, xxl: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.xxl > remaining.xxl ? 'bg-rose-50 border-rose-400 text-rose-700' : 'bg-white border-slate-200'
+                        qtySend.xxl > remaining.xxl ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -425,7 +422,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.anak4_10}
                       onChange={(e) => setQtySend({ ...qtySend, anak4_10: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak4_10 > remaining.anak4_10 ? 'bg-rose-50 border-rose-400 text-rose-700' : 'bg-white border-slate-200'
+                        qtySend.anak4_10 > remaining.anak4_10 ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -440,7 +437,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.anak12_16}
                       onChange={(e) => setQtySend({ ...qtySend, anak12_16: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak12_16 > remaining.anak12_16 ? 'bg-rose-50 border-rose-400 text-rose-700' : 'bg-white border-slate-200'
+                        qtySend.anak12_16 > remaining.anak12_16 ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -491,14 +488,16 @@ export const OutboundView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isOverDelivering || totalSendingPcs <= 0}
+                  disabled={totalSendingPcs <= 0}
                   className={`flex-1 py-2.5 text-white font-bold rounded-xl transition ${
-                    isOverDelivering || totalSendingPcs <= 0
+                    totalSendingPcs <= 0
                       ? 'bg-slate-300 cursor-not-allowed'
-                      : 'bg-emerald-600 hover:bg-emerald-500'
+                      : isOverDelivering
+                      ? 'bg-purple-600 hover:bg-purple-500 shadow-md shadow-purple-600/30 cursor-pointer'
+                      : 'bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/30 cursor-pointer'
                   }`}
                 >
-                  Terbitkan Surat Jalan
+                  {isOverDelivering ? 'Terbitkan Surat Jalan (Over-Delivery)' : 'Terbitkan Surat Jalan'}
                 </button>
               </div>
             </form>
