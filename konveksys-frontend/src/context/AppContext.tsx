@@ -29,9 +29,14 @@ import {
   apiAddVendor,
   apiUpdateVendor,
   apiDeleteVendor,
+  apiRegisterBrand,
+  apiGetPendingBrands,
+  apiApproveBrand,
+  apiRejectBrand,
 } from '../services/api';
 import {
   AuthUser,
+  PendingBrandUser,
   UserRole,
   Brand,
   Vendor,
@@ -75,6 +80,14 @@ interface AppContextType {
   setUserRole: (role: UserRole) => void;
   activeBrand: string;
   setActiveBrand: (brand: string) => void;
+  switchBrand: (brandName: string) => void;
+
+  // Pending Registrations & Approval
+  pendingBrands: PendingBrandUser[];
+  fetchPendingBrands: () => Promise<void>;
+  registerBrand: (data: { name: string; email: string; password: string; phone?: string; brands: string[] }) => Promise<{ success: boolean; message: string }>;
+  approveBrandUser: (userId: string, data?: { accessibleBrands?: string[]; brandName?: string }) => Promise<{ success: boolean; message: string }>;
+  rejectBrandUser: (userId: string) => Promise<{ success: boolean; message: string }>;
 
   // Sidebar & Layout State
   isSidebarCollapsed: boolean;
@@ -156,6 +169,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return 'GREYWOLF';
   });
+
+  const [pendingBrands, setPendingBrands] = useState<PendingBrandUser[]>([]);
+
+  const switchBrand = (brandName: string) => {
+    setActiveBrand(brandName);
+    if (currentUser) {
+      const updated = { ...currentUser, brandName };
+      setCurrentUser(updated);
+      localStorage.setItem('konvek_auth_user', JSON.stringify(updated));
+    }
+  };
 
   // Sidebar Layout State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -452,6 +476,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser]);
 
   // Auth Handlers
+  const fetchPendingBrands = useCallback(async () => {
+    try {
+      const { data } = await apiGetPendingBrands();
+      if (data && Array.isArray(data.pending)) {
+        setPendingBrands(data.pending);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch pending brands:', err);
+    }
+  }, []);
+
+  const registerBrand = async (data: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    brands: string[];
+  }): Promise<{ success: boolean; message: string }> => {
+    const { data: res, error } = await apiRegisterBrand(data);
+    if (error || !res) {
+      return { success: false, message: error || 'Pendaftaran gagal diproses.' };
+    }
+    return { success: true, message: res.message };
+  };
+
+  const approveBrandUser = async (userId: string, data?: { accessibleBrands?: string[]; brandName?: string }) => {
+    const { data: res, error } = await apiApproveBrand(userId, data);
+    if (!error) {
+      setPendingBrands(prev => prev.filter(p => p.id !== userId));
+      await syncFromBackend();
+      return { success: true, message: res?.message || 'Akun berhasil disetujui!' };
+    }
+    return { success: false, message: error || 'Gagal menyetujui akun.' };
+  };
+
+  const rejectBrandUser = async (userId: string) => {
+    const { data: res, error } = await apiRejectBrand(userId);
+    if (!error) {
+      setPendingBrands(prev => prev.filter(p => p.id !== userId));
+      return { success: true, message: res?.message || 'Pendaftaran ditolak.' };
+    }
+    return { success: false, message: error || 'Gagal menolak akun.' };
+  };
+
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
       const { data, error } = await apiLogin(email.trim(), password);
@@ -465,20 +533,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Set user dari response API
       const apiUser = data.user;
-      const authUser = {
+      const authUser: AuthUser = {
         id: apiUser.id,
         name: apiUser.name,
         email: apiUser.email,
+        phone: apiUser.phone,
         role: apiUser.role,
         brandName: apiUser.brandName,
+        accessibleBrands: apiUser.accessibleBrands && apiUser.accessibleBrands.length > 0
+          ? apiUser.accessibleBrands
+          : (apiUser.brandName ? [apiUser.brandName] : []),
       };
 
       setCurrentUser(authUser);
       setUserRole(apiUser.role);
-      if (apiUser.role === 'BRAND' && apiUser.brandName) {
-        setActiveBrand(apiUser.brandName);
-      }
+      const activeB = apiUser.brandName || (apiUser.accessibleBrands && apiUser.accessibleBrands[0]) || 'GREYWOLF';
+      setActiveBrand(activeB);
       setActiveTab('dashboard');
+      if (apiUser.role === 'ADMIN') {
+        fetchPendingBrands();
+      }
       return { success: true };
     } catch {
       return { success: false, message: 'Tidak dapat terhubung ke server.' };
@@ -1032,6 +1106,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setUserRole,
         activeBrand,
         setActiveBrand,
+        switchBrand,
+        pendingBrands,
+        fetchPendingBrands,
+        registerBrand,
+        approveBrandUser,
+        rejectBrandUser,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
         toggleSidebar,

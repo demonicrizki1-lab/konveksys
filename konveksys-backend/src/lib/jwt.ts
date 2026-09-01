@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify } from 'jose';
+﻿import { SignJWT, jwtVerify } from 'jose';
 
 const secret = new TextEncoder().encode(
   process.env.JWT_SECRET || 'konveksys-default-secret-please-change-in-production'
@@ -9,6 +9,7 @@ export interface JWTPayload {
   email: string;
   role: 'ADMIN' | 'BRAND';
   brandName?: string;
+  accessibleBrands?: string[];
 }
 
 export async function signJWT(payload: JWTPayload): Promise<string> {

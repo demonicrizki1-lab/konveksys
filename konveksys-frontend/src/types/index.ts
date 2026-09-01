@@ -6,8 +6,23 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   brandName?: string;
+  accessibleBrands?: string[];
+  phone?: string;
+  status?: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED';
   avatar?: string;
   password?: string;
+}
+
+export interface PendingBrandUser {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  status: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED';
+  accessibleBrands: string[];
+  brandName?: string;
+  createdAt: string;
 }
 
 export interface Brand {

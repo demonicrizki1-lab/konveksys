@@ -69,8 +69,10 @@ export interface LoginResponse {
     id: string;
     name: string;
     email: string;
+    phone?: string;
     role: 'ADMIN' | 'BRAND';
     brandName?: string;
+    accessibleBrands?: string[];
   };
 }
 
@@ -86,6 +88,44 @@ export async function apiLogin(
 
 export async function apiGetMe() {
   return apiFetch<{ user: LoginResponse['user'] }>('/api/auth/me');
+}
+
+export async function apiRegisterBrand(data: {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  brands: string[];
+}): Promise<{ data: { success: boolean; message: string; userId?: string } | null; error: string | null }> {
+  return apiFetch('/api/auth/register-brand', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiGetPendingBrands(): Promise<{
+  data: { pending: any[] } | null;
+  error: string | null;
+}> {
+  return apiFetch('/api/auth/pending-brands');
+}
+
+export async function apiApproveBrand(
+  userId: string,
+  data: { accessibleBrands?: string[]; brandName?: string } = {}
+): Promise<{ data: { success: boolean; message: string } | null; error: string | null }> {
+  return apiFetch(`/api/auth/approve-brand/${userId}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiRejectBrand(
+  userId: string
+): Promise<{ data: { success: boolean; message: string } | null; error: string | null }> {
+  return apiFetch(`/api/auth/reject-brand/${userId}`, {
+    method: 'POST',
+  });
 }
 
 // ============================================================

@@ -224,3 +224,25 @@ model PembayaranBrand {
 
   createdAt DateTime @default(now())
 }
+
+enum UserStatus {
+  ACTIVE
+  PENDING_APPROVAL
+  REJECTED
+}
+
+model User {
+  id               String      @id @default(cuid())
+  name             String
+  email            String      @unique
+  password         String
+  phone            String?
+  role             UserRole    @default(BRAND)
+  status           UserStatus  @default(PENDING_APPROVAL)
+  accessibleBrands String[]    @default([])
+  brandName        String?
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
