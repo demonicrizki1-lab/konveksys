@@ -98,7 +98,7 @@ export const Dashboard: React.FC = () => {
             ) : (
               <button
                 onClick={() => setActiveTab('finance')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-base btn-press shadow-sm shadow-indigo-600/25 cursor-pointer"
               >
                 <DollarSign className="w-3.5 h-3.5" />
                 Lihat Invoice

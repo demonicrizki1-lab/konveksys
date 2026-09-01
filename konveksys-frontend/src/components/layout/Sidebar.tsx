@@ -235,9 +235,7 @@ export const Sidebar: React.FC = () => {
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-slate-600">Akses:</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                  userRole === 'ADMIN' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'
-                }`}>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
                   {userRole === 'ADMIN' ? 'Admin / Owner' : `Brand ${activeBrand}`}
                 </span>
               </div>
@@ -255,7 +253,7 @@ export const Sidebar: React.FC = () => {
               {userRole === 'ADMIN' ? (
                 <ShieldCheck className="w-4 h-4 text-indigo-600" />
               ) : (
-                <Building2 className="w-4 h-4 text-emerald-600" />
+                <Building2 className="w-4 h-4 text-indigo-600" />
               )}
             </div>
           )}
