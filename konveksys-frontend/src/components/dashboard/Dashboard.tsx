@@ -319,7 +319,7 @@ export const Dashboard: React.FC = () => {
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         isOverDelivery
-                          ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
                           : isCompleted
                           ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                           : delivTotal > 0
@@ -340,7 +340,7 @@ export const Dashboard: React.FC = () => {
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                       <div
                         className={`h-full transition-all duration-500 rounded-full ${
-                          isOverDelivery ? 'bg-purple-600' : percent >= 100 ? 'bg-emerald-500' : 'bg-indigo-600'
+                          isOverDelivery ? 'bg-amber-500' : percent >= 100 ? 'bg-emerald-500' : 'bg-indigo-600'
                         }`}
                         style={{ width: `${Math.min(100, percent)}%` }}
                       ></div>

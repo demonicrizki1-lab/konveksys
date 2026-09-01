@@ -328,10 +328,10 @@ export const OutboundView: React.FC = () => {
                 </div>
 
                 {isOverDelivering && (
-                  <div className="bg-purple-50 border border-purple-200 text-purple-900 p-3 rounded-xl flex items-center gap-2 font-semibold text-xs">
-                    <AlertTriangle className="w-4 h-4 text-purple-600 shrink-0" />
+                  <div className="bg-amber-50 border border-amber-300 text-amber-950 p-3.5 rounded-xl flex items-center gap-2.5 font-medium text-xs">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
                     <span>
-                      <strong>Info Over-Delivery:</strong> Kuantitas kirim melebihi estimasi potong di SPK. Surat Jalan tetap dapat diterbitkan dan status SPK otomatis diset ke <strong>OVER_DELIVERY</strong>.
+                      <strong className="font-bold text-amber-900">Perhatian (Over-Delivery):</strong> Kuantitas kirim melebihi sisa estimasi potong SPK. Surat Jalan tetap dapat diterbitkan dan status SPK otomatis diset ke <strong>OVER_DELIVERY</strong>.
                     </span>
                   </div>
                 )}
@@ -347,7 +347,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.s}
                       onChange={(e) => setQtySend({ ...qtySend, s: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.s > remaining.s ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
+                        qtySend.s > remaining.s ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -362,7 +362,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.m}
                       onChange={(e) => setQtySend({ ...qtySend, m: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.m > remaining.m ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
+                        qtySend.m > remaining.m ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -377,7 +377,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.l}
                       onChange={(e) => setQtySend({ ...qtySend, l: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.l > remaining.l ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
+                        qtySend.l > remaining.l ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -392,7 +392,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.xl}
                       onChange={(e) => setQtySend({ ...qtySend, xl: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.xl > remaining.xl ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
+                        qtySend.xl > remaining.xl ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -407,7 +407,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.xxl}
                       onChange={(e) => setQtySend({ ...qtySend, xxl: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.xxl > remaining.xxl ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
+                        qtySend.xxl > remaining.xxl ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -422,7 +422,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.anak4_10}
                       onChange={(e) => setQtySend({ ...qtySend, anak4_10: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak4_10 > remaining.anak4_10 ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
+                        qtySend.anak4_10 > remaining.anak4_10 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -437,7 +437,7 @@ export const OutboundView: React.FC = () => {
                       value={qtySend.anak12_16}
                       onChange={(e) => setQtySend({ ...qtySend, anak12_16: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak12_16 > remaining.anak12_16 ? 'bg-purple-50 border-purple-400 text-purple-900' : 'bg-white border-slate-200'
+                        qtySend.anak12_16 > remaining.anak12_16 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
@@ -492,8 +492,6 @@ export const OutboundView: React.FC = () => {
                   className={`flex-1 py-2.5 text-white font-bold rounded-xl transition ${
                     totalSendingPcs <= 0
                       ? 'bg-slate-300 cursor-not-allowed'
-                      : isOverDelivering
-                      ? 'bg-purple-600 hover:bg-purple-500 shadow-md shadow-purple-600/30 cursor-pointer'
                       : 'bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/30 cursor-pointer'
                   }`}
                 >
