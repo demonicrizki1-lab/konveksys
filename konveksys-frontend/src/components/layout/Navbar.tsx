@@ -4,7 +4,6 @@ import { BrandApprovalModal } from '../brands/BrandApprovalModal';
 import {
   ShieldCheck,
   Building2,
-  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
@@ -17,7 +16,6 @@ import {
 export const Navbar: React.FC = () => {
   const {
     currentUser,
-    logout,
     isSidebarCollapsed,
     toggleSidebar,
     toggleMobileMenu,
@@ -223,42 +221,10 @@ export const Navbar: React.FC = () => {
                         );
                       })}
                     </div>
-
-                    {/* Action Logout */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
-                            logout();
-                          }
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition cursor-pointer"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Keluar dari Akun</span>
-                      </button>
-                    </div>
-
                   </div>
                 )}
 
               </div>
-
-              {/* Tombol Logout Mandiri (untuk tampilan jika tidak memakai popover) */}
-              {!hasMultipleBrands && (
-                <button
-                  onClick={() => {
-                    if (confirm('Apakah Anda yakin ingin keluar?')) {
-                      logout();
-                    }
-                  }}
-                  title="Keluar dari sistem"
-                  className="p-2.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-base btn-press"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              )}
 
             </div>
           )}
