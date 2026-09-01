@@ -264,23 +264,23 @@ export const Sidebar: React.FC = () => {
           {!isCollapsed ? (
             <button
               onClick={() => {
-                if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
+                if (confirm('Apakah Anda yakin ingin logout?')) {
                   logout();
                 }
               }}
               className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 border border-rose-200 transition-base btn-press cursor-pointer shadow-xs"
             >
               <LogOut className="w-4 h-4 text-rose-500" />
-              <span>Keluar dari Sistem</span>
+              <span>Logout</span>
             </button>
           ) : (
             <button
               onClick={() => {
-                if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
+                if (confirm('Apakah Anda yakin ingin logout?')) {
                   logout();
                 }
               }}
-              title="Keluar dari Sistem"
+              title="Logout"
               className="w-full flex items-center justify-center p-2.5 rounded-xl text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-base btn-press cursor-pointer"
             >
               <LogOut className="w-4 h-4 text-rose-500" />
