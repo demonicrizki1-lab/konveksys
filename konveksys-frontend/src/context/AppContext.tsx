@@ -33,6 +33,10 @@ import {
   apiGetPendingBrands,
   apiApproveBrand,
   apiRejectBrand,
+  apiGetReturns,
+  apiCreateReturn,
+  apiUpdateReturnStatus,
+  apiDeleteReturn,
 } from '../services/api';
 import {
   AuthUser,
@@ -51,6 +55,9 @@ import {
   BuyerInvoiceSummary,
   PembayaranBrand,
   ArusKasSummary,
+  ReturnItem,
+  ReturnStatus,
+  ReturnSource,
 } from '../types';
 import {
   demoUsers,
@@ -62,9 +69,10 @@ import {
   initialSPKList,
   initialSuratJalanList,
   initialKasbonList,
+  initialReturnList,
 } from '../data/initialData';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'finance' | 'arus-kas';
+export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas';
 
 interface AppContextType {
   // Auth & Session
@@ -131,6 +139,32 @@ interface AppContextType {
   addPembayaran: (p: Omit<PembayaranBrand, 'id'>) => void;
   deletePembayaran: (id: string) => void;
   getArusKasSummary: () => ArusKasSummary[];
+
+  // Return Management
+  returnList: ReturnItem[];
+  createReturn: (data: {
+    sumber: ReturnSource;
+    spkId?: string;
+    suratJalanId?: string;
+    brand: string;
+    produk: string;
+    vendor: string;
+    tanggalRetur?: string;
+    alasanCacat: string;
+    kategoriCacat: string;
+    catatan?: string;
+    qtyBreakdown: SizeBreakdown;
+  }) => Promise<{ success: boolean; message?: string }>;
+  updateReturnStatus: (
+    id: string,
+    data: {
+      status: ReturnStatus;
+      qtyReworked?: number;
+      qtyRejectTotal?: number;
+      catatan?: string;
+    }
+  ) => Promise<{ success: boolean; message?: string }>;
+  deleteReturn: (id: string) => Promise<{ success: boolean; message?: string }>;
 
   // Helper Lookups & Calculation Engines
   getVendorRate: (vendor: string, produk: string, brand: string) => number;
@@ -245,6 +279,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pembayaranList, setPembayaranList] = useState<PembayaranBrand[]>(() => {
     const saved = localStorage.getItem('konvek_pembayaran');
     return saved ? JSON.parse(saved) : [];
+  });
+
+  const [returnList, setReturnList] = useState<ReturnItem[]>(() => {
+    const saved = localStorage.getItem('konvek_returns');
+    return saved ? JSON.parse(saved) : initialReturnList;
   });
 
   // Sync to Backend Database if token exists
@@ -414,6 +453,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           referensiNomor: p.referensiNomor || '',
         })));
       }
+
+      // 10. Fetch Returns
+      const { data: retData } = await apiGetReturns();
+      if (Array.isArray(retData)) {
+        setReturnList(retData.map((r: any) => ({
+          id: r.id,
+          noRetur: r.noRetur,
+          sumber: r.sumber,
+          spkId: r.spkId || undefined,
+          suratJalanId: r.suratJalanId || undefined,
+          brand: r.brand,
+          produk: r.produk,
+          vendor: r.vendor,
+          tanggalRetur: r.tanggalRetur,
+          tanggalSelesai: r.tanggalSelesai || undefined,
+          alasanCacat: r.alasanCacat,
+          kategoriCacat: r.kategoriCacat || 'JAHITAN',
+          catatan: r.catatan || undefined,
+          status: r.status,
+          qtyBreakdown: {
+            s: r.qtyS || 0,
+            m: r.qtyM || 0,
+            l: r.qtyL || 0,
+            xl: r.qtyXL || 0,
+            xxl: r.qtyXXL || 0,
+            anak4_10: r.qtyAnak4_10 || 0,
+            anak12_16: r.qtyAnak12_16 || 0,
+          },
+          totalPcs: r.totalPcs || 0,
+          qtyReworked: r.qtyReworked || 0,
+          qtyRejectTotal: r.qtyRejectTotal || 0,
+          spk: r.spk,
+          suratJalan: r.suratJalan,
+        })));
+      }
     } catch (err) {
       console.warn('[Sync Error] Continuing with cached data:', err);
     }
@@ -430,6 +504,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('konvek_brands', JSON.stringify(brands));
   }, [brands]);
+
+  useEffect(() => {
+    localStorage.setItem('konvek_returns', JSON.stringify(returnList));
+  }, [returnList]);
 
   useEffect(() => {
     localStorage.setItem('konvek_vendors', JSON.stringify(vendors));
@@ -1062,6 +1140,142 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Return Handlers
+  const createReturn = async (data: {
+    sumber: ReturnSource;
+    spkId?: string;
+    suratJalanId?: string;
+    brand: string;
+    produk: string;
+    vendor: string;
+    tanggalRetur?: string;
+    alasanCacat: string;
+    kategoriCacat: string;
+    catatan?: string;
+    qtyBreakdown: SizeBreakdown;
+  }): Promise<{ success: boolean; message?: string }> => {
+    const totalPcs =
+      data.qtyBreakdown.s +
+      data.qtyBreakdown.m +
+      data.qtyBreakdown.l +
+      data.qtyBreakdown.xl +
+      data.qtyBreakdown.xxl +
+      data.qtyBreakdown.anak4_10 +
+      data.qtyBreakdown.anak12_16;
+
+    if (totalPcs <= 0) {
+      return { success: false, message: 'Jumlah barang retur harus lebih dari 0 pcs.' };
+    }
+
+    const today = new Date();
+    const prefix = `RET-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const noRetur = `${prefix}-${String(returnList.length + 1).padStart(3, '0')}`;
+    const tempId = `ret-${Date.now()}`;
+
+    const matchedSpk = data.spkId ? spkList.find(s => s.id === data.spkId) : undefined;
+    const matchedSj = data.suratJalanId ? suratJalanList.find(s => s.id === data.suratJalanId) : undefined;
+
+    const newReturn: ReturnItem = {
+      id: tempId,
+      noRetur,
+      sumber: data.sumber,
+      spkId: data.spkId,
+      suratJalanId: data.suratJalanId,
+      brand: data.brand,
+      produk: data.produk,
+      vendor: data.vendor,
+      tanggalRetur: data.tanggalRetur || new Date().toISOString().split('T')[0],
+      alasanCacat: data.alasanCacat,
+      kategoriCacat: data.kategoriCacat,
+      catatan: data.catatan,
+      status: 'DIAJUKAN',
+      qtyBreakdown: data.qtyBreakdown,
+      totalPcs,
+      qtyReworked: 0,
+      qtyRejectTotal: 0,
+      spk: matchedSpk ? { spkNumber: matchedSpk.spkNumber } : undefined,
+      suratJalan: matchedSj ? { noSuratJalan: matchedSj.noSuratJalan } : undefined,
+    };
+
+    setReturnList(prev => [newReturn, ...prev]);
+
+    try {
+      const { data: resData, error } = await apiCreateReturn({
+        sumber: data.sumber,
+        spkId: data.spkId,
+        suratJalanId: data.suratJalanId,
+        brand: data.brand,
+        produk: data.produk,
+        vendor: data.vendor,
+        tanggalRetur: data.tanggalRetur,
+        alasanCacat: data.alasanCacat,
+        kategoriCacat: data.kategoriCacat,
+        catatan: data.catatan,
+        qtyS: data.qtyBreakdown.s,
+        qtyM: data.qtyBreakdown.m,
+        qtyL: data.qtyBreakdown.l,
+        qtyXL: data.qtyBreakdown.xl,
+        qtyXXL: data.qtyBreakdown.xxl,
+        qtyAnak4_10: data.qtyBreakdown.anak4_10,
+        qtyAnak12_16: data.qtyBreakdown.anak12_16,
+      });
+
+      if (error) {
+        console.warn('Backend return creation warning:', error);
+      } else if (resData && resData.id) {
+        setReturnList(prev => prev.map(r => (r.id === tempId ? { ...r, id: resData.id, noRetur: resData.noRetur } : r)));
+      }
+    } catch (err) {
+      console.warn('Backend sync failed, saved locally:', err);
+    }
+
+    return { success: true };
+  };
+
+  const updateReturnStatus = async (
+    id: string,
+    data: {
+      status: ReturnStatus;
+      qtyReworked?: number;
+      qtyRejectTotal?: number;
+      catatan?: string;
+    }
+  ): Promise<{ success: boolean; message?: string }> => {
+    setReturnList(prev =>
+      prev.map(r => {
+        if (r.id === id) {
+          return {
+            ...r,
+            status: data.status,
+            qtyReworked: data.qtyReworked !== undefined ? data.qtyReworked : r.qtyReworked,
+            qtyRejectTotal: data.qtyRejectTotal !== undefined ? data.qtyRejectTotal : r.qtyRejectTotal,
+            catatan: data.catatan !== undefined ? data.catatan : r.catatan,
+            tanggalSelesai: data.status === 'SELESAI_REWORK' || data.status === 'REJECT_TOTAL' ? new Date().toISOString().split('T')[0] : r.tanggalSelesai,
+          };
+        }
+        return r;
+      })
+    );
+
+    try {
+      await apiUpdateReturnStatus(id, data);
+    } catch (err) {
+      console.warn('Backend update return failed, updated locally:', err);
+    }
+
+    return { success: true };
+  };
+
+  const deleteReturn = async (id: string): Promise<{ success: boolean; message?: string }> => {
+    setReturnList(prev => prev.filter(r => r.id !== id));
+    try {
+      await apiDeleteReturn(id);
+    } catch (err) {
+      console.warn('Backend delete return failed, deleted locally:', err);
+    }
+    return { success: true };
+  };
+
   const getArusKasSummary = (): ArusKasSummary[] => {
     return brands.map(brand => {
       const invoice = calculateBuyerInvoice(brand.name);
@@ -1125,6 +1339,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createSPK,
         suratJalanList,
         createSuratJalan,
+        returnList,
+        createReturn,
+        updateReturnStatus,
+        deleteReturn,
         kasbonList,
         addKasbon,
         pembayaranList,

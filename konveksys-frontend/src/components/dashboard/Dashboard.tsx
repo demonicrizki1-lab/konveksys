@@ -6,6 +6,9 @@ import {
   Truck,
   DollarSign,
   CheckCircle2,
+  RotateCcw,
+  Wrench,
+  AlertCircle,
 } from 'lucide-react';
 import { formatDateIndo } from '../../utils/formatters';
 
@@ -17,6 +20,7 @@ export const Dashboard: React.FC = () => {
     inboundRolls,
     spkList,
     suratJalanList,
+    returnList,
     vendors,
     getVendorRate,
     getBuyerRates,
@@ -26,6 +30,7 @@ export const Dashboard: React.FC = () => {
   const filteredRolls = userRole === 'BRAND' ? inboundRolls.filter(r => r.brand === activeBrand) : inboundRolls;
   const filteredSPK = userRole === 'BRAND' ? spkList.filter(s => s.brand === activeBrand) : spkList;
   const filteredSJ = userRole === 'BRAND' ? suratJalanList.filter(s => s.brand === activeBrand) : suratJalanList;
+  const filteredReturns = userRole === 'BRAND' ? returnList.filter(r => r.brand === activeBrand) : returnList;
 
   // Kalkulasi metrik
   const totalMetersInStock = filteredRolls.reduce((acc, r) => acc + (r.status === 'DI_GUDANG' ? (r.meterLength - r.meterUsed) : 0), 0);
@@ -352,6 +357,60 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
+      </div>
+
+      {/* 3. Monitoring Barang Cacat & Rework di Penjahit */}
+      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+              <RotateCcw className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm">Monitoring Barang Cacat &amp; Perbaikan (Rework)</h3>
+              <p className="text-[11px] text-slate-500">Barang retur yang sedang dalam penanganan penjahit atau menunggu QC</p>
+            </div>
+          </div>
+          <button onClick={() => setActiveTab('return')} className="text-xs font-medium text-indigo-600 hover:underline">
+            Kelola Retur ({filteredReturns.length}) →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredReturns.length === 0 ? (
+            <div className="col-span-full py-6 text-center text-xs text-slate-400">
+              Tidak ada barang yang sedang diretur / dalam perbaikan.
+            </div>
+          ) : (
+            filteredReturns.slice(0, 3).map((item) => (
+              <div key={item.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <strong className="font-mono font-bold text-slate-900">{item.noRetur}</strong>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    item.status === 'DIKIRIM_KE_VENDOR'
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : item.status === 'SELESAI_REWORK'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : item.status === 'REJECT_TOTAL'
+                      ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                      : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                  }`}>
+                    {item.status === 'DIKIRIM_KE_VENDOR' ? 'Di Vendor (Rework)' : item.status}
+                  </span>
+                </div>
+
+                <div className="text-slate-600">
+                  <span className="font-bold text-slate-800">{item.produk}</span> · <span className="text-slate-500">{item.brand}</span>
+                </div>
+
+                <div className="flex justify-between items-center text-[11px] pt-1 border-t border-slate-200/60">
+                  <span className="text-indigo-700 font-semibold">{item.vendor}</span>
+                  <span className="font-bold text-rose-600">{item.totalPcs} Pcs ({item.alasanCacat})</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
     </div>

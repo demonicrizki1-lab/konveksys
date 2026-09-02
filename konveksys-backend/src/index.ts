@@ -12,6 +12,7 @@ import { spkRoutes } from './routes/spk.js';
 import { outboundRoutes } from './routes/outbound.js';
 import { financeRoutes } from './routes/finance.js';
 import { arusKasRoutes } from './routes/arus-kas.js';
+import { returnRoutes } from './routes/returns.js';
 
 const app = new Hono();
 
@@ -35,6 +36,7 @@ app.route('/api/harga', hargaRoutes);
 app.route('/api/inbound', inboundRoutes);
 app.route('/api/spk', spkRoutes);
 app.route('/api/outbound', outboundRoutes);
+app.route('/api/returns', returnRoutes);
 app.route('/api/finance', financeRoutes);
 app.route('/api/arus-kas', arusKasRoutes);
 

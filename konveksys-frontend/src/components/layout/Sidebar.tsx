@@ -6,6 +6,7 @@ import {
   PackageCheck,
   Scissors,
   Truck,
+  RotateCcw,
   ReceiptText,
   TrendingUp,
   ChevronLeft,
@@ -27,6 +28,7 @@ export const Sidebar: React.FC = () => {
     inboundRolls,
     spkList,
     suratJalanList,
+    returnList,
     isSidebarCollapsed,
     toggleSidebar,
     isMobileMenuOpen,
@@ -37,6 +39,7 @@ export const Sidebar: React.FC = () => {
   // Stats untuk badge
   const filteredRolls = userRole === 'BRAND' ? inboundRolls.filter(r => r.brand === activeBrand) : inboundRolls;
   const filteredSJ = userRole === 'BRAND' ? suratJalanList.filter(s => s.brand === activeBrand) : suratJalanList;
+  const filteredReturns = userRole === 'BRAND' ? returnList.filter(r => r.brand === activeBrand) : returnList;
 
   const rollsInStock = filteredRolls.filter(r => r.status === 'DI_GUDANG').length;
   const activeSPKs = spkList.filter(s => {
@@ -47,6 +50,7 @@ export const Sidebar: React.FC = () => {
     return s.status === 'IN_PRODUCTION' || s.status === 'PARTIAL_DELIVERED';
   }).length;
   const recentSJ = filteredSJ.length;
+  const activeReturns = filteredReturns.filter(r => r.status === 'DIAJUKAN' || r.status === 'DIKIRIM_KE_VENDOR').length;
 
   // Outstanding arus kas untuk badge
   const arusKasSummary = getArusKasSummary();
@@ -100,6 +104,14 @@ export const Sidebar: React.FC = () => {
       description: userRole === 'ADMIN' ? 'Pengiriman & Auto-Deduct' : 'Riwayat Pengiriman',
       icon: Truck,
       badge: recentSJ > 0 ? `${recentSJ} SJ` : undefined,
+      roles: ['ADMIN', 'BRAND'],
+    },
+    {
+      id: 'return',
+      label: userRole === 'ADMIN' ? 'Pengembalian & Retur' : 'Retur Produk',
+      description: userRole === 'ADMIN' ? 'Barang Cacat & Rework' : 'Lacak Perbaikan Barang',
+      icon: RotateCcw,
+      badge: activeReturns > 0 ? `${activeReturns} Retur` : undefined,
       roles: ['ADMIN', 'BRAND'],
     },
     {

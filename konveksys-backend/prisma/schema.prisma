@@ -41,6 +41,18 @@ enum MetodePembayaran {
   GIRO
 }
 
+enum ReturnStatus {
+  DIAJUKAN
+  DIKIRIM_KE_VENDOR
+  SELESAI_REWORK
+  REJECT_TOTAL
+}
+
+enum ReturnSource {
+  INTERNAL_QC
+  BRAND_COMPLAINT
+}
+
 model Brand {
   id             String  @id @default(cuid())
   name           String  @unique
@@ -54,6 +66,7 @@ model Brand {
   suratJalanList SuratJalan[]
   pembayaranList PembayaranBrand[]
   hargaBuyer     HargaBuyer[]
+  returnList     ReturnItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -68,6 +81,7 @@ model Vendor {
   hargaKonveksi    HargaKonveksi[]
   spkList          SpkCutting[]
   kasbonList       KasbonTransaction[]
+  returnList       ReturnItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -151,10 +165,11 @@ model SpkCutting {
   deliveredAnak4_10  Int @default(0)
   deliveredAnak12_16 Int @default(0)
 
-  brandRef       Brand      @relation(fields: [brand], references: [name])
-  vendorRef      Vendor     @relation(fields: [vendor], references: [name])
+  brandRef       Brand        @relation(fields: [brand], references: [name])
+  vendorRef      Vendor       @relation(fields: [vendor], references: [name])
   rolsDigunakan  SpkRol[]
   suratJalanList SuratJalan[]
+  returnList     ReturnItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -192,11 +207,49 @@ model SuratJalan {
   qtyAnak12_16  Int @default(0)
   totalPcs      Int @default(0)
 
-  spk      SpkCutting @relation(fields: [spkId], references: [id])
-  brandRef Brand      @relation(fields: [brand], references: [name])
+  spk        SpkCutting   @relation(fields: [spkId], references: [id])
+  brandRef   Brand        @relation(fields: [brand], references: [name])
+  returnList ReturnItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ReturnItem {
+  id             String       @id @default(cuid())
+  noRetur        String       @unique
+  sumber         ReturnSource @default(INTERNAL_QC)
+  spkId          String?
+  suratJalanId   String?
+  brand          String
+  produk         String
+  vendor         String
+  tanggalRetur   DateTime
+  tanggalSelesai DateTime?
+  alasanCacat    String
+  kategoriCacat  String       @default("JAHITAN")
+  catatan        String?
+  status         ReturnStatus @default(DIAJUKAN)
+
+  qtyS           Int          @default(0)
+  qtyM           Int          @default(0)
+  qtyL           Int          @default(0)
+  qtyXL          Int          @default(0)
+  qtyXXL         Int          @default(0)
+  qtyAnak4_10    Int          @default(0)
+  qtyAnak12_16   Int          @default(0)
+  totalPcs       Int          @default(0)
+
+  qtyReworked    Int          @default(0)
+  qtyRejectTotal Int          @default(0)
+
+  brandRef       Brand        @relation(fields: [brand], references: [name])
+  vendorRef      Vendor       @relation(fields: [vendor], references: [name])
+  spk            SpkCutting?  @relation(fields: [spkId], references: [id])
+  suratJalan     SuratJalan?  @relation(fields: [suratJalanId], references: [id])
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model KasbonTransaction {
@@ -246,4 +299,3 @@ model User {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 }
-

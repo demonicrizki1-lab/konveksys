@@ -387,3 +387,87 @@ export async function apiDeletePembayaran(id: string) {
 export async function apiGetArusKasSummary() {
   return apiFetch<unknown[]>('/api/arus-kas/summary');
 }
+
+// ============================================================
+// RETURN - PENGEMBALIAN BARANG CACAT & REWORK
+// ============================================================
+
+export interface ApiReturnItem {
+  id: string;
+  noRetur: string;
+  sumber: 'INTERNAL_QC' | 'BRAND_COMPLAINT';
+  spkId?: string | null;
+  suratJalanId?: string | null;
+  brand: string;
+  produk: string;
+  vendor: string;
+  tanggalRetur: string;
+  tanggalSelesai?: string | null;
+  alasanCacat: string;
+  kategoriCacat: string;
+  catatan?: string | null;
+  status: 'DIAJUKAN' | 'DIKIRIM_KE_VENDOR' | 'SELESAI_REWORK' | 'REJECT_TOTAL';
+  qtyS: number;
+  qtyM: number;
+  qtyL: number;
+  qtyXL: number;
+  qtyXXL: number;
+  qtyAnak4_10: number;
+  qtyAnak12_16: number;
+  totalPcs: number;
+  qtyReworked: number;
+  qtyRejectTotal: number;
+  spk?: { spkNumber: string };
+  suratJalan?: { noSuratJalan: string };
+}
+
+export async function apiGetReturns() {
+  return apiFetch<ApiReturnItem[]>('/api/returns');
+}
+
+export async function apiCreateReturn(data: {
+  sumber: 'INTERNAL_QC' | 'BRAND_COMPLAINT';
+  spkId?: string;
+  suratJalanId?: string;
+  brand: string;
+  produk: string;
+  vendor: string;
+  tanggalRetur?: string;
+  alasanCacat: string;
+  kategoriCacat: string;
+  catatan?: string;
+  qtyS: number;
+  qtyM: number;
+  qtyL: number;
+  qtyXL: number;
+  qtyXXL: number;
+  qtyAnak4_10: number;
+  qtyAnak12_16: number;
+}) {
+  return apiFetch<ApiReturnItem>('/api/returns', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateReturnStatus(
+  id: string,
+  data: {
+    status: 'DIAJUKAN' | 'DIKIRIM_KE_VENDOR' | 'SELESAI_REWORK' | 'REJECT_TOTAL';
+    qtyReworked?: number;
+    qtyRejectTotal?: number;
+    catatan?: string;
+  }
+) {
+  return apiFetch<ApiReturnItem>(`/api/returns/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteReturn(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/returns/${id}`, {
+    method: 'DELETE',
+  });
+}
+

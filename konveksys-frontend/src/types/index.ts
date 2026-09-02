@@ -195,3 +195,31 @@ export interface ArusKasSummary {
   persentase: number;      // % pelunasan
 }
 
+export type ReturnStatus = 'DIAJUKAN' | 'DIKIRIM_KE_VENDOR' | 'SELESAI_REWORK' | 'REJECT_TOTAL';
+
+export type ReturnSource = 'INTERNAL_QC' | 'BRAND_COMPLAINT';
+
+export interface ReturnItem {
+  id: string;
+  noRetur: string;
+  sumber: ReturnSource;
+  spkId?: string;
+  suratJalanId?: string;
+  brand: string;
+  produk: string;
+  vendor: string;
+  tanggalRetur: string;
+  tanggalSelesai?: string;
+  alasanCacat: string;
+  kategoriCacat: string;
+  catatan?: string;
+  status: ReturnStatus;
+  qtyBreakdown: SizeBreakdown;
+  totalPcs: number;
+  qtyReworked: number;
+  qtyRejectTotal: number;
+  spk?: { spkNumber: string };
+  suratJalan?: { noSuratJalan: string };
+}
+
+

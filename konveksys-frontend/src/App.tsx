@@ -8,6 +8,7 @@ import { MasterHargaView } from './components/master-harga/MasterHargaView';
 import { InboundView } from './components/inbound/InboundView';
 import { SPKView } from './components/cutting-spk/SPKView';
 import { OutboundView } from './components/outbound/OutboundView';
+import { ReturnView } from './components/return/ReturnView';
 import { FinanceView } from './components/finance/FinanceView';
 import { ArusKasView } from './components/arus-kas/ArusKasView';
 
@@ -31,6 +32,7 @@ const MainLayout: React.FC = () => {
           {activeTab === 'inbound' && <InboundView />}
           {activeTab === 'spk' && userRole === 'ADMIN' && <SPKView />}
           {activeTab === 'outbound' && <OutboundView />}
+          {activeTab === 'return' && <ReturnView />}
           {activeTab === 'finance' && <FinanceView />}
           {activeTab === 'arus-kas' && <ArusKasView />}
         </main>

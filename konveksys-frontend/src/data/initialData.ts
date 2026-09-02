@@ -8,6 +8,7 @@ import {
   SPKCutting,
   SuratJalan,
   KasbonTransaction,
+  ReturnItem,
 } from '../types';
 
 export const demoUsers: AuthUser[] = [
@@ -265,3 +266,46 @@ export const initialKasbonList: KasbonTransaction[] = [
   { id: 'ksb-4', vendor: 'KANG SONY', tanggal: '2026-08-12', jumlah: 2000000, tipe: 'PINJAMAN', keterangan: 'Perbaikan mesin obras' },
   { id: 'ksb-5', vendor: 'PA YUSMAN', tanggal: '2026-08-15', jumlah: 350000, tipe: 'PINJAMAN', keterangan: 'Operasional kurir' },
 ];
+
+export const initialReturnList: ReturnItem[] = [
+  {
+    id: 'ret-001',
+    noRetur: 'RET-202608-001',
+    sumber: 'INTERNAL_QC',
+    spkId: 'spk-001',
+    brand: 'GREYWOLF',
+    produk: 'BEDAH PANJANG',
+    vendor: 'SAHIRA',
+    tanggalRetur: '2026-08-22',
+    alasanCacat: 'Jahitan kerah melompat dan kancing saku kurang 1',
+    kategoriCacat: 'JAHITAN',
+    status: 'DIKIRIM_KE_VENDOR',
+    qtyBreakdown: { s: 5, m: 10, l: 5, xl: 0, xxl: 0, anak4_10: 0, anak12_16: 0 },
+    totalPcs: 20,
+    qtyReworked: 0,
+    qtyRejectTotal: 0,
+    catatan: 'Segera diperbaiki sebelum pengiriman batch 2',
+    spk: { spkNumber: 'SPK-202608-001' },
+  },
+  {
+    id: 'ret-002',
+    noRetur: 'RET-202608-002',
+    sumber: 'BRAND_COMPLAINT',
+    suratJalanId: 'sj-003',
+    brand: 'CITA-CITA',
+    produk: 'BEDAH PENDEK',
+    vendor: 'BU NIKEN',
+    tanggalRetur: '2026-08-24',
+    tanggalSelesai: '2026-08-27',
+    alasanCacat: 'Noda minyak mesin pada lengan kanan',
+    kategoriCacat: 'NODA_KOTOR',
+    status: 'SELESAI_REWORK',
+    qtyBreakdown: { s: 2, m: 4, l: 4, xl: 0, xxl: 0, anak4_10: 0, anak12_16: 0 },
+    totalPcs: 10,
+    qtyReworked: 9,
+    qtyRejectTotal: 1,
+    catatan: '9 pcs sudah dicuci & bersih lolos QC, 1 pcs BS terkena oli permanen',
+    suratJalan: { noSuratJalan: 'SJ/202608/003' },
+  },
+];
+
