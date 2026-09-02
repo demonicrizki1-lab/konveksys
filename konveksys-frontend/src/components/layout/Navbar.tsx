@@ -77,7 +77,7 @@ export const Navbar: React.FC = () => {
             {/* Logo */}
             <div className="flex items-center gap-2.5">
               <div className="bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white font-black px-3 py-1 rounded-xl text-base tracking-wider shadow-md shadow-indigo-600/30">
-                KonvekSys
+                Maison
               </div>
               <div className="hidden sm:block border-l border-slate-800 pl-3">
                 <div className="text-xs font-bold text-slate-200 uppercase tracking-wider">Maison Rayyan</div>

@@ -608,7 +608,7 @@ export const ReturnView: React.FC = () => {
                     >
                       <Building2 className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
                       <div>
-                        <span className="block text-xs">Internal QC Konveksys</span>
+                        <span className="block text-xs">Internal QC Maison</span>
                         <span className="text-[10px] text-slate-400 font-normal">Saat terima barang dari vendor</span>
                       </div>
                     </button>

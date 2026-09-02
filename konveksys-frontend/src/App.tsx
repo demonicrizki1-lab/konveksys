@@ -40,7 +40,7 @@ const MainLayout: React.FC = () => {
 
       <footer className="bg-white border-t border-slate-200 py-3.5 text-center text-xs text-slate-400 no-print">
         <div className="max-w-[1600px] mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-1.5">
-          <span>KonvekSys - Sistem Manajemen Makloon Terintegrasi</span>
+          <span>Maison - Sistem Manajemen Makloon Terintegrasi</span>
           <span className="text-slate-500">Maison Rayyan Manufacturing</span>
         </div>
       </footer>

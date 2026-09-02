@@ -111,7 +111,7 @@ export const LoginPage: React.FC = () => {
       <header className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-600 text-white font-black px-3.5 py-1.5 rounded-xl text-xl tracking-wider shadow-lg shadow-indigo-600/30">
-            KonvekSys
+            Maison
           </div>
           <div className="hidden sm:block border-l border-slate-800 pl-3.5">
             <div className="text-xs font-bold text-slate-200 uppercase tracking-wider">Maison Rayyan Manufacturing</div>
@@ -410,7 +410,7 @@ export const LoginPage: React.FC = () => {
       {/* Footer */}
       <footer className="w-full max-w-6xl mx-auto px-4 py-6 text-center text-xs text-slate-600">
         <div>&copy; {new Date().getFullYear()} Maison Rayyan Manufacturing. Hak Cipta Dilindungi.</div>
-        <div className="text-[10px] text-slate-700 mt-1">KonvekSys Enterprise Garment Operating System</div>
+        <div className="text-[10px] text-slate-700 mt-1">Maison Enterprise Garment Operating System</div>
       </footer>
 
     </div>

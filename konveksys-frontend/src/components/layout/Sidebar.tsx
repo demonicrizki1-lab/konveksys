@@ -157,7 +157,7 @@ export const Sidebar: React.FC = () => {
                 </span>
               </>
             ) : (
-              <span className="w-2 h-2 rounded-full bg-indigo-500" title="KonvekSys Menu"></span>
+              <span className="w-2 h-2 rounded-full bg-indigo-500" title="Maison Menu"></span>
             )}
           </div>
 
@@ -333,7 +333,7 @@ export const Sidebar: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
               <div className="flex items-center gap-2">
                 <div className="bg-indigo-600 text-white font-bold px-2.5 py-1 rounded-lg text-sm">
-                  KonvekSys
+                  Maison
                 </div>
                 <span className="text-xs font-semibold text-slate-700">Navigasi</span>
               </div>
