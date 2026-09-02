@@ -1,4 +1,4 @@
-﻿import { Hono } from 'hono';
+import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
@@ -34,8 +34,13 @@ returnRoutes.post('/', async (c) => {
     (body.qtyL || 0) +
     (body.qtyXL || 0) +
     (body.qtyXXL || 0) +
-    (body.qtyAnak4_10 || 0) +
-    (body.qtyAnak12_16 || 0);
+    (body.qtyAnak4 || 0) +
+    (body.qtyAnak6 || 0) +
+    (body.qtyAnak8 || 0) +
+    (body.qtyAnak10 || 0) +
+    (body.qtyAnak12 || 0) +
+    (body.qtyAnak14 || 0) +
+    (body.qtyAnak16 || 0);
 
   if (totalPcs <= 0) {
     return c.json({ error: 'Jumlah barang retur harus lebih dari 0 pcs' }, 400);
@@ -71,8 +76,13 @@ returnRoutes.post('/', async (c) => {
       qtyL: body.qtyL || 0,
       qtyXL: body.qtyXL || 0,
       qtyXXL: body.qtyXXL || 0,
-      qtyAnak4_10: body.qtyAnak4_10 || 0,
-      qtyAnak12_16: body.qtyAnak12_16 || 0,
+      qtyAnak4: body.qtyAnak4 || 0,
+      qtyAnak6: body.qtyAnak6 || 0,
+      qtyAnak8: body.qtyAnak8 || 0,
+      qtyAnak10: body.qtyAnak10 || 0,
+      qtyAnak12: body.qtyAnak12 || 0,
+      qtyAnak14: body.qtyAnak14 || 0,
+      qtyAnak16: body.qtyAnak16 || 0,
       totalPcs,
       qtyReworked: 0,
       qtyRejectTotal: 0,

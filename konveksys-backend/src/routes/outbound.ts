@@ -1,4 +1,4 @@
-﻿import { Hono } from 'hono';
+import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
@@ -21,7 +21,8 @@ outboundRoutes.post('/', adminOnly, async (c) => {
   const totalPcs =
     (body.qtySML || 0) + (body.qtyM || 0) + (body.qtyL || 0) +
     (body.qtyXL || 0) + (body.qtyXXL || 0) +
-    (body.qtyAnak4_10 || 0) + (body.qtyAnak12_16 || 0);
+    (body.qtyAnak4 || 0) + (body.qtyAnak6 || 0) + (body.qtyAnak8 || 0) +
+    (body.qtyAnak10 || 0) + (body.qtyAnak12 || 0) + (body.qtyAnak14 || 0) + (body.qtyAnak16 || 0);
 
   const sj = await prisma.suratJalan.create({
     data: { ...body, tanggal: new Date(body.tanggal), totalPcs },
@@ -36,8 +37,13 @@ outboundRoutes.post('/', adminOnly, async (c) => {
       deliveredL: { increment: body.qtyL || 0 },
       deliveredXL: { increment: body.qtyXL || 0 },
       deliveredXXL: { increment: body.qtyXXL || 0 },
-      deliveredAnak4_10: { increment: body.qtyAnak4_10 || 0 },
-      deliveredAnak12_16: { increment: body.qtyAnak12_16 || 0 },
+      deliveredAnak4: { increment: body.qtyAnak4 || 0 },
+      deliveredAnak6: { increment: body.qtyAnak6 || 0 },
+      deliveredAnak8: { increment: body.qtyAnak8 || 0 },
+      deliveredAnak10: { increment: body.qtyAnak10 || 0 },
+      deliveredAnak12: { increment: body.qtyAnak12 || 0 },
+      deliveredAnak14: { increment: body.qtyAnak14 || 0 },
+      deliveredAnak16: { increment: body.qtyAnak16 || 0 },
     },
   });
 
@@ -45,12 +51,14 @@ outboundRoutes.post('/', adminOnly, async (c) => {
   const targetTotal =
     (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
     (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
-    (updatedSpk.targetAnak4_10 || 0) + (updatedSpk.targetAnak12_16 || 0);
+    (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
+    (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
 
   const deliveredTotal =
     (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
     (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
-    (updatedSpk.deliveredAnak4_10 || 0) + (updatedSpk.deliveredAnak12_16 || 0);
+    (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
+    (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
 
   const newStatus =
     targetTotal > 0 && deliveredTotal > targetTotal

@@ -58,8 +58,13 @@ financeRoutes.get('/invoice/:brandName', async (c) => {
       sj.qtyL * Number(rates?.rateSML || 0) +
       sj.qtyXL * Number(rates?.rateXL || 0) +
       sj.qtyXXL * Number(rates?.rateXL || 0) +
-      sj.qtyAnak4_10 * Number(rates?.rateAnak4_10 || 0) +
-      sj.qtyAnak12_16 * Number(rates?.rateAnak12_16 || 0);
+      sj.qtyAnak4 * Number(rates?.rateAnak4 || 0) +
+      sj.qtyAnak6 * Number(rates?.rateAnak6 || 0) +
+      sj.qtyAnak8 * Number(rates?.rateAnak8 || 0) +
+      sj.qtyAnak10 * Number(rates?.rateAnak10 || 0) +
+      sj.qtyAnak12 * Number(rates?.rateAnak12 || 0) +
+      sj.qtyAnak14 * Number(rates?.rateAnak14 || 0) +
+      sj.qtyAnak16 * Number(rates?.rateAnak16 || 0);
     return { suratJalanNo: sj.noSuratJalan, tanggal: sj.tanggal, produk: sj.produk, totalPcs: sj.totalPcs, totalAmount };
   });
 
