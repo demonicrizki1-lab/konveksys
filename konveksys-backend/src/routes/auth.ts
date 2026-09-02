@@ -1,4 +1,4 @@
-﻿import { Hono } from 'hono';
+import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { signJWT } from '../lib/jwt.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
@@ -7,11 +7,7 @@ export const authRoutes = new Hono();
 
 // Daftar fallback user preset
 const DEMO_USERS = [
-  { id: 'u-admin', name: 'Maison Rayyan (Admin)', email: 'admin@konveksys.com', password: 'admin', role: 'ADMIN' as const, brandName: undefined, accessibleBrands: [] },
-  { id: 'u-greywolf', name: 'Bpk. Adit (GREYWOLF)', email: 'greywolf@brand.com', password: 'brand', role: 'BRAND' as const, brandName: 'GREYWOLF', accessibleBrands: ['GREYWOLF'] },
-  { id: 'u-citacita', name: 'Ibu Sarah (CITA-CITA)', email: 'citacita@brand.com', password: 'brand', role: 'BRAND' as const, brandName: 'CITA-CITA', accessibleBrands: ['CITA-CITA'] },
-  { id: 'u-creadive', name: 'Bpk. Dimas (CREADIVE)', email: 'creadive@brand.com', password: 'brand', role: 'BRAND' as const, brandName: 'CREADIVE', accessibleBrands: ['CREADIVE'] },
-  { id: 'u-jenaka', name: 'Ibu Rina (JENAKA KIDS)', email: 'jenakakids@brand.com', password: 'brand', role: 'BRAND' as const, brandName: 'JENAKA KIDS', accessibleBrands: ['JENAKA KIDS'] },
+  { id: 'u-admin', name: 'Admin Maison Rayyan', email: 'admin@konveksys.com', password: 'admin', role: 'ADMIN' as const, brandName: undefined, accessibleBrands: [] },
 ];
 
 // POST /api/auth/register-brand (Publik)

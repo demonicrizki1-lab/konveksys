@@ -20,42 +20,6 @@ export const demoUsers: AuthUser[] = [
     role: 'ADMIN',
     avatar: 'MR',
   },
-  {
-    id: 'u-greywolf',
-    name: 'Bpk. Adit (GREYWOLF)',
-    email: 'greywolf@brand.com',
-    password: 'brand',
-    role: 'BRAND',
-    brandName: 'GREYWOLF',
-    avatar: 'GW',
-  },
-  {
-    id: 'u-citacita',
-    name: 'Ibu Sarah (CITA-CITA)',
-    email: 'citacita@brand.com',
-    password: 'brand',
-    role: 'BRAND',
-    brandName: 'CITA-CITA',
-    avatar: 'CC',
-  },
-  {
-    id: 'u-creadive',
-    name: 'Bpk. Dimas (CREADIVE)',
-    email: 'creadive@brand.com',
-    password: 'brand',
-    role: 'BRAND',
-    brandName: 'CREADIVE',
-    avatar: 'CD',
-  },
-  {
-    id: 'u-jenaka',
-    name: 'Ibu Rina (JENAKA KIDS)',
-    email: 'jenakakids@brand.com',
-    password: 'brand',
-    role: 'BRAND',
-    brandName: 'JENAKA KIDS',
-    avatar: 'JK',
-  },
 ];
 
 export const initialBrands: Brand[] = [
