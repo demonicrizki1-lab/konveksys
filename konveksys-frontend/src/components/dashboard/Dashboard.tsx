@@ -40,9 +40,16 @@ export const Dashboard: React.FC = () => {
     const rates = getBuyerRates(sj.brand, sj.produk);
     const qtySML = sj.qtyDelivered.s + sj.qtyDelivered.m + sj.qtyDelivered.l;
     const qtyXL = sj.qtyDelivered.xl + sj.qtyDelivered.xxl;
-    const qtyAnak4_10 = sj.qtyDelivered.anak4_10;
-    const qtyAnak12_16 = sj.qtyDelivered.anak12_16;
-    return acc + (qtySML * rates.rateSML + qtyXL * rates.rateXL + qtyAnak4_10 * rates.rateAnak4_10 + qtyAnak12_16 * rates.rateAnak12_16);
+    const subAnak =
+      (sj.qtyDelivered.anak4 || 0) * (rates.rateAnak4 || 0) +
+      (sj.qtyDelivered.anak6 || 0) * (rates.rateAnak6 || 0) +
+      (sj.qtyDelivered.anak8 || 0) * (rates.rateAnak8 || 0) +
+      (sj.qtyDelivered.anak10 || 0) * (rates.rateAnak10 || 0) +
+      (sj.qtyDelivered.anak12 || 0) * (rates.rateAnak12 || 0) +
+      (sj.qtyDelivered.anak14 || 0) * (rates.rateAnak14 || 0) +
+      (sj.qtyDelivered.anak16 || 0) * (rates.rateAnak16 || 0);
+
+    return acc + (qtySML * rates.rateSML + qtyXL * rates.rateXL + subAnak);
   }, 0);
 
   const totalVendorExpense = filteredSJ.reduce((acc, sj) => {

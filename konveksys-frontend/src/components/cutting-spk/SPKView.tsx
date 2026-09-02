@@ -34,8 +34,13 @@ export const SPKView: React.FC = () => {
     l: 150,
     xl: 50,
     xxl: 50,
-    anak4_10: 0,
-    anak12_16: 0,
+    anak4: 0,
+    anak6: 0,
+    anak8: 0,
+    anak10: 0,
+    anak12: 0,
+    anak14: 0,
+    anak16: 0,
   });
   const [targetSelesai, setTargetSelesai] = useState(
     new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -60,8 +65,13 @@ export const SPKView: React.FC = () => {
     targetCut.l +
     targetCut.xl +
     targetCut.xxl +
-    targetCut.anak4_10 +
-    targetCut.anak12_16;
+    targetCut.anak4 +
+    targetCut.anak6 +
+    targetCut.anak8 +
+    targetCut.anak10 +
+    targetCut.anak12 +
+    targetCut.anak14 +
+    targetCut.anak16;
 
   const filteredSPK = spkList.filter((spk) => {
     const matchBrand = brandFilter === 'ALL' || spk.brand === brandFilter;
@@ -79,7 +89,7 @@ export const SPKView: React.FC = () => {
     setSelectedVendor(vendors[0]?.name || 'SAHIRA');
     setProdukName('BEDAH PANJANG');
     setSelectedRollIds([]);
-    setTargetCut({ s: 100, m: 150, l: 150, xl: 50, xxl: 50, anak4_10: 0, anak12_16: 0 });
+    setTargetCut({ s: 100, m: 150, l: 150, xl: 50, xxl: 50, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 });
     setCatatan('');
     setIsCreateModalOpen(true);
   };
@@ -489,24 +499,69 @@ export const SPKView: React.FC = () => {
                 {/* Anak Sizes */}
                 <div className="pt-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                    Kategori Anak-Anak (Optional):
+                    Kategori Anak-Anak (Terpisah Ukuran 4 - 16):
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 block">Anak Size (4-10):</label>
+                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 4</label>
                       <input
                         type="number"
-                        value={targetCut.anak4_10}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak4_10: Number(e.target.value) })}
+                        value={targetCut.anak4}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak4: Number(e.target.value) })}
                         className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 block">Anak Size (12-16):</label>
+                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 6</label>
                       <input
                         type="number"
-                        value={targetCut.anak12_16}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak12_16: Number(e.target.value) })}
+                        value={targetCut.anak6}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak6: Number(e.target.value) })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 8</label>
+                      <input
+                        type="number"
+                        value={targetCut.anak8}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak8: Number(e.target.value) })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 10</label>
+                      <input
+                        type="number"
+                        value={targetCut.anak10}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak10: Number(e.target.value) })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 12</label>
+                      <input
+                        type="number"
+                        value={targetCut.anak12}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak12: Number(e.target.value) })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 14</label>
+                      <input
+                        type="number"
+                        value={targetCut.anak14}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak14: Number(e.target.value) })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 16</label>
+                      <input
+                        type="number"
+                        value={targetCut.anak16}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak16: Number(e.target.value) })}
                         className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
                       />
                     </div>
@@ -600,7 +655,7 @@ export const SPKView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(['s', 'm', 'l', 'xl', 'xxl', 'anak4_10', 'anak12_16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                    {(['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
                       const target = selectedSPKDetail.targetCutQty[sz];
                       const deliv = selectedSPKDetail.deliveredQty[sz];
                       const rem = Math.max(0, target - deliv);

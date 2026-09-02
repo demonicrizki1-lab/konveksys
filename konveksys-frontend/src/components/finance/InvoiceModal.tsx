@@ -157,11 +157,26 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                           {item.qtyXL > 0 && (
                             <div className="whitespace-nowrap">XL/2XL ({item.qtyXL} pcs x {formatRp(item.rateXL)})</div>
                           )}
-                          {item.qtyAnak4_10 > 0 && (
-                            <div className="whitespace-nowrap">Anak 4-10 ({item.qtyAnak4_10} pcs x {formatRp(item.rateAnak4_10)})</div>
+                          {item.qtyAnak4 > 0 && (
+                            <div className="whitespace-nowrap">Anak 4 ({item.qtyAnak4} pcs x {formatRp(item.rateAnak4)})</div>
                           )}
-                          {item.qtyAnak12_16 > 0 && (
-                            <div className="whitespace-nowrap">Anak 12-16 ({item.qtyAnak12_16} pcs x {formatRp(item.rateAnak12_16)})</div>
+                          {item.qtyAnak6 > 0 && (
+                            <div className="whitespace-nowrap">Anak 6 ({item.qtyAnak6} pcs x {formatRp(item.rateAnak6)})</div>
+                          )}
+                          {item.qtyAnak8 > 0 && (
+                            <div className="whitespace-nowrap">Anak 8 ({item.qtyAnak8} pcs x {formatRp(item.rateAnak8)})</div>
+                          )}
+                          {item.qtyAnak10 > 0 && (
+                            <div className="whitespace-nowrap">Anak 10 ({item.qtyAnak10} pcs x {formatRp(item.rateAnak10)})</div>
+                          )}
+                          {item.qtyAnak12 > 0 && (
+                            <div className="whitespace-nowrap">Anak 12 ({item.qtyAnak12} pcs x {formatRp(item.rateAnak12)})</div>
+                          )}
+                          {item.qtyAnak14 > 0 && (
+                            <div className="whitespace-nowrap">Anak 14 ({item.qtyAnak14} pcs x {formatRp(item.rateAnak14)})</div>
+                          )}
+                          {item.qtyAnak16 > 0 && (
+                            <div className="whitespace-nowrap">Anak 16 ({item.qtyAnak16} pcs x {formatRp(item.rateAnak16)})</div>
                           )}
                         </td>
                         <td className="p-2 text-[11px] space-y-0.5 text-right font-medium text-slate-800 whitespace-nowrap" style={{ whiteSpace: 'nowrap' }}>
@@ -171,11 +186,26 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                           {item.qtyXL > 0 && (
                             <div>{formatRp(item.qtyXL * item.rateXL)}</div>
                           )}
-                          {item.qtyAnak4_10 > 0 && (
-                            <div>{formatRp(item.qtyAnak4_10 * item.rateAnak4_10)}</div>
+                          {item.qtyAnak4 > 0 && (
+                            <div>{formatRp(item.qtyAnak4 * item.rateAnak4)}</div>
                           )}
-                          {item.qtyAnak12_16 > 0 && (
-                            <div>{formatRp(item.qtyAnak12_16 * item.rateAnak12_16)}</div>
+                          {item.qtyAnak6 > 0 && (
+                            <div>{formatRp(item.qtyAnak6 * item.rateAnak6)}</div>
+                          )}
+                          {item.qtyAnak8 > 0 && (
+                            <div>{formatRp(item.qtyAnak8 * item.rateAnak8)}</div>
+                          )}
+                          {item.qtyAnak10 > 0 && (
+                            <div>{formatRp(item.qtyAnak10 * item.rateAnak10)}</div>
+                          )}
+                          {item.qtyAnak12 > 0 && (
+                            <div>{formatRp(item.qtyAnak12 * item.rateAnak12)}</div>
+                          )}
+                          {item.qtyAnak14 > 0 && (
+                            <div>{formatRp(item.qtyAnak14 * item.rateAnak14)}</div>
+                          )}
+                          {item.qtyAnak16 > 0 && (
+                            <div>{formatRp(item.qtyAnak16 * item.rateAnak16)}</div>
                           )}
                         </td>
                         <td className="p-2 text-center font-bold text-slate-800 whitespace-nowrap">{item.totalPcs} Pcs</td>

@@ -51,8 +51,13 @@ export const MasterHargaView: React.FC = () => {
     produk: '',
     rateSML: 30000,
     rateXL: 34000,
-    rateAnak4_10: 0,
-    rateAnak12_16: 0,
+    rateAnak4: 0,
+    rateAnak6: 0,
+    rateAnak8: 0,
+    rateAnak10: 0,
+    rateAnak12: 0,
+    rateAnak14: 0,
+    rateAnak16: 0,
   });
 
   const formatRp = (num: number) => {
@@ -149,8 +154,13 @@ export const MasterHargaView: React.FC = () => {
       produk: '',
       rateSML: 30000,
       rateXL: 34000,
-      rateAnak4_10: 0,
-      rateAnak12_16: 0,
+      rateAnak4: 0,
+      rateAnak6: 0,
+      rateAnak8: 0,
+      rateAnak10: 0,
+      rateAnak12: 0,
+      rateAnak14: 0,
+      rateAnak16: 0,
     });
     setIsBuyerModalOpen(true);
   };
@@ -162,8 +172,13 @@ export const MasterHargaView: React.FC = () => {
       produk: item.produk,
       rateSML: item.rateSML,
       rateXL: item.rateXL,
-      rateAnak4_10: item.rateAnak4_10,
-      rateAnak12_16: item.rateAnak12_16,
+      rateAnak4: item.rateAnak4 || 0,
+      rateAnak6: item.rateAnak6 || 0,
+      rateAnak8: item.rateAnak8 || 0,
+      rateAnak10: item.rateAnak10 || 0,
+      rateAnak12: item.rateAnak12 || 0,
+      rateAnak14: item.rateAnak14 || 0,
+      rateAnak16: item.rateAnak16 || 0,
     });
     setIsBuyerModalOpen(true);
   };
@@ -473,40 +488,60 @@ export const MasterHargaView: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full text-left text-xs text-slate-700 min-w-[750px]">
+            <table className="w-full text-left text-xs text-slate-700 min-w-[980px]">
               <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="p-3.5 border-r border-slate-800">Brand</th>
-                  <th className="p-3.5 border-r border-slate-800">Nama Produk</th>
-                  <th className="p-3.5 text-center bg-indigo-950 border-r border-slate-800">Size S/M/L</th>
-                  <th className="p-3.5 text-center bg-indigo-900 border-r border-slate-800">Size XL/2XL</th>
-                  <th className="p-3.5 text-center bg-slate-800 border-r border-slate-700">Anak (4-10)</th>
-                  <th className="p-3.5 text-center bg-slate-800 border-r border-slate-700">Anak (12-16)</th>
-                  <th className="p-3.5 text-right">Aksi</th>
+                  <th className="p-3 border-r border-slate-800">Brand</th>
+                  <th className="p-3 border-r border-slate-800">Nama Produk</th>
+                  <th className="p-3 text-center bg-indigo-950 border-r border-slate-800">S/M/L</th>
+                  <th className="p-3 text-center bg-indigo-900 border-r border-slate-800">XL/2XL</th>
+                  <th className="p-3 text-center bg-slate-800 border-r border-slate-700">Anak 4</th>
+                  <th className="p-3 text-center bg-slate-800 border-r border-slate-700">Anak 6</th>
+                  <th className="p-3 text-center bg-slate-800 border-r border-slate-700">Anak 8</th>
+                  <th className="p-3 text-center bg-slate-800 border-r border-slate-700">Anak 10</th>
+                  <th className="p-3 text-center bg-slate-800 border-r border-slate-700">Anak 12</th>
+                  <th className="p-3 text-center bg-slate-800 border-r border-slate-700">Anak 14</th>
+                  <th className="p-3 text-center bg-slate-800 border-r border-slate-700">Anak 16</th>
+                  <th className="p-3 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredBuyer.map((row) => (
                   <tr key={row.id} className="hover:bg-emerald-50/40 transition">
-                    <td className="p-3.5 font-bold text-slate-900 border-r border-slate-100">
+                    <td className="p-3 font-bold text-slate-900 border-r border-slate-100">
                       <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-md text-[10px]">
                         {row.brand}
                       </span>
                     </td>
-                    <td className="p-3.5 font-semibold text-slate-800 border-r border-slate-100">{row.produk}</td>
-                    <td className="p-3.5 text-center font-bold text-slate-800 border-r border-slate-100">
+                    <td className="p-3 font-semibold text-slate-800 border-r border-slate-100">{row.produk}</td>
+                    <td className="p-3 text-center font-bold text-slate-800 border-r border-slate-100">
                       {formatRp(row.rateSML)}
                     </td>
-                    <td className="p-3.5 text-center font-bold text-indigo-600 bg-indigo-50/30 border-r border-slate-100">
+                    <td className="p-3 text-center font-bold text-indigo-600 bg-indigo-50/30 border-r border-slate-100">
                       {formatRp(row.rateXL)}
                     </td>
-                    <td className="p-3.5 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak4_10)}
+                    <td className="p-3 text-center font-bold text-slate-600 border-r border-slate-100">
+                      {formatRp(row.rateAnak4)}
                     </td>
-                    <td className="p-3.5 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak12_16)}
+                    <td className="p-3 text-center font-bold text-slate-600 border-r border-slate-100">
+                      {formatRp(row.rateAnak6)}
                     </td>
-                    <td className="p-3.5 text-right space-x-1">
+                    <td className="p-3 text-center font-bold text-slate-600 border-r border-slate-100">
+                      {formatRp(row.rateAnak8)}
+                    </td>
+                    <td className="p-3 text-center font-bold text-slate-600 border-r border-slate-100">
+                      {formatRp(row.rateAnak10)}
+                    </td>
+                    <td className="p-3 text-center font-bold text-slate-600 border-r border-slate-100">
+                      {formatRp(row.rateAnak12)}
+                    </td>
+                    <td className="p-3 text-center font-bold text-slate-600 border-r border-slate-100">
+                      {formatRp(row.rateAnak14)}
+                    </td>
+                    <td className="p-3 text-center font-bold text-slate-600 border-r border-slate-100">
+                      {formatRp(row.rateAnak16)}
+                    </td>
+                    <td className="p-3 text-right space-x-1">
                       <button
                         onClick={() => openEditBuyer(row)}
                         className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
@@ -733,14 +768,15 @@ export const MasterHargaView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
-                <span className="font-semibold text-slate-800 block border-b border-slate-200 pb-1">
-                  Pengaturan Tarif per Kelompok Ukuran (Rp):
+              {/* Dewasa */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                <span className="font-bold text-slate-800 block border-b border-slate-200 pb-1">
+                  Pengaturan Tarif Dewasa (Rp):
                 </span>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-600 mb-1">Dewasa Size S/M/L:</label>
+                    <label className="block font-semibold text-slate-600 mb-1">Dewasa Size S/M/L:</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -751,7 +787,7 @@ export const MasterHargaView: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-600 mb-1">Dewasa Size XL/2XL:</label>
+                    <label className="block font-semibold text-slate-600 mb-1">Dewasa Size XL/2XL:</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -761,25 +797,90 @@ export const MasterHargaView: React.FC = () => {
                       className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none focus:border-indigo-400"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Anak (Terpisah 4 - 16) */}
+              <div className="bg-blue-50/50 p-3.5 rounded-xl border border-blue-100 space-y-2.5">
+                <span className="font-bold text-blue-900 block border-b border-blue-100 pb-1">
+                  Pengaturan Tarif Ukuran Anak (Terpisah Size 4 - 16) (Rp):
+                </span>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div>
-                    <label className="block font-bold text-slate-600 mb-1">Anak Size (4-10):</label>
+                    <label className="block font-semibold text-slate-600 mb-1">Anak Size 4:</label>
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Contoh: 25.000"
-                      value={formatRupiahInput(buyerForm.rateAnak4_10)}
-                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak4_10: parseRupiahInput(e.target.value) })}
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak4)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak4: parseRupiahInput(e.target.value) })}
                       className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none focus:border-indigo-400"
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-600 mb-1">Anak Size (12-16):</label>
+                    <label className="block font-semibold text-slate-600 mb-1">Anak Size 6:</label>
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Contoh: 28.000"
-                      value={formatRupiahInput(buyerForm.rateAnak12_16)}
-                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak12_16: parseRupiahInput(e.target.value) })}
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak6)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak6: parseRupiahInput(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-600 mb-1">Anak Size 8:</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak8)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak8: parseRupiahInput(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-600 mb-1">Anak Size 10:</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak10)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak10: parseRupiahInput(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-600 mb-1">Anak Size 12:</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak12)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak12: parseRupiahInput(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-600 mb-1">Anak Size 14:</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak14)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak14: parseRupiahInput(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-600 mb-1">Anak Size 16:</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak16)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak16: parseRupiahInput(e.target.value) })}
                       className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none focus:border-indigo-400"
                     />
                   </div>

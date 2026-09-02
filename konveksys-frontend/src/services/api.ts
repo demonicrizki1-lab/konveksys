@@ -225,8 +225,13 @@ export interface ApiHargaBuyer {
   produk: string;
   rateSML: number | string;
   rateXL: number | string;
-  rateAnak4_10: number | string;
-  rateAnak12_16: number | string;
+  rateAnak4: number | string;
+  rateAnak6: number | string;
+  rateAnak8: number | string;
+  rateAnak10: number | string;
+  rateAnak12: number | string;
+  rateAnak14: number | string;
+  rateAnak16: number | string;
 }
 
 export async function apiGetHargaBuyer() {
@@ -412,8 +417,13 @@ export interface ApiReturnItem {
   qtyL: number;
   qtyXL: number;
   qtyXXL: number;
-  qtyAnak4_10: number;
-  qtyAnak12_16: number;
+  qtyAnak4: number;
+  qtyAnak6: number;
+  qtyAnak8: number;
+  qtyAnak10: number;
+  qtyAnak12: number;
+  qtyAnak14: number;
+  qtyAnak16: number;
   totalPcs: number;
   qtyReworked: number;
   qtyRejectTotal: number;
@@ -441,8 +451,13 @@ export async function apiCreateReturn(data: {
   qtyL: number;
   qtyXL: number;
   qtyXXL: number;
-  qtyAnak4_10: number;
-  qtyAnak12_16: number;
+  qtyAnak4: number;
+  qtyAnak6: number;
+  qtyAnak8: number;
+  qtyAnak10: number;
+  qtyAnak12: number;
+  qtyAnak14: number;
+  qtyAnak16: number;
 }) {
   return apiFetch<ApiReturnItem>('/api/returns', {
     method: 'POST',

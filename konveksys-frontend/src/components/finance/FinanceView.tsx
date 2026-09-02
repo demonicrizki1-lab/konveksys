@@ -391,14 +391,39 @@ export const FinanceView: React.FC = () => {
                               XL/2XL: <strong className="text-slate-800">{item.qtyXL} pcs</strong> @ {formatRp(item.rateXL)}
                             </div>
                           )}
-                          {item.qtyAnak4_10 > 0 && (
+                          {item.qtyAnak4 > 0 && (
                             <div className="text-slate-600">
-                              Anak 4-10: <strong className="text-slate-800">{item.qtyAnak4_10} pcs</strong> @ {formatRp(item.rateAnak4_10)}
+                              Anak 4: <strong className="text-slate-800">{item.qtyAnak4} pcs</strong> @ {formatRp(item.rateAnak4)}
                             </div>
                           )}
-                          {item.qtyAnak12_16 > 0 && (
+                          {item.qtyAnak6 > 0 && (
                             <div className="text-slate-600">
-                              Anak 12-16: <strong className="text-slate-800">{item.qtyAnak12_16} pcs</strong> @ {formatRp(item.rateAnak12_16)}
+                              Anak 6: <strong className="text-slate-800">{item.qtyAnak6} pcs</strong> @ {formatRp(item.rateAnak6)}
+                            </div>
+                          )}
+                          {item.qtyAnak8 > 0 && (
+                            <div className="text-slate-600">
+                              Anak 8: <strong className="text-slate-800">{item.qtyAnak8} pcs</strong> @ {formatRp(item.rateAnak8)}
+                            </div>
+                          )}
+                          {item.qtyAnak10 > 0 && (
+                            <div className="text-slate-600">
+                              Anak 10: <strong className="text-slate-800">{item.qtyAnak10} pcs</strong> @ {formatRp(item.rateAnak10)}
+                            </div>
+                          )}
+                          {item.qtyAnak12 > 0 && (
+                            <div className="text-slate-600">
+                              Anak 12: <strong className="text-slate-800">{item.qtyAnak12} pcs</strong> @ {formatRp(item.rateAnak12)}
+                            </div>
+                          )}
+                          {item.qtyAnak14 > 0 && (
+                            <div className="text-slate-600">
+                              Anak 14: <strong className="text-slate-800">{item.qtyAnak14} pcs</strong> @ {formatRp(item.rateAnak14)}
+                            </div>
+                          )}
+                          {item.qtyAnak16 > 0 && (
+                            <div className="text-slate-600">
+                              Anak 16: <strong className="text-slate-800">{item.qtyAnak16} pcs</strong> @ {formatRp(item.rateAnak16)}
                             </div>
                           )}
                         </td>

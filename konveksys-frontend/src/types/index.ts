@@ -55,8 +55,13 @@ export interface HargaBuyer {
   produk: string;
   rateSML: number;       // S, M, L
   rateXL: number;        // XL, 2XL
-  rateAnak4_10: number;  // Size 4-10
-  rateAnak12_16: number; // Size 12-16
+  rateAnak4: number;     // Size 4
+  rateAnak6: number;     // Size 6
+  rateAnak8: number;     // Size 8
+  rateAnak10: number;    // Size 10
+  rateAnak12: number;    // Size 12
+  rateAnak14: number;    // Size 14
+  rateAnak16: number;    // Size 16
 }
 
 export type RollStatus = 'MENUNGGU_FISIK' | 'DI_GUDANG' | 'DIPROSES' | 'SELESAI';
@@ -80,8 +85,13 @@ export interface SizeBreakdown {
   l: number;
   xl: number;
   xxl: number;
-  anak4_10: number;
-  anak12_16: number;
+  anak4: number;
+  anak6: number;
+  anak8: number;
+  anak10: number;
+  anak12: number;
+  anak14: number;
+  anak16: number;
 }
 
 export interface SPKCutting {
@@ -164,10 +174,20 @@ export interface BuyerInvoiceSummary {
     rateSML: number;
     qtyXL: number;
     rateXL: number;
-    qtyAnak4_10: number;
-    rateAnak4_10: number;
-    qtyAnak12_16: number;
-    rateAnak12_16: number;
+    qtyAnak4: number;
+    rateAnak4: number;
+    qtyAnak6: number;
+    rateAnak6: number;
+    qtyAnak8: number;
+    rateAnak8: number;
+    qtyAnak10: number;
+    rateAnak10: number;
+    qtyAnak12: number;
+    rateAnak12: number;
+    qtyAnak14: number;
+    rateAnak14: number;
+    qtyAnak16: number;
+    rateAnak16: number;
     totalPcs: number;
     totalAmount: number;
   }[];

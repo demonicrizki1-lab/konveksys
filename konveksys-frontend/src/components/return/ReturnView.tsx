@@ -60,8 +60,13 @@ export const ReturnView: React.FC = () => {
     l: 0,
     xl: 0,
     xxl: 0,
-    anak4_10: 0,
-    anak12_16: 0,
+    anak4: 0,
+    anak6: 0,
+    anak8: 0,
+    anak10: 0,
+    anak12: 0,
+    anak14: 0,
+    anak16: 0,
   });
 
   // Modal State: Detail & Rework Completion & Print
@@ -79,8 +84,13 @@ export const ReturnView: React.FC = () => {
     qtyBreakdown.l +
     qtyBreakdown.xl +
     qtyBreakdown.xxl +
-    qtyBreakdown.anak4_10 +
-    qtyBreakdown.anak12_16;
+    qtyBreakdown.anak4 +
+    qtyBreakdown.anak6 +
+    qtyBreakdown.anak8 +
+    qtyBreakdown.anak10 +
+    qtyBreakdown.anak12 +
+    qtyBreakdown.anak14 +
+    qtyBreakdown.anak16;
 
   // Filtered List
   const filteredReturns = returnList.filter((item) => {
@@ -150,7 +160,7 @@ export const ReturnView: React.FC = () => {
     setKategoriCacat('JAHITAN');
     setAlasanCacat('');
     setCatatan('');
-    setQtyBreakdown({ s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4_10: 0, anak12_16: 0 });
+    setQtyBreakdown({ s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 });
     setIsCreateModalOpen(true);
   };
 
@@ -776,25 +786,85 @@ export const ReturnView: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 4-10</label>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 4</label>
                     <input
                       type="number"
                       min="0"
-                      value={qtyBreakdown.anak4_10}
+                      value={qtyBreakdown.anak4}
                       onChange={(e) =>
-                        setQtyBreakdown({ ...qtyBreakdown, anak4_10: parseInt(e.target.value) || 0 })
+                        setQtyBreakdown({ ...qtyBreakdown, anak4: parseInt(e.target.value) || 0 })
                       }
                       className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 12-16</label>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 6</label>
                     <input
                       type="number"
                       min="0"
-                      value={qtyBreakdown.anak12_16}
+                      value={qtyBreakdown.anak6}
                       onChange={(e) =>
-                        setQtyBreakdown({ ...qtyBreakdown, anak12_16: parseInt(e.target.value) || 0 })
+                        setQtyBreakdown({ ...qtyBreakdown, anak6: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 8</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qtyBreakdown.anak8}
+                      onChange={(e) =>
+                        setQtyBreakdown({ ...qtyBreakdown, anak8: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 10</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qtyBreakdown.anak10}
+                      onChange={(e) =>
+                        setQtyBreakdown({ ...qtyBreakdown, anak10: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 12</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qtyBreakdown.anak12}
+                      onChange={(e) =>
+                        setQtyBreakdown({ ...qtyBreakdown, anak12: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 14</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qtyBreakdown.anak14}
+                      onChange={(e) =>
+                        setQtyBreakdown({ ...qtyBreakdown, anak14: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 16</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qtyBreakdown.anak16}
+                      onChange={(e) =>
+                        setQtyBreakdown({ ...qtyBreakdown, anak16: parseInt(e.target.value) || 0 })
                       }
                       className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
                     />

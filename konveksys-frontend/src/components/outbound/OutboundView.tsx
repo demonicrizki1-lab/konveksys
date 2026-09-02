@@ -32,8 +32,13 @@ export const OutboundView: React.FC = () => {
     l: 0,
     xl: 0,
     xxl: 0,
-    anak4_10: 0,
-    anak12_16: 0,
+    anak4: 0,
+    anak6: 0,
+    anak8: 0,
+    anak10: 0,
+    anak12: 0,
+    anak14: 0,
+    anak16: 0,
   });
 
   const [selectedSJDetail, setSelectedSJDetail] = useState<SuratJalan | null>(null);
@@ -51,8 +56,13 @@ export const OutboundView: React.FC = () => {
     qtySend.l +
     qtySend.xl +
     qtySend.xxl +
-    qtySend.anak4_10 +
-    qtySend.anak12_16;
+    qtySend.anak4 +
+    qtySend.anak6 +
+    qtySend.anak8 +
+    qtySend.anak10 +
+    qtySend.anak12 +
+    qtySend.anak14 +
+    qtySend.anak16;
 
   // Validation: Check if sending exceeds remaining
   const isOverDelivering =
@@ -62,8 +72,13 @@ export const OutboundView: React.FC = () => {
       qtySend.l > remaining.l ||
       qtySend.xl > remaining.xl ||
       qtySend.xxl > remaining.xxl ||
-      qtySend.anak4_10 > remaining.anak4_10 ||
-      qtySend.anak12_16 > remaining.anak12_16);
+      qtySend.anak4 > remaining.anak4 ||
+      qtySend.anak6 > remaining.anak6 ||
+      qtySend.anak8 > remaining.anak8 ||
+      qtySend.anak10 > remaining.anak10 ||
+      qtySend.anak12 > remaining.anak12 ||
+      qtySend.anak14 > remaining.anak14 ||
+      qtySend.anak16 > remaining.anak16);
 
   const filteredSJ = suratJalanList.filter((sj) => {
     const effectiveBrand = userRole === 'BRAND' ? activeBrand : brandFilter;
@@ -91,8 +106,13 @@ export const OutboundView: React.FC = () => {
       l: Math.min(50, rem.l),
       xl: Math.min(20, rem.xl),
       xxl: Math.min(10, rem.xxl),
-      anak4_10: Math.min(50, rem.anak4_10),
-      anak12_16: Math.min(50, rem.anak12_16),
+      anak4: Math.min(30, rem.anak4),
+      anak6: Math.min(30, rem.anak6),
+      anak8: Math.min(30, rem.anak8),
+      anak10: Math.min(30, rem.anak10),
+      anak12: Math.min(30, rem.anak12),
+      anak14: Math.min(30, rem.anak14),
+      anak16: Math.min(30, rem.anak16),
     });
     setCatatan('Pengiriman parsial harian');
     setIsCreateModalOpen(true);
@@ -109,8 +129,13 @@ export const OutboundView: React.FC = () => {
         l: Math.min(30, rem.l),
         xl: Math.min(10, rem.xl),
         xxl: Math.min(10, rem.xxl),
-        anak4_10: Math.min(30, rem.anak4_10),
-        anak12_16: Math.min(30, rem.anak12_16),
+        anak4: Math.min(20, rem.anak4),
+        anak6: Math.min(20, rem.anak6),
+        anak8: Math.min(20, rem.anak8),
+        anak10: Math.min(20, rem.anak10),
+        anak12: Math.min(20, rem.anak12),
+        anak14: Math.min(20, rem.anak14),
+        anak16: Math.min(20, rem.anak16),
       });
     }
   };
@@ -412,32 +437,108 @@ export const OutboundView: React.FC = () => {
                     />
                   </div>
 
+                  {/* Anak Sizes */}
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak (4-10):</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak4_10}</span>
+                      <span>Anak 4:</span>
+                      <span className="font-bold text-indigo-600">Sisa {remaining.anak4}</span>
                     </div>
                     <input
                       type="number"
-                      value={qtySend.anak4_10}
-                      onChange={(e) => setQtySend({ ...qtySend, anak4_10: Number(e.target.value) })}
+                      value={qtySend.anak4}
+                      onChange={(e) => setQtySend({ ...qtySend, anak4: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak4_10 > remaining.anak4_10 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                        qtySend.anak4 > remaining.anak4 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak (12-16):</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak12_16}</span>
+                      <span>Anak 6:</span>
+                      <span className="font-bold text-indigo-600">Sisa {remaining.anak6}</span>
                     </div>
                     <input
                       type="number"
-                      value={qtySend.anak12_16}
-                      onChange={(e) => setQtySend({ ...qtySend, anak12_16: Number(e.target.value) })}
+                      value={qtySend.anak6}
+                      onChange={(e) => setQtySend({ ...qtySend, anak6: Number(e.target.value) })}
                       className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak12_16 > remaining.anak12_16 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                        qtySend.anak6 > remaining.anak6 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                      <span>Anak 8:</span>
+                      <span className="font-bold text-indigo-600">Sisa {remaining.anak8}</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={qtySend.anak8}
+                      onChange={(e) => setQtySend({ ...qtySend, anak8: Number(e.target.value) })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center ${
+                        qtySend.anak8 > remaining.anak8 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                      <span>Anak 10:</span>
+                      <span className="font-bold text-indigo-600">Sisa {remaining.anak10}</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={qtySend.anak10}
+                      onChange={(e) => setQtySend({ ...qtySend, anak10: Number(e.target.value) })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center ${
+                        qtySend.anak10 > remaining.anak10 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                      <span>Anak 12:</span>
+                      <span className="font-bold text-indigo-600">Sisa {remaining.anak12}</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={qtySend.anak12}
+                      onChange={(e) => setQtySend({ ...qtySend, anak12: Number(e.target.value) })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center ${
+                        qtySend.anak12 > remaining.anak12 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                      <span>Anak 14:</span>
+                      <span className="font-bold text-indigo-600">Sisa {remaining.anak14}</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={qtySend.anak14}
+                      onChange={(e) => setQtySend({ ...qtySend, anak14: Number(e.target.value) })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center ${
+                        qtySend.anak14 > remaining.anak14 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                      <span>Anak 16:</span>
+                      <span className="font-bold text-indigo-600">Sisa {remaining.anak16}</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={qtySend.anak16}
+                      onChange={(e) => setQtySend({ ...qtySend, anak16: Number(e.target.value) })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center ${
+                        qtySend.anak16 > remaining.anak16 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
                       }`}
                     />
                   </div>

@@ -170,7 +170,17 @@ interface AppContextType {
 
   // Helper Lookups & Calculation Engines
   getVendorRate: (vendor: string, produk: string, brand: string) => number;
-  getBuyerRates: (brand: string, produk: string) => { rateSML: number; rateXL: number; rateAnak4_10: number; rateAnak12_16: number };
+  getBuyerRates: (brand: string, produk: string) => {
+    rateSML: number;
+    rateXL: number;
+    rateAnak4: number;
+    rateAnak6: number;
+    rateAnak8: number;
+    rateAnak10: number;
+    rateAnak12: number;
+    rateAnak14: number;
+    rateAnak16: number;
+  };
   getSPKRemainingQty: (spk: SPKCutting) => SizeBreakdown & { totalRemaining: number };
   calculateVendorPayroll: (vendorName: string) => VendorPayrollSummary;
   calculateBuyerInvoice: (brandName: string) => BuyerInvoiceSummary;
@@ -345,8 +355,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           produk: hb.produk,
           rateSML: Number(hb.rateSML),
           rateXL: Number(hb.rateXL),
-          rateAnak4_10: Number(hb.rateAnak4_10),
-          rateAnak12_16: Number(hb.rateAnak12_16),
+          rateAnak4: Number(hb.rateAnak4 || 0),
+          rateAnak6: Number(hb.rateAnak6 || 0),
+          rateAnak8: Number(hb.rateAnak8 || 0),
+          rateAnak10: Number(hb.rateAnak10 || 0),
+          rateAnak12: Number(hb.rateAnak12 || 0),
+          rateAnak14: Number(hb.rateAnak14 || 0),
+          rateAnak16: Number(hb.rateAnak16 || 0),
         })));
       }
 
@@ -396,8 +411,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: s.targetL || 0,
             xl: s.targetXL || 0,
             xxl: s.targetXXL || 0,
-            anak4_10: s.targetAnak4_10 || 0,
-            anak12_16: s.targetAnak12_16 || 0,
+            anak4: s.targetAnak4 || 0,
+            anak6: s.targetAnak6 || 0,
+            anak8: s.targetAnak8 || 0,
+            anak10: s.targetAnak10 || 0,
+            anak12: s.targetAnak12 || 0,
+            anak14: s.targetAnak14 || 0,
+            anak16: s.targetAnak16 || 0,
           },
           deliveredQty: {
             s: s.deliveredS || 0,
@@ -405,8 +425,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: s.deliveredL || 0,
             xl: s.deliveredXL || 0,
             xxl: s.deliveredXXL || 0,
-            anak4_10: s.deliveredAnak4_10 || 0,
-            anak12_16: s.deliveredAnak12_16 || 0,
+            anak4: s.deliveredAnak4 || 0,
+            anak6: s.deliveredAnak6 || 0,
+            anak8: s.deliveredAnak8 || 0,
+            anak10: s.deliveredAnak10 || 0,
+            anak12: s.deliveredAnak12 || 0,
+            anak14: s.deliveredAnak14 || 0,
+            anak16: s.deliveredAnak16 || 0,
           },
           tanggalSPK: s.tanggalSPK,
           targetSelesai: s.targetSelesai || '',
@@ -432,8 +457,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: sj.qtyL || 0,
             xl: sj.qtyXL || 0,
             xxl: sj.qtyXXL || 0,
-            anak4_10: sj.qtyAnak4_10 || 0,
-            anak12_16: sj.qtyAnak12_16 || 0,
+            anak4: sj.qtyAnak4 || 0,
+            anak6: sj.qtyAnak6 || 0,
+            anak8: sj.qtyAnak8 || 0,
+            anak10: sj.qtyAnak10 || 0,
+            anak12: sj.qtyAnak12 || 0,
+            anak14: sj.qtyAnak14 || 0,
+            anak16: sj.qtyAnak16 || 0,
           },
           totalPcs: sj.totalPcs || 0,
           driverName: sj.driverName || '',
@@ -481,8 +511,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: r.qtyL || 0,
             xl: r.qtyXL || 0,
             xxl: r.qtyXXL || 0,
-            anak4_10: r.qtyAnak4_10 || 0,
-            anak12_16: r.qtyAnak12_16 || 0,
+            anak4: r.qtyAnak4 || 0,
+            anak6: r.qtyAnak6 || 0,
+            anak8: r.qtyAnak8 || 0,
+            anak10: r.qtyAnak10 || 0,
+            anak12: r.qtyAnak12 || 0,
+            anak14: r.qtyAnak14 || 0,
+            anak16: r.qtyAnak16 || 0,
           },
           totalPcs: r.totalPcs || 0,
           qtyReworked: r.qtyReworked || 0,
@@ -746,8 +781,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: data.id,
           rateSML: Number(data.rateSML),
           rateXL: Number(data.rateXL),
-          rateAnak4_10: Number(data.rateAnak4_10),
-          rateAnak12_16: Number(data.rateAnak12_16),
+          rateAnak4: Number(data.rateAnak4 || 0),
+          rateAnak6: Number(data.rateAnak6 || 0),
+          rateAnak8: Number(data.rateAnak8 || 0),
+          rateAnak10: Number(data.rateAnak10 || 0),
+          rateAnak12: Number(data.rateAnak12 || 0),
+          rateAnak14: Number(data.rateAnak14 || 0),
+          rateAnak16: Number(data.rateAnak16 || 0),
         } : hb)));
       }
     } catch (err) {
@@ -821,7 +861,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...spkData,
       id: tempId,
       spkNumber,
-      deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4_10: 0, anak12_16: 0 },
+      deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
       status: 'IN_PRODUCTION',
     };
 
@@ -852,8 +892,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetL: spkData.targetCutQty.l || 0,
         targetXL: spkData.targetCutQty.xl || 0,
         targetXXL: spkData.targetCutQty.xxl || 0,
-        targetAnak4_10: spkData.targetCutQty.anak4_10 || 0,
-        targetAnak12_16: spkData.targetCutQty.anak12_16 || 0,
+        targetAnak4: spkData.targetCutQty.anak4 || 0,
+        targetAnak6: spkData.targetCutQty.anak6 || 0,
+        targetAnak8: spkData.targetCutQty.anak8 || 0,
+        targetAnak10: spkData.targetCutQty.anak10 || 0,
+        targetAnak12: spkData.targetCutQty.anak12 || 0,
+        targetAnak14: spkData.targetCutQty.anak14 || 0,
+        targetAnak16: spkData.targetCutQty.anak16 || 0,
         rollIds: spkData.rollIds,
       });
 
@@ -891,8 +936,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       l: targetSPK.deliveredQty.l + deliv.l,
       xl: targetSPK.deliveredQty.xl + deliv.xl,
       xxl: targetSPK.deliveredQty.xxl + deliv.xxl,
-      anak4_10: targetSPK.deliveredQty.anak4_10 + deliv.anak4_10,
-      anak12_16: targetSPK.deliveredQty.anak12_16 + deliv.anak12_16,
+      anak4: targetSPK.deliveredQty.anak4 + deliv.anak4,
+      anak6: targetSPK.deliveredQty.anak6 + deliv.anak6,
+      anak8: targetSPK.deliveredQty.anak8 + deliv.anak8,
+      anak10: targetSPK.deliveredQty.anak10 + deliv.anak10,
+      anak12: targetSPK.deliveredQty.anak12 + deliv.anak12,
+      anak14: targetSPK.deliveredQty.anak14 + deliv.anak14,
+      anak16: targetSPK.deliveredQty.anak16 + deliv.anak16,
     };
 
     const targetTotal = Object.values(targetSPK.targetCutQty).reduce((a, b) => a + b, 0);
@@ -932,8 +982,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qtyL: deliv.l,
         qtyXL: deliv.xl,
         qtyXXL: deliv.xxl,
-        qtyAnak4_10: deliv.anak4_10,
-        qtyAnak12_16: deliv.anak12_16,
+        qtyAnak4: deliv.anak4,
+        qtyAnak6: deliv.anak6,
+        qtyAnak8: deliv.anak8,
+        qtyAnak10: deliv.anak10,
+        qtyAnak12: deliv.anak12,
+        qtyAnak14: deliv.anak14,
+        qtyAnak16: deliv.anak16,
       });
 
       if (data && (data as any).id) {
@@ -1001,10 +1056,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ? {
           rateSML: matched.rateSML,
           rateXL: matched.rateXL,
-          rateAnak4_10: matched.rateAnak4_10,
-          rateAnak12_16: matched.rateAnak12_16,
+          rateAnak4: matched.rateAnak4,
+          rateAnak6: matched.rateAnak6,
+          rateAnak8: matched.rateAnak8,
+          rateAnak10: matched.rateAnak10,
+          rateAnak12: matched.rateAnak12,
+          rateAnak14: matched.rateAnak14,
+          rateAnak16: matched.rateAnak16,
         }
-      : { rateSML: 45000, rateXL: 50000, rateAnak4_10: 40000, rateAnak12_16: 45000 };
+      : {
+          rateSML: 45000,
+          rateXL: 50000,
+          rateAnak4: 35000,
+          rateAnak6: 37000,
+          rateAnak8: 39000,
+          rateAnak10: 41000,
+          rateAnak12: 43000,
+          rateAnak14: 45000,
+          rateAnak16: 47000,
+        };
   };
 
   const getSPKRemainingQty = (spk: SPKCutting): SizeBreakdown & { totalRemaining: number } => {
@@ -1013,11 +1083,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const l = Math.max(0, spk.targetCutQty.l - spk.deliveredQty.l);
     const xl = Math.max(0, spk.targetCutQty.xl - spk.deliveredQty.xl);
     const xxl = Math.max(0, spk.targetCutQty.xxl - spk.deliveredQty.xxl);
-    const anak4_10 = Math.max(0, spk.targetCutQty.anak4_10 - spk.deliveredQty.anak4_10);
-    const anak12_16 = Math.max(0, spk.targetCutQty.anak12_16 - spk.deliveredQty.anak12_16);
-    const totalRemaining = s + m + l + xl + xxl + anak4_10 + anak12_16;
+    const anak4 = Math.max(0, spk.targetCutQty.anak4 - spk.deliveredQty.anak4);
+    const anak6 = Math.max(0, spk.targetCutQty.anak6 - spk.deliveredQty.anak6);
+    const anak8 = Math.max(0, spk.targetCutQty.anak8 - spk.deliveredQty.anak8);
+    const anak10 = Math.max(0, spk.targetCutQty.anak10 - spk.deliveredQty.anak10);
+    const anak12 = Math.max(0, spk.targetCutQty.anak12 - spk.deliveredQty.anak12);
+    const anak14 = Math.max(0, spk.targetCutQty.anak14 - spk.deliveredQty.anak14);
+    const anak16 = Math.max(0, spk.targetCutQty.anak16 - spk.deliveredQty.anak16);
+    const totalRemaining = s + m + l + xl + xxl + anak4 + anak6 + anak8 + anak10 + anak12 + anak14 + anak16;
 
-    return { s, m, l, xl, xxl, anak4_10, anak12_16, totalRemaining };
+    return { s, m, l, xl, xxl, anak4, anak6, anak8, anak10, anak12, anak14, anak16, totalRemaining };
   };
 
   // Payroll Calculation Engine
@@ -1069,15 +1144,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const rates = getBuyerRates(sj.brand, sj.produk);
       const qtySML = sj.qtyDelivered.s + sj.qtyDelivered.m + sj.qtyDelivered.l;
       const qtyXL = sj.qtyDelivered.xl + sj.qtyDelivered.xxl;
-      const qtyAnak4_10 = sj.qtyDelivered.anak4_10;
-      const qtyAnak12_16 = sj.qtyDelivered.anak12_16;
+      const qtyAnak4 = sj.qtyDelivered.anak4;
+      const qtyAnak6 = sj.qtyDelivered.anak6;
+      const qtyAnak8 = sj.qtyDelivered.anak8;
+      const qtyAnak10 = sj.qtyDelivered.anak10;
+      const qtyAnak12 = sj.qtyDelivered.anak12;
+      const qtyAnak14 = sj.qtyDelivered.anak14;
+      const qtyAnak16 = sj.qtyDelivered.anak16;
 
       const subSML = qtySML * rates.rateSML;
       const subXL = qtyXL * rates.rateXL;
-      const subAnak4_10 = qtyAnak4_10 * rates.rateAnak4_10;
-      const subAnak12_16 = qtyAnak12_16 * rates.rateAnak12_16;
+      const subAnak4 = qtyAnak4 * rates.rateAnak4;
+      const subAnak6 = qtyAnak6 * rates.rateAnak6;
+      const subAnak8 = qtyAnak8 * rates.rateAnak8;
+      const subAnak10 = qtyAnak10 * rates.rateAnak10;
+      const subAnak12 = qtyAnak12 * rates.rateAnak12;
+      const subAnak14 = qtyAnak14 * rates.rateAnak14;
+      const subAnak16 = qtyAnak16 * rates.rateAnak16;
 
-      const totalAmount = subSML + subXL + subAnak4_10 + subAnak12_16;
+      const totalAmount = subSML + subXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
       grandTotal += totalAmount;
       totalPcs += sj.totalPcs;
 
@@ -1089,10 +1174,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rateSML: rates.rateSML,
         qtyXL,
         rateXL: rates.rateXL,
-        qtyAnak4_10,
-        rateAnak4_10: rates.rateAnak4_10,
-        qtyAnak12_16,
-        rateAnak12_16: rates.rateAnak12_16,
+        qtyAnak4,
+        rateAnak4: rates.rateAnak4,
+        qtyAnak6,
+        rateAnak6: rates.rateAnak6,
+        qtyAnak8,
+        rateAnak8: rates.rateAnak8,
+        qtyAnak10,
+        rateAnak10: rates.rateAnak10,
+        qtyAnak12,
+        rateAnak12: rates.rateAnak12,
+        qtyAnak14,
+        rateAnak14: rates.rateAnak14,
+        qtyAnak16,
+        rateAnak16: rates.rateAnak16,
         totalPcs: sj.totalPcs,
         totalAmount,
       };
@@ -1163,8 +1258,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       data.qtyBreakdown.l +
       data.qtyBreakdown.xl +
       data.qtyBreakdown.xxl +
-      data.qtyBreakdown.anak4_10 +
-      data.qtyBreakdown.anak12_16;
+      data.qtyBreakdown.anak4 +
+      data.qtyBreakdown.anak6 +
+      data.qtyBreakdown.anak8 +
+      data.qtyBreakdown.anak10 +
+      data.qtyBreakdown.anak12 +
+      data.qtyBreakdown.anak14 +
+      data.qtyBreakdown.anak16;
 
     if (totalPcs <= 0) {
       return { success: false, message: 'Jumlah barang retur harus lebih dari 0 pcs.' };
@@ -1219,8 +1319,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qtyL: data.qtyBreakdown.l,
         qtyXL: data.qtyBreakdown.xl,
         qtyXXL: data.qtyBreakdown.xxl,
-        qtyAnak4_10: data.qtyBreakdown.anak4_10,
-        qtyAnak12_16: data.qtyBreakdown.anak12_16,
+        qtyAnak4: data.qtyBreakdown.anak4,
+        qtyAnak6: data.qtyBreakdown.anak6,
+        qtyAnak8: data.qtyBreakdown.anak8,
+        qtyAnak10: data.qtyBreakdown.anak10,
+        qtyAnak12: data.qtyBreakdown.anak12,
+        qtyAnak14: data.qtyBreakdown.anak14,
+        qtyAnak16: data.qtyBreakdown.anak16,
       });
 
       if (error) {
