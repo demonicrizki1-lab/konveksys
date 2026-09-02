@@ -1,6 +1,13 @@
 import { createMiddleware } from 'hono/factory';
 import { verifyJWT, JWTPayload } from '../lib/jwt.js';
 
+declare module 'hono' {
+  interface ContextVariableMap {
+    user: JWTPayload;
+    brandWhere?: object;
+  }
+}
+
 type Variables = { user: JWTPayload };
 
 export const authMiddleware = createMiddleware<{ Variables: Variables }>(async (c, next) => {
