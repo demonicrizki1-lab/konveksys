@@ -95,7 +95,7 @@ export const Dashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setActiveTab('outbound')}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
                 >
                   <Truck className="w-3.5 h-3.5" />
                   + Surat Jalan

@@ -152,7 +152,7 @@ export const OutboundView: React.FC = () => {
       <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg mb-2 border border-indigo-100">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg mb-2 border border-indigo-100">
               <Truck className="w-3.5 h-3.5" />
               Outbound Surat Jalan
             </div>
@@ -165,7 +165,7 @@ export const OutboundView: React.FC = () => {
           {userRole === 'ADMIN' && (
             <button
               onClick={handleOpenCreate}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-base btn-press shrink-0"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm shadow-indigo-600/25 transition-base btn-press shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               + Terbitkan Surat Jalan (SJ)
