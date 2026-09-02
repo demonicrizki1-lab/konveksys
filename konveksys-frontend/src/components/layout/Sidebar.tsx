@@ -67,71 +67,99 @@ export const Sidebar: React.FC = () => {
     roles: ('ADMIN' | 'BRAND')[];
   }
 
-  const allNavItems: NavItem[] = [
+  interface NavSection {
+    sectionKey: string;
+    title: string;
+    items: NavItem[];
+  }
+
+  const navSections: NavSection[] = [
     {
-      id: 'dashboard',
-      label: userRole === 'ADMIN' ? 'Dashboard Utama' : 'Dashboard Brand',
-      description: userRole === 'ADMIN' ? 'KPI & Monitoring Operasional' : `Status ${activeBrand}`,
-      icon: LayoutDashboard,
-      roles: ['ADMIN', 'BRAND'],
+      sectionKey: 'overview',
+      title: 'Ikhtisar',
+      items: [
+        {
+          id: 'dashboard',
+          label: userRole === 'ADMIN' ? 'Dashboard Utama' : 'Dashboard Brand',
+          description: userRole === 'ADMIN' ? 'KPI & Monitoring Operasional' : `Status ${activeBrand}`,
+          icon: LayoutDashboard,
+          roles: ['ADMIN', 'BRAND'],
+        },
+      ],
     },
     {
-      id: 'master-harga',
-      label: 'Master Harga',
-      description: 'Ongkos Jahit & Rate Buyer',
-      icon: Coins,
-      roles: ['ADMIN'],
+      sectionKey: 'production',
+      title: 'Produksi & Operasional',
+      items: [
+        {
+          id: 'inbound',
+          label: userRole === 'ADMIN' ? 'Inbound Stok Kain' : 'Stok Kain Saya',
+          description: userRole === 'ADMIN' ? 'Pelacakan Rol Semua Brand' : 'Tracking Rol di Gudang',
+          icon: PackageCheck,
+          badge: rollsInStock > 0 ? `${rollsInStock} Rol` : undefined,
+          roles: ['ADMIN', 'BRAND'],
+        },
+        {
+          id: 'spk',
+          label: 'SPK & Cutting',
+          description: 'Pooling Rol & Alokasi Vendor',
+          icon: Scissors,
+          badge: activeSPKs > 0 ? `${activeSPKs} Aktif` : undefined,
+          roles: ['ADMIN'],
+        },
+        {
+          id: 'outbound',
+          label: userRole === 'ADMIN' ? 'Outbound Surat Jalan' : 'Surat Jalan',
+          description: userRole === 'ADMIN' ? 'Pengiriman & Auto-Deduct' : 'Riwayat Pengiriman',
+          icon: Truck,
+          badge: recentSJ > 0 ? `${recentSJ} SJ` : undefined,
+          roles: ['ADMIN', 'BRAND'],
+        },
+        {
+          id: 'return',
+          label: userRole === 'ADMIN' ? 'Pengembalian & Retur' : 'Retur Produk',
+          description: userRole === 'ADMIN' ? 'Barang Cacat & Rework' : 'Lacak Perbaikan Barang',
+          icon: RotateCcw,
+          badge: activeReturns > 0 ? `${activeReturns} Retur` : undefined,
+          roles: ['ADMIN', 'BRAND'],
+        },
+      ],
     },
     {
-      id: 'inbound',
-      label: userRole === 'ADMIN' ? 'Inbound Stok Kain' : 'Stok Kain Saya',
-      description: userRole === 'ADMIN' ? 'Pelacakan Rol Semua Brand' : 'Tracking Rol di Gudang',
-      icon: PackageCheck,
-      badge: rollsInStock > 0 ? `${rollsInStock} Rol` : undefined,
-      roles: ['ADMIN', 'BRAND'],
+      sectionKey: 'finance',
+      title: 'Keuangan & Arus Kas',
+      items: [
+        {
+          id: 'finance',
+          label: userRole === 'ADMIN' ? 'Finance & Tagihan' : 'Tagihan & Invoice',
+          description: userRole === 'ADMIN' ? 'Slip Gaji & Invoice Brand' : 'Invoice Makloon',
+          icon: ReceiptText,
+          roles: ['ADMIN', 'BRAND'],
+        },
+        {
+          id: 'arus-kas',
+          label: 'Arus Kas',
+          description: userRole === 'ADMIN' ? 'Pembayaran Masuk dari Brand' : 'Riwayat Pembayaran Saya',
+          icon: TrendingUp,
+          badge: hasOutstanding ? 'Ada Saldo' : undefined,
+          roles: ['ADMIN', 'BRAND'],
+        },
+      ],
     },
     {
-      id: 'spk',
-      label: 'SPK & Cutting',
-      description: 'Pooling Rol & Alokasi Vendor',
-      icon: Scissors,
-      badge: activeSPKs > 0 ? `${activeSPKs} Aktif` : undefined,
-      roles: ['ADMIN'],
-    },
-    {
-      id: 'outbound',
-      label: userRole === 'ADMIN' ? 'Outbound Surat Jalan' : 'Surat Jalan',
-      description: userRole === 'ADMIN' ? 'Pengiriman & Auto-Deduct' : 'Riwayat Pengiriman',
-      icon: Truck,
-      badge: recentSJ > 0 ? `${recentSJ} SJ` : undefined,
-      roles: ['ADMIN', 'BRAND'],
-    },
-    {
-      id: 'return',
-      label: userRole === 'ADMIN' ? 'Pengembalian & Retur' : 'Retur Produk',
-      description: userRole === 'ADMIN' ? 'Barang Cacat & Rework' : 'Lacak Perbaikan Barang',
-      icon: RotateCcw,
-      badge: activeReturns > 0 ? `${activeReturns} Retur` : undefined,
-      roles: ['ADMIN', 'BRAND'],
-    },
-    {
-      id: 'finance',
-      label: userRole === 'ADMIN' ? 'Finance & Tagihan' : 'Tagihan & Invoice',
-      description: userRole === 'ADMIN' ? 'Slip Gaji & Invoice Brand' : 'Invoice Makloon',
-      icon: ReceiptText,
-      roles: ['ADMIN', 'BRAND'],
-    },
-    {
-      id: 'arus-kas',
-      label: 'Arus Kas',
-      description: userRole === 'ADMIN' ? 'Pembayaran Masuk dari Brand' : 'Riwayat Pembayaran Saya',
-      icon: TrendingUp,
-      badge: hasOutstanding ? 'Ada Saldo' : undefined,
-      roles: ['ADMIN', 'BRAND'],
+      sectionKey: 'master',
+      title: 'Data Master',
+      items: [
+        {
+          id: 'master-harga',
+          label: 'Master Harga',
+          description: 'Ongkos Jahit & Rate Buyer',
+          icon: Coins,
+          roles: ['ADMIN'],
+        },
+      ],
     },
   ];
-
-  const visibleNavItems = allNavItems.filter(item => item.roles.includes(userRole));
 
   const handleSelectNav = (tabId: ActiveTab) => {
     setActiveTab(tabId);
@@ -143,13 +171,13 @@ export const Sidebar: React.FC = () => {
 
     return (
       <div className="flex flex-col h-full justify-between">
-        <div className="space-y-1.5">
+        <div className="space-y-3">
           
           {/* Header sidebar */}
-          <div className={`px-2 py-2 flex items-center justify-between border-b border-slate-100 mb-2 ${isCollapsed ? 'justify-center' : ''}`}>
+          <div className={`px-2 py-2 flex items-center justify-between border-b border-slate-100 mb-1 ${isCollapsed ? 'justify-center' : ''}`}>
             {!isCollapsed ? (
               <>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   {userRole === 'ADMIN' ? 'Menu Admin' : 'Brand Portal'}
                 </span>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
@@ -161,64 +189,81 @@ export const Sidebar: React.FC = () => {
             )}
           </div>
 
-          {/* Daftar Navigasi */}
-          <div className="space-y-1">
-            {visibleNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
+          {/* Navigasi Berkelompok per Section */}
+          <div className="space-y-3">
+            {navSections.map((section, idx) => {
+              const visibleItems = section.items.filter((item) => item.roles.includes(userRole));
+              if (visibleItems.length === 0) return null;
 
               return (
-                <button
-                  key={item.id}
-                  onClick={() => handleSelectNav(item.id)}
-                  title={isCollapsed ? `${item.label} - ${item.description}` : undefined}
-                  className={`w-full flex items-center rounded-xl transition-base btn-press focus-ring relative group ${
-                    isCollapsed
-                      ? 'justify-center p-3'
-                      : 'gap-3 p-3 text-left'
-                  } ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg shrink-0 transition-transform ${
-                    isActive
-                      ? 'bg-white/20 text-white'
-                      : 'bg-slate-100 text-slate-600 group-hover:scale-105'
-                  }`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-
+                <div key={section.sectionKey} className={idx > 0 && isCollapsed ? 'pt-2 border-t border-slate-100' : ''}>
                   {!isCollapsed && (
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-semibold truncate ${isActive ? 'text-white' : 'text-slate-800'}`}>
-                          {item.label}
-                        </span>
-                        {item.badge && (
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                            isActive
-                              ? 'bg-white/25 text-white'
-                              : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                          }`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className={`text-[11px] truncate mt-0.5 ${
-                        isActive ? 'text-indigo-100' : 'text-slate-400'
-                      }`}>
-                        {item.description}
-                      </p>
+                    <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {section.title}
                     </div>
                   )}
 
-                  {/* Indikator badge mini saat collapsed */}
-                  {isCollapsed && item.badge && (
-                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-indigo-500 border border-white"></span>
-                  )}
-                </button>
+                  <div className="space-y-1">
+                    {visibleItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleSelectNav(item.id)}
+                          title={isCollapsed ? `${item.label} - ${item.description}` : undefined}
+                          className={`w-full flex items-center rounded-xl transition-base btn-press focus-ring relative group ${
+                            isCollapsed ? 'justify-center p-3' : 'gap-3 p-2.5 text-left'
+                          } ${
+                            isActive
+                              ? 'bg-indigo-600 text-white shadow-md'
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          }`}
+                        >
+                          <div
+                            className={`p-2 rounded-lg shrink-0 transition-transform ${
+                              isActive
+                                ? 'bg-white/20 text-white'
+                                : 'bg-slate-100 text-slate-600 group-hover:scale-105'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </div>
+
+                          {!isCollapsed && (
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className={`text-xs font-semibold truncate ${isActive ? 'text-white' : 'text-slate-800'}`}>
+                                  {item.label}
+                                </span>
+                                {item.badge && (
+                                  <span
+                                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                                      isActive
+                                        ? 'bg-white/25 text-white'
+                                        : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                    }`}
+                                  >
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-[11px] truncate mt-0.5 ${isActive ? 'text-indigo-100' : 'text-slate-400'}`}>
+                                {item.description}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Indikator badge mini saat collapsed */}
+                          {isCollapsed && item.badge && (
+                            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-indigo-500 border border-white"></span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
