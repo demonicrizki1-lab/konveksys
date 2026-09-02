@@ -11,9 +11,10 @@ import { OutboundView } from './components/outbound/OutboundView';
 import { ReturnView } from './components/return/ReturnView';
 import { FinanceView } from './components/finance/FinanceView';
 import { ArusKasView } from './components/arus-kas/ArusKasView';
+import { BrandApprovalModal } from './components/brands/BrandApprovalModal';
 
 const MainLayout: React.FC = () => {
-  const { activeTab, currentUser, userRole } = useApp();
+  const { activeTab, currentUser, userRole, isApprovalModalOpen, setIsApprovalModalOpen } = useApp();
 
   if (!currentUser) {
     return <LoginPage />;
@@ -44,6 +45,12 @@ const MainLayout: React.FC = () => {
           <span className="text-slate-500">Maison Rayyan Manufacturing</span>
         </div>
       </footer>
+
+      {/* Modal Persetujuan Kemitraan Brand (Global Modal) */}
+      <BrandApprovalModal
+        isOpen={isApprovalModalOpen}
+        onClose={() => setIsApprovalModalOpen(false)}
+      />
     </div>
   );
 };

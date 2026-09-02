@@ -64,11 +64,16 @@ export const BrandApprovalModal: React.FC<BrandApprovalModalProps> = ({ isOpen, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-fadeIn">
-      <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 my-6">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm animate-fadeIn"
+    >
+      <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] animate-scaleUp">
         
         {/* Header */}
-        <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="bg-slate-900 text-white p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center">
               <Clock className="w-5 h-5" />
@@ -80,7 +85,7 @@ export const BrandApprovalModal: React.FC<BrandApprovalModalProps> = ({ isOpen, 
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition"
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -89,7 +94,7 @@ export const BrandApprovalModal: React.FC<BrandApprovalModalProps> = ({ isOpen, 
         {/* Feedback Alert */}
         {feedbackMsg && (
           <div
-            className={`p-3.5 text-xs font-semibold flex items-center gap-2 ${
+            className={`p-3.5 text-xs font-semibold flex items-center gap-2 shrink-0 ${
               feedbackMsg.type === 'success'
                 ? 'bg-emerald-50 text-emerald-800 border-b border-emerald-200'
                 : 'bg-rose-50 text-rose-800 border-b border-rose-200'
@@ -105,7 +110,7 @@ export const BrandApprovalModal: React.FC<BrandApprovalModalProps> = ({ isOpen, 
         )}
 
         {/* Content Body */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto space-y-4">
+        <div className="p-6 overflow-y-auto flex-1 space-y-4">
           {pendingBrands.length === 0 ? (
             <div className="py-12 text-center text-slate-400 space-y-3">
               <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">

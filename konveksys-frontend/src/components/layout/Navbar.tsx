@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { BrandApprovalModal } from '../brands/BrandApprovalModal';
 import {
   ShieldCheck,
   Building2,
@@ -22,9 +21,9 @@ export const Navbar: React.FC = () => {
     activeBrand,
     switchBrand,
     pendingBrands,
+    setIsApprovalModalOpen,
   } = useApp();
 
-  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isBrandDropdownOpen, setIsBrandDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -227,13 +226,6 @@ export const Navbar: React.FC = () => {
 
         </div>
       </div>
-
-      {/* Modal Persetujuan Kemitraan Brand */}
-      <BrandApprovalModal
-        isOpen={isApprovalModalOpen}
-        onClose={() => setIsApprovalModalOpen(false)}
-      />
-
     </header>
   );
 };

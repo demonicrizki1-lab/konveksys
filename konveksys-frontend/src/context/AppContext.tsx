@@ -96,6 +96,8 @@ interface AppContextType {
   registerBrand: (data: { name: string; email: string; password: string; phone?: string; brands: string[] }) => Promise<{ success: boolean; message: string }>;
   approveBrandUser: (userId: string, data?: { accessibleBrands?: string[]; brandName?: string }) => Promise<{ success: boolean; message: string }>;
   rejectBrandUser: (userId: string) => Promise<{ success: boolean; message: string }>;
+  isApprovalModalOpen: boolean;
+  setIsApprovalModalOpen: (open: boolean) => void;
 
   // Sidebar & Layout State
   isSidebarCollapsed: boolean;
@@ -222,6 +224,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState<boolean>(false);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(prev => {
@@ -1313,6 +1316,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerBrand,
         approveBrandUser,
         rejectBrandUser,
+        isApprovalModalOpen,
+        setIsApprovalModalOpen,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
         toggleSidebar,
