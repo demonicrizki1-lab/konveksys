@@ -144,7 +144,7 @@ export const InboundView: React.FC = () => {
             className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-base btn-press shrink-0"
           >
             <Plus className="w-4 h-4" />
-            {userRole === 'BRAND' ? '+ Rencana Kirim Kain' : '+ Terima Rol Kain Baru'}
+            {userRole === 'BRAND' ? 'Rencana Kirim Kain' : 'Terima Rol Kain Baru'}
           </button>
         </div>
 

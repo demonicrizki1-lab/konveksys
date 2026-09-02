@@ -233,7 +233,7 @@ export const MasterHargaView: React.FC = () => {
             {activeSubTab === 'buyer' && (
               <button
                 onClick={openAddBuyer}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-base btn-press"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-base btn-press"
               >
                 <Plus className="w-4 h-4" />
                 Tambah Matriks Buyer

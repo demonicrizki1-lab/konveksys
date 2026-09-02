@@ -146,7 +146,7 @@ export const ArusKasView: React.FC = () => {
               className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-base btn-press shadow-sm shrink-0"
             >
               <Plus className="w-4 h-4" />
-              + Catat Pembayaran
+              Catat Pembayaran
             </button>
           )}
         </div>
