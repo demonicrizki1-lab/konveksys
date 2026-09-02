@@ -84,21 +84,21 @@ export const Dashboard: React.FC = () => {
                   className="bg-white text-slate-900 hover:bg-slate-100 px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
                 >
                   <Package className="w-3.5 h-3.5 text-indigo-600" />
-                  + Inbound Rol
+                  Inbound Rol
                 </button>
                 <button
                   onClick={() => setActiveTab('spk')}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
+                  className="bg-white text-slate-900 hover:bg-slate-100 px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
                 >
-                  <Scissors className="w-3.5 h-3.5" />
-                  + Buat SPK
+                  <Scissors className="w-3.5 h-3.5 text-indigo-600" />
+                  Buat SPK
                 </button>
                 <button
                   onClick={() => setActiveTab('outbound')}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
+                  className="bg-white text-slate-900 hover:bg-slate-100 px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
                 >
-                  <Truck className="w-3.5 h-3.5" />
-                  + Surat Jalan
+                  <Truck className="w-3.5 h-3.5 text-indigo-600" />
+                  Surat Jalan
                 </button>
               </>
             ) : (
