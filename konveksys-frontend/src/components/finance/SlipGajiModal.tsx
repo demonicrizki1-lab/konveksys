@@ -55,7 +55,7 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                 <span className="text-indigo-700">{payroll.vendor}</span>
               </div>
               <div className="text-[11px] text-slate-500 font-medium">
-                Periode: {payroll.periodeLabel || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                {payroll.periodeLabel || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
               </div>
             </div>
           </div>
@@ -108,7 +108,7 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                   SLIP GAJI PENJAHIT
                 </span>
                 <div className="text-[11px] text-slate-600 font-bold mt-1.5">
-                  {payroll.periodeLabel ? `Periode: ${payroll.periodeLabel}` : `Periode: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`}
+                  {payroll.periodeLabel || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </div>
               </div>
             </div>
@@ -118,11 +118,6 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Nama Penjahit / Vendor:</span>
                 <strong className="text-slate-900 text-sm font-bold">{payroll.vendor}</strong>
-                {payroll.periodeLabel && (
-                  <div className="text-[10px] text-indigo-700 font-semibold mt-0.5">
-                    {payroll.periodeLabel}
-                  </div>
-                )}
               </div>
               <div className="text-right">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Tanggal Pembayaran:</span>
