@@ -150,6 +150,9 @@ export interface VendorPayrollSummary {
   totalGrossPay: number;
   kasbonDeduction: number;
   netPay: number;
+  periodeAwal?: string;
+  periodeAkhir?: string;
+  periodeLabel?: string;
   items: {
     suratJalanNo: string;
     tanggal: string;
@@ -166,6 +169,9 @@ export interface BuyerInvoiceSummary {
   invoiceNo: string;
   tanggal: string;
   jatuhTempo: string;
+  periodeAwal?: string;
+  periodeAkhir?: string;
+  periodeLabel?: string;
   items: {
     suratJalanNo: string;
     tanggal: string;

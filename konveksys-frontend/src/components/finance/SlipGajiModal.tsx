@@ -55,7 +55,7 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                 <span className="text-indigo-700">{payroll.vendor}</span>
               </div>
               <div className="text-[11px] text-slate-500 font-medium">
-                Periode: {new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                Periode: {payroll.periodeLabel || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
               </div>
             </div>
           </div>
@@ -107,8 +107,8 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                 <span className="badge-dark bg-slate-900 text-white text-[11px] font-bold px-3 py-1 rounded uppercase tracking-wider inline-block">
                   SLIP GAJI PENJAHIT
                 </span>
-                <div className="text-xs text-slate-500 font-bold mt-1.5">
-                  Periode: {new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                <div className="text-[11px] text-slate-600 font-bold mt-1.5">
+                  {payroll.periodeLabel ? `Periode: ${payroll.periodeLabel}` : `Periode: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`}
                 </div>
               </div>
             </div>
@@ -116,12 +116,20 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
             {/* Vendor Info */}
             <div className="box-gray grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
               <div>
-                <span className="text-slate-400 block text-[10px]">Nama Penjahit / Vendor:</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Nama Penjahit / Vendor:</span>
                 <strong className="text-slate-900 text-sm font-bold">{payroll.vendor}</strong>
+                {payroll.periodeLabel && (
+                  <div className="text-[10px] text-indigo-700 font-semibold mt-0.5">
+                    {payroll.periodeLabel}
+                  </div>
+                )}
               </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">Tanggal Cetak:</span>
-                <strong className="text-slate-900">{new Date().toLocaleDateString('id-ID')}</strong>
+              <div className="text-right">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Tanggal Pembayaran:</span>
+                <strong className="text-slate-900 text-xs font-bold">
+                  {payroll.periodeAkhir ? formatDateIndo(payroll.periodeAkhir) : formatDateIndo(new Date().toISOString())}
+                </strong>
+                <div className="text-[10px] text-slate-500 mt-0.5">Metode: Tunai / Transfer Bank</div>
               </div>
             </div>
 

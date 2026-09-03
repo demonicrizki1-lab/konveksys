@@ -115,6 +115,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Ditagihkan Kepada (Buyer):</span>
                 <strong className="text-slate-900 text-sm font-bold">{invoice.brand}</strong>
                 <div className="text-slate-500 text-[11px] mt-0.5">Partner Brand Makloon Resmi</div>
+                {invoice.periodeLabel && (
+                  <div className="text-[11px] text-emerald-800 font-semibold mt-1">
+                    Periode: {invoice.periodeLabel}
+                  </div>
+                )}
               </div>
               <div className="text-right">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Jatuh Tempo Pembayaran:</span>

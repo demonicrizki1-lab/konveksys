@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SlipGajiModal } from './SlipGajiModal';
 import { InvoiceModal } from './InvoiceModal';
-import { formatRupiahInput, parseRupiahInput, formatDateIndo } from '../../utils/formatters';
+import { formatRupiahInput, parseRupiahInput, formatDateIndo, getSabtuanPeriod } from '../../utils/formatters';
 import {
   ReceiptText,
   DollarSign,
@@ -14,6 +14,8 @@ import {
   FileText,
   UserCheck,
   CheckCircle,
+  Calendar,
+  Filter,
   X,
 } from 'lucide-react';
 
@@ -38,6 +40,34 @@ export const FinanceView: React.FC = () => {
       setActiveSubTab('invoice');
     }
   }, [userRole]);
+
+  // Sabtuan Period State
+  type PeriodMode = 'this_sabtuan' | 'prev_sabtuan' | 'custom' | 'all';
+  const [periodMode, setPeriodMode] = useState<PeriodMode>('this_sabtuan');
+  const thisSabtuan = getSabtuanPeriod(0);
+  const prevSabtuan = getSabtuanPeriod(-1);
+
+  const [customStartDate, setCustomStartDate] = useState(thisSabtuan.startDate);
+  const [customEndDate, setCustomEndDate] = useState(thisSabtuan.endDate);
+
+  // Determine active date filter bounds
+  let activeStartDate: string | undefined;
+  let activeEndDate: string | undefined;
+  let activePeriodLabel: string = 'Semua Transaksi (All-Time)';
+
+  if (periodMode === 'this_sabtuan') {
+    activeStartDate = thisSabtuan.startDate;
+    activeEndDate = thisSabtuan.endDate;
+    activePeriodLabel = `Sabtuan Pekan Ini (${thisSabtuan.label})`;
+  } else if (periodMode === 'prev_sabtuan') {
+    activeStartDate = prevSabtuan.startDate;
+    activeEndDate = prevSabtuan.endDate;
+    activePeriodLabel = `Sabtuan Pekan Lalu (${prevSabtuan.label})`;
+  } else if (periodMode === 'custom') {
+    activeStartDate = customStartDate;
+    activeEndDate = customEndDate;
+    activePeriodLabel = `Kustom: ${formatDateIndo(customStartDate)} – ${formatDateIndo(customEndDate)}`;
+  }
 
   // Selected Vendor for Payroll
   const [selectedVendorName, setSelectedVendorName] = useState(vendors[0]?.name || 'SAHIRA');
@@ -68,12 +98,14 @@ export const FinanceView: React.FC = () => {
 
   const formatRp = (amount: number) => 'Rp ' + amount.toLocaleString('id-ID');
 
-  // Live Payroll Data for selected vendor
-  const currentPayroll = calculateVendorPayroll(selectedVendorName);
+  // Live Payroll Data for selected vendor with active period
+  const currentPayroll = calculateVendorPayroll(selectedVendorName, activeStartDate, activeEndDate);
 
-  // Live Invoice Data for selected brand
+  // Live Invoice Data for selected brand with active period
   const currentInvoice = calculateBuyerInvoice(
-    userRole === 'BRAND' ? activeBrand : selectedBrandName
+    userRole === 'BRAND' ? activeBrand : selectedBrandName,
+    activeStartDate,
+    activeEndDate
   );
 
   const handleSaveKasbon = (e: React.FormEvent) => {
@@ -152,6 +184,87 @@ export const FinanceView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Sabtuan Period Toolbar (Filter Sabtuan Pekan Ini, Pekan Lalu, Kustom) */}
+      {activeSubTab !== 'kasbon' && (
+        <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Filter Periode Sabtuan (Sabtu ke Sabtu)
+              </div>
+              <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
+                <span>{activePeriodLabel}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setPeriodMode('this_sabtuan')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
+                periodMode === 'this_sabtuan'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Sabtuan Pekan Ini
+            </button>
+            <button
+              onClick={() => setPeriodMode('prev_sabtuan')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
+                periodMode === 'prev_sabtuan'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Sabtuan Pekan Lalu
+            </button>
+            <button
+              onClick={() => setPeriodMode('custom')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
+                periodMode === 'custom'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Kustom Tanggal
+            </button>
+            <button
+              onClick={() => setPeriodMode('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
+                periodMode === 'all'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Semua Waktu
+            </button>
+          </div>
+
+          {periodMode === 'custom' && (
+            <div className="flex items-center gap-2 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-xs text-slate-400">s/d</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* 1. VENDOR PAYROLL VIEW */}
       {activeSubTab === 'payroll' && userRole === 'ADMIN' && (

@@ -74,6 +74,7 @@ import {
   initialKasbonList,
   initialReturnList,
 } from '../data/initialData';
+import { formatDateIndo } from '../utils/formatters';
 
 export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas';
 
@@ -188,8 +189,8 @@ interface AppContextType {
     rateAnak16: number;
   };
   getSPKRemainingQty: (spk: SPKCutting) => SizeBreakdown & { totalRemaining: number };
-  calculateVendorPayroll: (vendorName: string) => VendorPayrollSummary;
-  calculateBuyerInvoice: (brandName: string) => BuyerInvoiceSummary;
+  calculateVendorPayroll: (vendorName: string, startDate?: string, endDate?: string) => VendorPayrollSummary;
+  calculateBuyerInvoice: (brandName: string, startDate?: string, endDate?: string) => BuyerInvoiceSummary;
   resetToDefaultData: () => void;
 }
 
@@ -1235,8 +1236,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Payroll Calculation Engine
-  const calculateVendorPayroll = (vendorName: string): VendorPayrollSummary => {
-    const vendorSJs = suratJalanList.filter(sj => sj.vendor === vendorName);
+  const calculateVendorPayroll = (
+    vendorName: string,
+    startDate?: string,
+    endDate?: string
+  ): VendorPayrollSummary => {
+    const vendorSJs = suratJalanList.filter(sj => {
+      const matchVendor = sj.vendor === vendorName;
+      if (!matchVendor) return false;
+      const sjDate = sj.tanggal.split('T')[0];
+      if (startDate && sjDate < startDate) return false;
+      if (endDate && sjDate > endDate) return false;
+      return true;
+    });
+
     const vendorObj = vendors.find(v => v.name === vendorName);
     const kasbon = vendorObj ? vendorObj.currentKasbon : 0;
 
@@ -1262,19 +1275,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const netPay = Math.max(0, totalGrossPay - kasbon);
 
+    let periodeLabel: string | undefined;
+    if (startDate && endDate) {
+      periodeLabel = `Sabtu, ${formatDateIndo(startDate)} – Sabtu, ${formatDateIndo(endDate)}`;
+    }
+
     return {
       vendor: vendorName,
       totalPcs,
       totalGrossPay,
       kasbonDeduction: kasbon,
       netPay,
+      periodeAwal: startDate,
+      periodeAkhir: endDate,
+      periodeLabel,
       items,
     };
   };
 
   // Invoice Calculation Engine
-  const calculateBuyerInvoice = (brandName: string): BuyerInvoiceSummary => {
-    const brandSJs = suratJalanList.filter(sj => sj.brand === brandName);
+  const calculateBuyerInvoice = (
+    brandName: string,
+    startDate?: string,
+    endDate?: string
+  ): BuyerInvoiceSummary => {
+    const brandSJs = suratJalanList.filter(sj => {
+      const matchBrand = sj.brand === brandName;
+      if (!matchBrand) return false;
+      const sjDate = sj.tanggal.split('T')[0];
+      if (startDate && sjDate < startDate) return false;
+      if (endDate && sjDate > endDate) return false;
+      return true;
+    });
 
     let grandTotal = 0;
     let totalPcs = 0;
@@ -1332,13 +1364,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     });
 
-    const invoiceNo = `INV/${brandName.toUpperCase()}/${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}/01`;
+    const now = new Date();
+    const invoiceNo = `INV/${brandName.toUpperCase()}/${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}/01`;
+
+    let jatuhTempoDate: Date;
+    if (endDate) {
+      jatuhTempoDate = new Date(endDate);
+      jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 7);
+    } else {
+      jatuhTempoDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    }
+
+    let periodeLabel: string | undefined;
+    if (startDate && endDate) {
+      periodeLabel = `Sabtu, ${formatDateIndo(startDate)} – Sabtu, ${formatDateIndo(endDate)}`;
+    }
 
     return {
       brand: brandName,
       invoiceNo,
-      tanggal: new Date().toISOString().split('T')[0],
-      jatuhTempo: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      tanggal: endDate || now.toISOString().split('T')[0],
+      jatuhTempo: jatuhTempoDate.toISOString().split('T')[0],
+      periodeAwal: startDate,
+      periodeAkhir: endDate,
+      periodeLabel,
       items,
       totalPcs,
       grandTotal,

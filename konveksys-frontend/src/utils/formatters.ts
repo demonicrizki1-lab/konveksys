@@ -50,3 +50,31 @@ export function formatDateIndo(dateStr?: string | null): string {
   }
 }
 
+/**
+ * Menghitung periode Sabtuan (Sabtu ke Sabtu).
+ * offsetWeeks: 0 = Sabtuan pekan ini, -1 = Sabtuan pekan lalu
+ */
+export function getSabtuanPeriod(offsetWeeks = 0, refDate = new Date()) {
+  const d = new Date(refDate);
+  d.setDate(d.getDate() + offsetWeeks * 7);
+  const day = d.getDay(); // 0 = Minggu, 1 = Senin, ..., 6 = Sabtu
+
+  // Sabtu akhir pekan ini
+  const diffToSaturday = 6 - day;
+  const thisSaturday = new Date(d);
+  thisSaturday.setDate(d.getDate() + diffToSaturday);
+
+  // Sabtu awal (7 hari sebelumnya)
+  const lastSaturday = new Date(thisSaturday);
+  lastSaturday.setDate(thisSaturday.getDate() - 7);
+
+  const startDate = lastSaturday.toISOString().split('T')[0];
+  const endDate = thisSaturday.toISOString().split('T')[0];
+
+  return {
+    startDate,
+    endDate,
+    label: `Sabtu, ${formatDateIndo(startDate)} – Sabtu, ${formatDateIndo(endDate)}`,
+  };
+}
+
