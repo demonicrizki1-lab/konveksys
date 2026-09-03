@@ -114,12 +114,12 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
             </div>
 
             {/* Vendor Info */}
-            <div className="box-gray grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div>
+            <div className="box-gray grid grid-cols-2 items-center gap-4 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div className="flex flex-col justify-center">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Nama Penjahit / Vendor:</span>
                 <strong className="text-slate-900 text-sm font-bold">{payroll.vendor}</strong>
               </div>
-              <div className="text-right">
+              <div className="text-right flex flex-col justify-center">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Tanggal Pembayaran:</span>
                 <strong className="text-slate-900 text-xs font-bold">
                   {payroll.periodeAkhir ? formatDateIndo(payroll.periodeAkhir) : formatDateIndo(new Date().toISOString())}
