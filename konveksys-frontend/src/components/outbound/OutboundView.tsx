@@ -16,7 +16,16 @@ import {
 } from 'lucide-react';
 
 export const OutboundView: React.FC = () => {
-  const { suratJalanList, createSuratJalan, deleteSuratJalan, spkList, getSPKRemainingQty, userRole, activeBrand } = useApp();
+  const {
+    suratJalanList,
+    createSuratJalan,
+    deleteSuratJalan,
+    spkList,
+    getSPKRemainingQty,
+    userRole,
+    activeBrand,
+    inboundRolls,
+  } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState(userRole === 'BRAND' ? activeBrand : 'ALL');
@@ -43,6 +52,22 @@ export const OutboundView: React.FC = () => {
   });
 
   const [selectedSJDetail, setSelectedSJDetail] = useState<SuratJalan | null>(null);
+
+  // Helper functions for SPK Fabric info
+  const getSPKFabricName = (spk: (typeof spkList)[0]) => {
+    const matchedRolls = inboundRolls.filter((r) => spk.rollIds?.includes(r.id));
+    if (matchedRolls.length === 0) return '';
+    const names = Array.from(new Set(matchedRolls.map((r) => r.jenisKain).filter(Boolean)));
+    return names.join(', ');
+  };
+
+  const getSPKFabricDetail = (spk: (typeof spkList)[0]) => {
+    const matchedRolls = inboundRolls.filter((r) => spk.rollIds?.includes(r.id));
+    if (matchedRolls.length === 0) return 'Kain Standar';
+    const details = matchedRolls.map((r) => `${r.jenisKain} (${r.meterLength}m)`);
+    const uniqueDetails = Array.from(new Set(details));
+    return uniqueDetails.join(' + ');
+  };
 
   // Active SPKs available for shipping
   const activeSPKs = spkList.filter((s) => s.status !== 'COMPLETED');
@@ -356,21 +381,40 @@ export const OutboundView: React.FC = () => {
                   <select
                     value={selectedSPKId}
                     onChange={(e) => handleSPKChange(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none font-mono"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none font-mono text-slate-800"
                   >
-                    {activeSPKs.map((spk) => (
-                      <option key={spk.id} value={spk.id}>
-                        {spk.spkNumber} - {spk.brand} ({spk.produk} @ {spk.vendor})
-                      </option>
-                    ))}
+                    {activeSPKs.map((spk) => {
+                      const fabric = getSPKFabricName(spk);
+                      const fabricLabel = fabric ? ` • ${fabric}` : '';
+                      return (
+                        <option key={spk.id} value={spk.id}>
+                          {spk.spkNumber} - {spk.brand} ({spk.produk}{fabricLabel})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
                 <div>
                   <label className="block font-bold text-slate-600 mb-1">Vendor & Brand:</label>
-                  <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-700">
+                  <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-700 truncate">
                     {currentSPK.vendor} &rarr; {currentSPK.brand}
                   </div>
+                </div>
+              </div>
+
+              {/* Detail Material Kain & Spesifikasi SPK Terpilih */}
+              <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🧵</span>
+                  <div>
+                    <span className="text-[10px] text-indigo-600 font-bold uppercase block">Material Kain SPK:</span>
+                    <strong className="text-slate-900 font-bold text-xs">{getSPKFabricDetail(currentSPK)}</strong>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Artikel & Vendor:</span>
+                  <span className="text-indigo-900 font-bold text-xs">{currentSPK.produk} <span className="text-slate-400 font-normal">(@ {currentSPK.vendor})</span></span>
                 </div>
               </div>
 
