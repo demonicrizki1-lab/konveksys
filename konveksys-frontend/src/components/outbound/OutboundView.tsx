@@ -359,6 +359,50 @@ export const OutboundView: React.FC = () => {
 
               {/* Real-Time Auto Deduct Checker */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                {/* SPK Overall Progress Summary Card */}
+                <div className="grid grid-cols-3 gap-2 text-center p-2.5 bg-white border border-slate-200 rounded-xl text-xs">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] font-medium">Target SPK Awal</span>
+                    <span className="text-slate-900 font-bold">
+                      {currentSPK.targetCutQty.s +
+                        currentSPK.targetCutQty.m +
+                        currentSPK.targetCutQty.l +
+                        currentSPK.targetCutQty.xl +
+                        currentSPK.targetCutQty.xxl +
+                        currentSPK.targetCutQty.anak4 +
+                        currentSPK.targetCutQty.anak6 +
+                        currentSPK.targetCutQty.anak8 +
+                        currentSPK.targetCutQty.anak10 +
+                        currentSPK.targetCutQty.anak12 +
+                        currentSPK.targetCutQty.anak14 +
+                        currentSPK.targetCutQty.anak16}{' '}
+                      Pcs
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] font-medium">Sudah Terkirim (SJ Lain)</span>
+                    <span className="text-indigo-600 font-bold">
+                      {currentSPK.deliveredQty.s +
+                        currentSPK.deliveredQty.m +
+                        currentSPK.deliveredQty.l +
+                        currentSPK.deliveredQty.xl +
+                        currentSPK.deliveredQty.xxl +
+                        currentSPK.deliveredQty.anak4 +
+                        currentSPK.deliveredQty.anak6 +
+                        currentSPK.deliveredQty.anak8 +
+                        currentSPK.deliveredQty.anak10 +
+                        currentSPK.deliveredQty.anak12 +
+                        currentSPK.deliveredQty.anak14 +
+                        currentSPK.deliveredQty.anak16}{' '}
+                      Pcs
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] font-medium">Sisa Belum Dikirim</span>
+                    <span className="text-emerald-700 font-bold">{remaining.totalRemaining} Pcs</span>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                   <span className="font-semibold text-slate-800 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -371,7 +415,7 @@ export const OutboundView: React.FC = () => {
                   <div className="bg-amber-50 border border-amber-300 text-amber-950 p-3.5 rounded-xl flex items-center gap-2.5 font-medium text-xs">
                     <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
                     <span>
-                      <strong className="font-bold text-amber-900">Perhatian (Over-Delivery):</strong> Kuantitas kirim melebihi sisa estimasi potong SPK. Surat Jalan tetap dapat diterbitkan dan status SPK otomatis diset ke <strong>OVER_DELIVERY</strong>.
+                      <strong className="font-bold text-amber-900">Perhatian (Over-Delivery):</strong> Kuantitas kirim pada beberapa size melebihi sisa kuota potong SPK yang belum dikirim. Surat Jalan tetap dapat diterbitkan dan status SPK otomatis diset ke <strong>OVER_DELIVERY</strong>.
                     </span>
                   </div>
                 )}
@@ -379,8 +423,10 @@ export const OutboundView: React.FC = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size S:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.s}</span>
+                      <span>Size S (Target {currentSPK.targetCutQty.s}):</span>
+                      <span className={`font-bold ${qtySend.s > remaining.s ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.s}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -396,8 +442,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size M:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.m}</span>
+                      <span>Size M (Target {currentSPK.targetCutQty.m}):</span>
+                      <span className={`font-bold ${qtySend.m > remaining.m ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.m}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -413,8 +461,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size L:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.l}</span>
+                      <span>Size L (Target {currentSPK.targetCutQty.l}):</span>
+                      <span className={`font-bold ${qtySend.l > remaining.l ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.l}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -430,8 +480,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size XL:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.xl}</span>
+                      <span>Size XL (Target {currentSPK.targetCutQty.xl}):</span>
+                      <span className={`font-bold ${qtySend.xl > remaining.xl ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.xl}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -447,8 +499,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size 2XL:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.xxl}</span>
+                      <span>Size 2XL (Target {currentSPK.targetCutQty.xxl}):</span>
+                      <span className={`font-bold ${qtySend.xxl > remaining.xxl ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.xxl}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -465,8 +519,10 @@ export const OutboundView: React.FC = () => {
                   {/* Anak Sizes */}
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 4:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak4}</span>
+                      <span>Anak 4 (Target {currentSPK.targetCutQty.anak4}):</span>
+                      <span className={`font-bold ${qtySend.anak4 > remaining.anak4 ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.anak4}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -482,8 +538,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 6:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak6}</span>
+                      <span>Anak 6 (Target {currentSPK.targetCutQty.anak6}):</span>
+                      <span className={`font-bold ${qtySend.anak6 > remaining.anak6 ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.anak6}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -499,8 +557,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 8:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak8}</span>
+                      <span>Anak 8 (Target {currentSPK.targetCutQty.anak8}):</span>
+                      <span className={`font-bold ${qtySend.anak8 > remaining.anak8 ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.anak8}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -516,8 +576,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 10:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak10}</span>
+                      <span>Anak 10 (Target {currentSPK.targetCutQty.anak10}):</span>
+                      <span className={`font-bold ${qtySend.anak10 > remaining.anak10 ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.anak10}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -533,8 +595,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 12:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak12}</span>
+                      <span>Anak 12 (Target {currentSPK.targetCutQty.anak12}):</span>
+                      <span className={`font-bold ${qtySend.anak12 > remaining.anak12 ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.anak12}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -550,8 +614,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 14:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak14}</span>
+                      <span>Anak 14 (Target {currentSPK.targetCutQty.anak14}):</span>
+                      <span className={`font-bold ${qtySend.anak14 > remaining.anak14 ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.anak14}
+                      </span>
                     </div>
                     <input
                       type="number"
@@ -567,8 +633,10 @@ export const OutboundView: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 16:</span>
-                      <span className="font-bold text-indigo-600">Sisa {remaining.anak16}</span>
+                      <span>Anak 16 (Target {currentSPK.targetCutQty.anak16}):</span>
+                      <span className={`font-bold ${qtySend.anak16 > remaining.anak16 ? 'text-amber-600' : 'text-indigo-600'}`}>
+                        Sisa {remaining.anak16}
+                      </span>
                     </div>
                     <input
                       type="number"
