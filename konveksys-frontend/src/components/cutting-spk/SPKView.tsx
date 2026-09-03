@@ -159,9 +159,10 @@ export const SPKView: React.FC = () => {
     });
     setCatatan('');
 
-    const res = await createSPK(payload);
-    if (!res.success) {
-      alert(res.message || 'Gagal membuat SPK');
+    try {
+      await createSPK(payload);
+    } catch {
+      alert('Gagal membuat SPK');
       setIsCreateModalOpen(true);
     }
   };
