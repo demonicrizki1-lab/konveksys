@@ -100,20 +100,19 @@ export const OutboundView: React.FC = () => {
     }
     const defaultSPK = activeSPKs[0];
     setSelectedSPKId(defaultSPK.id);
-    const rem = getSPKRemainingQty(defaultSPK);
     setQtySend({
-      s: Math.min(50, rem.s),
-      m: Math.min(50, rem.m),
-      l: Math.min(50, rem.l),
-      xl: Math.min(20, rem.xl),
-      xxl: Math.min(10, rem.xxl),
-      anak4: Math.min(30, rem.anak4),
-      anak6: Math.min(30, rem.anak6),
-      anak8: Math.min(30, rem.anak8),
-      anak10: Math.min(30, rem.anak10),
-      anak12: Math.min(30, rem.anak12),
-      anak14: Math.min(30, rem.anak14),
-      anak16: Math.min(30, rem.anak16),
+      s: 0,
+      m: 0,
+      l: 0,
+      xl: 0,
+      xxl: 0,
+      anak4: 0,
+      anak6: 0,
+      anak8: 0,
+      anak10: 0,
+      anak12: 0,
+      anak14: 0,
+      anak16: 0,
     });
     setCatatan('Pengiriman parsial harian');
     setIsCreateModalOpen(true);
@@ -121,24 +120,20 @@ export const OutboundView: React.FC = () => {
 
   const handleSPKChange = (spkId: string) => {
     setSelectedSPKId(spkId);
-    const spk = spkList.find((s) => s.id === spkId);
-    if (spk) {
-      const rem = getSPKRemainingQty(spk);
-      setQtySend({
-        s: Math.min(30, rem.s),
-        m: Math.min(30, rem.m),
-        l: Math.min(30, rem.l),
-        xl: Math.min(10, rem.xl),
-        xxl: Math.min(10, rem.xxl),
-        anak4: Math.min(20, rem.anak4),
-        anak6: Math.min(20, rem.anak6),
-        anak8: Math.min(20, rem.anak8),
-        anak10: Math.min(20, rem.anak10),
-        anak12: Math.min(20, rem.anak12),
-        anak14: Math.min(20, rem.anak14),
-        anak16: Math.min(20, rem.anak16),
-      });
-    }
+    setQtySend({
+      s: 0,
+      m: 0,
+      l: 0,
+      xl: 0,
+      xxl: 0,
+      anak4: 0,
+      anak6: 0,
+      anak8: 0,
+      anak10: 0,
+      anak12: 0,
+      anak14: 0,
+      anak16: 0,
+    });
   };
 
   const handleSaveSJ = async (e: React.FormEvent) => {
@@ -389,10 +384,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.s}
-                      onChange={(e) => setQtySend({ ...qtySend, s: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.s > remaining.s ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, s: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.s > remaining.s ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -404,10 +401,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.m}
-                      onChange={(e) => setQtySend({ ...qtySend, m: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.m > remaining.m ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, m: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.m > remaining.m ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -419,10 +418,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.l}
-                      onChange={(e) => setQtySend({ ...qtySend, l: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.l > remaining.l ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, l: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.l > remaining.l ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -434,10 +435,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.xl}
-                      onChange={(e) => setQtySend({ ...qtySend, xl: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.xl > remaining.xl ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, xl: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.xl > remaining.xl ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -449,10 +452,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.xxl}
-                      onChange={(e) => setQtySend({ ...qtySend, xxl: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.xxl > remaining.xxl ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, xxl: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.xxl > remaining.xxl ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -465,10 +470,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.anak4}
-                      onChange={(e) => setQtySend({ ...qtySend, anak4: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak4 > remaining.anak4 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, anak4: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.anak4 > remaining.anak4 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -480,10 +487,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.anak6}
-                      onChange={(e) => setQtySend({ ...qtySend, anak6: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak6 > remaining.anak6 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, anak6: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.anak6 > remaining.anak6 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -495,10 +504,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.anak8}
-                      onChange={(e) => setQtySend({ ...qtySend, anak8: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak8 > remaining.anak8 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, anak8: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.anak8 > remaining.anak8 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -510,10 +521,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.anak10}
-                      onChange={(e) => setQtySend({ ...qtySend, anak10: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak10 > remaining.anak10 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, anak10: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.anak10 > remaining.anak10 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -525,10 +538,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.anak12}
-                      onChange={(e) => setQtySend({ ...qtySend, anak12: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak12 > remaining.anak12 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, anak12: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.anak12 > remaining.anak12 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -540,10 +555,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.anak14}
-                      onChange={(e) => setQtySend({ ...qtySend, anak14: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak14 > remaining.anak14 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, anak14: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.anak14 > remaining.anak14 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>
@@ -555,10 +572,12 @@ export const OutboundView: React.FC = () => {
                     </div>
                     <input
                       type="number"
+                      min="0"
                       value={qtySend.anak16}
-                      onChange={(e) => setQtySend({ ...qtySend, anak16: Number(e.target.value) })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center ${
-                        qtySend.anak16 > remaining.anak16 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200'
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => setQtySend({ ...qtySend, anak16: Number(e.target.value) || 0 })}
+                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
+                        qtySend.anak16 > remaining.anak16 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
                       }`}
                     />
                   </div>

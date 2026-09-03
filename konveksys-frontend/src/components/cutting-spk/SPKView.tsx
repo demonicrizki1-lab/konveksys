@@ -27,14 +27,14 @@ export const SPKView: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState(brands[0]?.name || 'GREYWOLF');
   const [selectedVendor, setSelectedVendor] = useState(vendors[0]?.name || 'SAHIRA');
-  const [produkName, setProdukName] = useState('BEDAH PANJANG');
+  const [produkName, setProdukName] = useState('');
   const [selectedRollIds, setSelectedRollIds] = useState<string[]>([]);
   const [targetCut, setTargetCut] = useState<SizeBreakdown>({
-    s: 100,
-    m: 150,
-    l: 150,
-    xl: 50,
-    xxl: 50,
+    s: 0,
+    m: 0,
+    l: 0,
+    xl: 0,
+    xxl: 0,
     anak4: 0,
     anak6: 0,
     anak8: 0,
@@ -88,9 +88,22 @@ export const SPKView: React.FC = () => {
     const initBrand = brands[0]?.name || 'GREYWOLF';
     setSelectedBrand(initBrand);
     setSelectedVendor(vendors[0]?.name || 'SAHIRA');
-    setProdukName('BEDAH PANJANG');
+    setProdukName('');
     setSelectedRollIds([]);
-    setTargetCut({ s: 100, m: 150, l: 150, xl: 50, xxl: 50, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 });
+    setTargetCut({
+      s: 0,
+      m: 0,
+      l: 0,
+      xl: 0,
+      xxl: 0,
+      anak4: 0,
+      anak6: 0,
+      anak8: 0,
+      anak10: 0,
+      anak12: 0,
+      anak14: 0,
+      anak16: 0,
+    });
     setCatatan('');
     setIsCreateModalOpen(true);
   };
@@ -474,45 +487,55 @@ export const SPKView: React.FC = () => {
                       <label className="text-[10px] font-bold text-slate-500 block">Size S:</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.s}
-                        onChange={(e) => setTargetCut({ ...targetCut, s: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, s: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block">Size M:</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.m}
-                        onChange={(e) => setTargetCut({ ...targetCut, m: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, m: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block">Size L:</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.l}
-                        onChange={(e) => setTargetCut({ ...targetCut, l: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, l: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block">Size XL:</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.xl}
-                        onChange={(e) => setTargetCut({ ...targetCut, xl: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, xl: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block">Size 2XL:</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.xxl}
-                        onChange={(e) => setTargetCut({ ...targetCut, xxl: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, xxl: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                   </div>
@@ -528,63 +551,77 @@ export const SPKView: React.FC = () => {
                       <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 4</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.anak4}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak4: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak4: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 6</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.anak6}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak6: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak6: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 8</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.anak8}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak8: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak8: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 10</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.anak10}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak10: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak10: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 12</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.anak12}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak12: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak12: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 14</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.anak14}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak14: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak14: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 16</label>
                       <input
                         type="number"
+                        min="0"
                         value={targetCut.anak16}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak16: Number(e.target.value) })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center"
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => setTargetCut({ ...targetCut, anak16: Number(e.target.value) || 0 })}
+                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
                       />
                     </div>
                   </div>
