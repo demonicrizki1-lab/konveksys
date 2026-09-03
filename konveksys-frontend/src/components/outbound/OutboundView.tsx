@@ -145,25 +145,42 @@ export const OutboundView: React.FC = () => {
       return;
     }
 
-    const result = await createSuratJalan({
+    const payload = {
       spkId: currentSPK.id,
       brand: currentSPK.brand,
       produk: currentSPK.produk,
       vendor: currentSPK.vendor,
       tanggal: new Date().toISOString().split('T')[0],
-      qtyDelivered: qtySend,
+      qtyDelivered: { ...qtySend },
       totalPcs: totalSendingPcs,
       driverName,
       nomorKendaraan,
       catatan,
+    };
+
+    // Langsung tutup modal dan reset angka kirim seketika agar tidak ada validasi ulang pada sisa 0
+    setIsCreateModalOpen(false);
+    setQtySend({
+      s: 0,
+      m: 0,
+      l: 0,
+      xl: 0,
+      xxl: 0,
+      anak4: 0,
+      anak6: 0,
+      anak8: 0,
+      anak10: 0,
+      anak12: 0,
+      anak14: 0,
+      anak16: 0,
     });
+
+    const result = await createSuratJalan(payload);
 
     if (!result.success) {
       alert(result.message || 'Gagal menyimpan Surat Jalan');
-      return;
+      setIsCreateModalOpen(true);
     }
-
-    setIsCreateModalOpen(false);
   };
 
   const handleDeleteSJ = async (sj: SuratJalan) => {

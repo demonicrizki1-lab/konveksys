@@ -129,18 +129,41 @@ export const SPKView: React.FC = () => {
       return;
     }
 
-    await createSPK({
+    const payload = {
       brand: selectedBrand,
       produk: produkName.toUpperCase(),
       vendor: selectedVendor,
-      rollIds: selectedRollIds,
-      targetCutQty: targetCut,
+      rollIds: [...selectedRollIds],
+      targetCutQty: { ...targetCut },
       tanggalSPK: new Date().toISOString().split('T')[0],
       targetSelesai,
       catatan,
-    });
+    };
 
     setIsCreateModalOpen(false);
+    setProdukName('');
+    setSelectedRollIds([]);
+    setTargetCut({
+      s: 0,
+      m: 0,
+      l: 0,
+      xl: 0,
+      xxl: 0,
+      anak4: 0,
+      anak6: 0,
+      anak8: 0,
+      anak10: 0,
+      anak12: 0,
+      anak14: 0,
+      anak16: 0,
+    });
+    setCatatan('');
+
+    const res = await createSPK(payload);
+    if (!res.success) {
+      alert(res.message || 'Gagal membuat SPK');
+      setIsCreateModalOpen(true);
+    }
   };
 
   const handleDeleteSPK = async (spk: SPKCutting) => {
