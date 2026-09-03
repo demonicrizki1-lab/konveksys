@@ -76,7 +76,7 @@ import {
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas';
+export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics';
 
 interface AppContextType {
   // Auth & Session

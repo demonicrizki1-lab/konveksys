@@ -11,6 +11,7 @@ import { OutboundView } from './components/outbound/OutboundView';
 import { ReturnView } from './components/return/ReturnView';
 import { FinanceView } from './components/finance/FinanceView';
 import { ArusKasView } from './components/arus-kas/ArusKasView';
+import { MarginAnalyticsView } from './components/finance/MarginAnalyticsView';
 import { BrandApprovalModal } from './components/brands/BrandApprovalModal';
 
 const MainLayout: React.FC = () => {
@@ -36,6 +37,7 @@ const MainLayout: React.FC = () => {
           {activeTab === 'return' && <ReturnView />}
           {activeTab === 'finance' && <FinanceView />}
           {activeTab === 'arus-kas' && <ArusKasView />}
+          {activeTab === 'margin-analytics' && userRole === 'ADMIN' && <MarginAnalyticsView />}
         </main>
       </div>
 
