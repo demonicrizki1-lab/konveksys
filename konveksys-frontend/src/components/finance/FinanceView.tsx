@@ -42,10 +42,9 @@ export const FinanceView: React.FC = () => {
   }, [userRole]);
 
   // Sabtuan Period State
-  type PeriodMode = 'this_sabtuan' | 'prev_sabtuan' | 'custom' | 'all';
+  type PeriodMode = 'this_sabtuan' | 'custom' | 'all';
   const [periodMode, setPeriodMode] = useState<PeriodMode>('this_sabtuan');
   const thisSabtuan = getSabtuanPeriod(0);
-  const prevSabtuan = getSabtuanPeriod(-1);
 
   const [customStartDate, setCustomStartDate] = useState(thisSabtuan.startDate);
   const [customEndDate, setCustomEndDate] = useState(thisSabtuan.endDate);
@@ -58,11 +57,7 @@ export const FinanceView: React.FC = () => {
   if (periodMode === 'this_sabtuan') {
     activeStartDate = thisSabtuan.startDate;
     activeEndDate = thisSabtuan.endDate;
-    activePeriodLabel = `Sabtuan Pekan Ini (${thisSabtuan.label})`;
-  } else if (periodMode === 'prev_sabtuan') {
-    activeStartDate = prevSabtuan.startDate;
-    activeEndDate = prevSabtuan.endDate;
-    activePeriodLabel = `Sabtuan Pekan Lalu (${prevSabtuan.label})`;
+    activePeriodLabel = `Pekan Ini (${thisSabtuan.label})`;
   } else if (periodMode === 'custom') {
     activeStartDate = customStartDate;
     activeEndDate = customEndDate;
@@ -205,27 +200,17 @@ export const FinanceView: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setPeriodMode('this_sabtuan')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
                 periodMode === 'this_sabtuan'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              Sabtuan Pekan Ini
-            </button>
-            <button
-              onClick={() => setPeriodMode('prev_sabtuan')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
-                periodMode === 'prev_sabtuan'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Sabtuan Pekan Lalu
+              Pekan Ini
             </button>
             <button
               onClick={() => setPeriodMode('custom')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
                 periodMode === 'custom'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -235,7 +220,7 @@ export const FinanceView: React.FC = () => {
             </button>
             <button
               onClick={() => setPeriodMode('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition btn-press ${
                 periodMode === 'all'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
