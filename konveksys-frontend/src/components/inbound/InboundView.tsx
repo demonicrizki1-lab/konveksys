@@ -283,7 +283,7 @@ export const InboundView: React.FC = () => {
                     <td className="p-3.5">{getStatusBadge(roll.status)}</td>
                     <td className="p-3.5 text-slate-600 font-medium">{formatDateIndo(roll.tanggalMasuk)}</td>
                     <td className="p-3.5 text-slate-500 text-[11px]">{roll.keterangan || '-'}</td>
-                    <td className="p-3.5 text-right space-x-1 whitespace-nowrap">
+                    <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
                       {userRole === 'ADMIN' && roll.status === 'MENUNGGU_FISIK' && (
                         <button
                           onClick={() => updateInboundRollStatus(roll.id, 'DI_GUDANG')}
@@ -292,12 +292,6 @@ export const InboundView: React.FC = () => {
                         >
                           <CheckCircle2 className="w-3 h-3" /> Konfirmasi Sampai
                         </button>
-                      )}
-                      {userRole === 'ADMIN' && roll.status === 'DI_GUDANG' && (
-                        <span className="text-[10px] font-medium text-slate-400 mr-1.5">Siap Dipotong</span>
-                      )}
-                      {userRole === 'ADMIN' && roll.status === 'DIPROSES' && (
-                        <span className="text-[10px] font-medium text-indigo-600 mr-1.5">Dalam SPK</span>
                       )}
                       {(userRole === 'ADMIN' || (userRole === 'BRAND' && roll.status === 'MENUNGGU_FISIK')) && (
                         <button
