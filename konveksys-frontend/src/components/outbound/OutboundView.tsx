@@ -12,10 +12,11 @@ import {
   X,
   Eye,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 
 export const OutboundView: React.FC = () => {
-  const { suratJalanList, createSuratJalan, spkList, getSPKRemainingQty, userRole, activeBrand } = useApp();
+  const { suratJalanList, createSuratJalan, deleteSuratJalan, spkList, getSPKRemainingQty, userRole, activeBrand } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState(userRole === 'BRAND' ? activeBrand : 'ALL');
@@ -170,6 +171,16 @@ export const OutboundView: React.FC = () => {
     setIsCreateModalOpen(false);
   };
 
+  const handleDeleteSJ = async (sj: SuratJalan) => {
+    const confirmMsg = `Apakah Anda yakin ingin menghapus Surat Jalan ${sj.noSuratJalan} (${sj.produk} - ${sj.totalPcs} Pcs)?\n\nKuantiti terkirim pada SPK terkait akan otomatis dikembalikan (revert).`;
+    if (!window.confirm(confirmMsg)) return;
+
+    const res = await deleteSuratJalan(sj.id);
+    if (!res.success) {
+      alert(res.message || 'Gagal menghapus Surat Jalan.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -283,14 +294,23 @@ export const OutboundView: React.FC = () => {
                         <CheckCircle2 className="w-3 h-3" /> {sj.status}
                       </span>
                     </td>
-                    <td className="p-3.5 text-right">
+                    <td className="p-3.5 text-right space-x-1 whitespace-nowrap">
                       <button
                         onClick={() => setSelectedSJDetail(sj)}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition btn-press inline-flex items-center align-middle"
                         title="Lihat Detail Size"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+                      {userRole === 'ADMIN' && (
+                        <button
+                          onClick={() => handleDeleteSJ(sj)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition btn-press inline-flex items-center align-middle"
+                          title="Hapus Surat Jalan ini"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

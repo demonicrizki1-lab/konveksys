@@ -13,10 +13,11 @@ import {
   X,
   Layers,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 
 export const InboundView: React.FC = () => {
-  const { inboundRolls, addInboundRoll, updateInboundRollStatus, brands, userRole, activeBrand } = useApp();
+  const { inboundRolls, addInboundRoll, updateInboundRollStatus, deleteInboundRoll, brands, userRole, activeBrand } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState(userRole === 'BRAND' ? activeBrand : 'ALL');
@@ -91,6 +92,20 @@ export const InboundView: React.FC = () => {
     });
 
     setIsAddModalOpen(false);
+  };
+
+  const handleDeleteRoll = async (roll: InboundRoll) => {
+    if (roll.status === 'DIPROSES') {
+      alert(`Rol kain ${roll.rollCode} sedang digunakan dalam SPK aktif. Hapus SPK terkait terlebih dahulu.`);
+      return;
+    }
+    const confirmMsg = `Apakah Anda yakin ingin menghapus data rol kain ${roll.rollCode} (${roll.jenisKain} - ${roll.meterLength}m)?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    const res = await deleteInboundRoll(roll.id);
+    if (!res.success) {
+      alert(res.message || 'Gagal menghapus data rol kain.');
+    }
   };
 
   const getStatusBadge = (status: RollStatus) => {
@@ -237,7 +252,7 @@ export const InboundView: React.FC = () => {
                 <th className="p-3.5">Status Fisik</th>
                 <th className="p-3.5">Tgl Masuk</th>
                 <th className="p-3.5">Keterangan</th>
-                {userRole === 'ADMIN' && <th className="p-3.5 text-right">Aksi Admin</th>}
+                <th className="p-3.5 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -268,25 +283,32 @@ export const InboundView: React.FC = () => {
                     <td className="p-3.5">{getStatusBadge(roll.status)}</td>
                     <td className="p-3.5 text-slate-600 font-medium">{formatDateIndo(roll.tanggalMasuk)}</td>
                     <td className="p-3.5 text-slate-500 text-[11px]">{roll.keterangan || '-'}</td>
-                    {userRole === 'ADMIN' && (
-                      <td className="p-3.5 text-right space-x-1">
-                        {roll.status === 'MENUNGGU_FISIK' && (
-                          <button
-                            onClick={() => updateInboundRollStatus(roll.id, 'DI_GUDANG')}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-[10px] transition-base btn-press shadow-sm"
-                            title="Konfirmasi barang telah sampai di gudang"
-                          >
-                            Konfirmasi Sampai
-                          </button>
-                        )}
-                        {roll.status === 'DI_GUDANG' && (
-                          <span className="text-[10px] font-medium text-slate-400">Siap Dipotong</span>
-                        )}
-                        {roll.status === 'DIPROSES' && (
-                          <span className="text-[10px] font-medium text-indigo-600">Dalam SPK</span>
-                        )}
-                      </td>
-                    )}
+                    <td className="p-3.5 text-right space-x-1 whitespace-nowrap">
+                      {userRole === 'ADMIN' && roll.status === 'MENUNGGU_FISIK' && (
+                        <button
+                          onClick={() => updateInboundRollStatus(roll.id, 'DI_GUDANG')}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-[10px] transition-base btn-press shadow-sm inline-flex items-center gap-1"
+                          title="Konfirmasi barang telah sampai di gudang"
+                        >
+                          <CheckCircle2 className="w-3 h-3" /> Konfirmasi Sampai
+                        </button>
+                      )}
+                      {userRole === 'ADMIN' && roll.status === 'DI_GUDANG' && (
+                        <span className="text-[10px] font-medium text-slate-400 mr-1.5">Siap Dipotong</span>
+                      )}
+                      {userRole === 'ADMIN' && roll.status === 'DIPROSES' && (
+                        <span className="text-[10px] font-medium text-indigo-600 mr-1.5">Dalam SPK</span>
+                      )}
+                      {(userRole === 'ADMIN' || (userRole === 'BRAND' && roll.status === 'MENUNGGU_FISIK')) && (
+                        <button
+                          onClick={() => handleDeleteRoll(roll)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition btn-press inline-flex items-center align-middle"
+                          title={userRole === 'BRAND' ? 'Batalkan Rencana Kirim Kain' : 'Hapus Data Rol Kain'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

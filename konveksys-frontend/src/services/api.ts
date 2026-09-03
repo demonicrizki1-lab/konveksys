@@ -316,6 +316,12 @@ export async function apiCreateSpk(data: unknown) {
   });
 }
 
+export async function apiDeleteSpk(id: string) {
+  return apiFetch<{ success: boolean; message?: string }>(`/api/spk/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // ============================================================
 // SURAT JALAN
 // ============================================================
@@ -329,6 +335,12 @@ export async function apiCreateSuratJalan(data: unknown) {
   return apiFetch<unknown>('/api/outbound', {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteSuratJalan(id: string) {
+  return apiFetch<{ success: boolean; message?: string }>(`/api/outbound/${id}`, {
+    method: 'DELETE',
   });
 }
 

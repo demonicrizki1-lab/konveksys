@@ -13,10 +13,11 @@ import {
   Eye,
   AlertCircle,
   ShieldAlert,
+  Trash2,
 } from 'lucide-react';
 
 export const SPKView: React.FC = () => {
-  const { spkList, createSPK, inboundRolls, brands, vendors, getSPKRemainingQty, userRole } = useApp();
+  const { spkList, createSPK, deleteSPK, inboundRolls, brands, vendors, getSPKRemainingQty, userRole } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState('ALL');
@@ -127,6 +128,16 @@ export const SPKView: React.FC = () => {
     });
 
     setIsCreateModalOpen(false);
+  };
+
+  const handleDeleteSPK = async (spk: SPKCutting) => {
+    const confirmMsg = `Apakah Anda yakin ingin menghapus SPK ${spk.spkNumber} (${spk.produk} - ${spk.brand})?\n\nKain rol yang di-pool akan otomatis dikembalikan ke status 'Di Gudang'.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    const res = await deleteSPK(spk.id);
+    if (!res.success) {
+      alert(res.message || 'Gagal menghapus SPK.');
+    }
   };
 
   if (userRole === 'BRAND') {
@@ -311,7 +322,18 @@ export const SPKView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-1">
+                <div className="flex items-center justify-between pt-1">
+                  {userRole === 'ADMIN' ? (
+                    <button
+                      onClick={() => handleDeleteSPK(spk)}
+                      className="px-2.5 py-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition border border-rose-200 btn-press"
+                      title="Hapus SPK ini"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Hapus SPK
+                    </button>
+                  ) : <div></div>}
+
                   <button
                     onClick={() => setSelectedSPKDetail(spk)}
                     className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition"

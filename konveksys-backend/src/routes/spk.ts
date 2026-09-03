@@ -53,3 +53,47 @@ spkRoutes.get('/:id', async (c) => {
   if (!spk) return c.json({ error: 'SPK tidak ditemukan' }, 404);
   return c.json(spk);
 });
+
+// DELETE /api/spk/:id - Delete SPK (Admin only)
+spkRoutes.delete('/:id', async (c) => {
+  const { id } = c.req.param();
+
+  const spk = await prisma.spkCutting.findUnique({
+    where: { id },
+    include: {
+      suratJalanList: true,
+      rolsDigunakan: true,
+      returnList: true,
+    },
+  });
+
+  if (!spk) {
+    return c.json({ error: 'SPK tidak ditemukan' }, 404);
+  }
+
+  if (spk.suratJalanList && spk.suratJalanList.length > 0) {
+    return c.json({
+      error: `SPK ${spk.spkNumber} sudah memiliki ${spk.suratJalanList.length} Surat Jalan pengiriman. Hapus semua Surat Jalan terkait terlebih dahulu.`,
+    }, 400);
+  }
+
+  if (spk.returnList && spk.returnList.length > 0) {
+    return c.json({
+      error: `SPK ${spk.spkNumber} memiliki ${spk.returnList.length} tiket retur terkait. Hapus atau selesaikan tiket retur terlebih dahulu.`,
+    }, 400);
+  }
+
+  // Restore fabric rolls back to DI_GUDANG and reset meterUsed
+  if (spk.rolsDigunakan && spk.rolsDigunakan.length > 0) {
+    const rollIds = spk.rolsDigunakan.map((r: any) => r.rolId);
+    await prisma.inboundRoll.updateMany({
+      where: { id: { in: rollIds } },
+      data: { status: 'DI_GUDANG', meterUsed: 0 },
+    });
+  }
+
+  // Delete SPK (SpkRol relation is deleted via Cascade onDelete)
+  await prisma.spkCutting.delete({ where: { id } });
+
+  return c.json({ success: true, message: `SPK ${spk.spkNumber} berhasil dihapus` });
+});

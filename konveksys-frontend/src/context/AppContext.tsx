@@ -17,6 +17,7 @@ import {
   apiGetInboundRolls,
   apiAddInboundRoll,
   apiUpdateInboundStatus,
+  apiDeleteInboundRoll,
   apiGetKasbon,
   apiAddKasbon,
   apiGetPembayaran,
@@ -24,8 +25,10 @@ import {
   apiDeletePembayaran,
   apiGetSpk,
   apiCreateSpk,
+  apiDeleteSpk,
   apiGetSuratJalan,
   apiCreateSuratJalan,
+  apiDeleteSuratJalan,
   apiAddVendor,
   apiUpdateVendor,
   apiDeleteVendor,
@@ -126,12 +129,15 @@ interface AppContextType {
   inboundRolls: InboundRoll[];
   addInboundRoll: (roll: Omit<InboundRoll, 'id'>) => void;
   updateInboundRollStatus: (id: string, status: InboundRoll['status']) => void;
+  deleteInboundRoll: (id: string) => Promise<{ success: boolean; message?: string }>;
 
   spkList: SPKCutting[];
   createSPK: (spk: Omit<SPKCutting, 'id' | 'spkNumber' | 'deliveredQty' | 'status'>) => Promise<void> | void;
+  deleteSPK: (id: string) => Promise<{ success: boolean; message?: string }>;
 
   suratJalanList: SuratJalan[];
   createSuratJalan: (sj: Omit<SuratJalan, 'id' | 'noSuratJalan' | 'status'>) => Promise<{ success: boolean; message?: string }> | { success: boolean; message?: string };
+  deleteSuratJalan: (id: string) => Promise<{ success: boolean; message?: string }>;
 
   kasbonList: KasbonTransaction[];
   addKasbon: (kasbon: Omit<KasbonTransaction, 'id'>) => void;
@@ -853,6 +859,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const deleteInboundRoll = async (id: string): Promise<{ success: boolean; message?: string }> => {
+    const linkedSpk = spkList.find(s => s.rollIds?.includes(id));
+    if (linkedSpk) {
+      return { success: false, message: `Kain tidak dapat dihapus karena sedang digunakan pada ${linkedSpk.spkNumber}. Hapus SPK terkait terlebih dahulu.` };
+    }
+
+    try {
+      const { data, error } = await apiDeleteInboundRoll(id);
+      if (error) {
+        return { success: false, message: error };
+      }
+    } catch (err) {
+      console.warn('Backend sync failed, deleted locally:', err);
+    }
+
+    setInboundRolls(prev => prev.filter(r => r.id !== id));
+    return { success: true, message: 'Rol kain berhasil dihapus' };
+  };
+
   // SPK Handlers
   const createSPK = async (spkData: Omit<SPKCutting, 'id' | 'spkNumber' | 'deliveredQty' | 'status'>) => {
     const spkNumber = `SPK-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(spkList.length + 1).padStart(2, '0')}`;
@@ -909,6 +934,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       console.warn('Backend sync SPK failed, saved locally:', err);
     }
+  };
+
+  const deleteSPK = async (id: string): Promise<{ success: boolean; message?: string }> => {
+    const targetSpk = spkList.find(s => s.id === id);
+    if (!targetSpk) {
+      return { success: false, message: 'SPK tidak ditemukan.' };
+    }
+
+    const linkedSJ = suratJalanList.filter(sj => sj.spkId === id);
+    if (linkedSJ.length > 0) {
+      return {
+        success: false,
+        message: `SPK ${targetSpk.spkNumber} memiliki ${linkedSJ.length} Surat Jalan pengiriman. Hapus semua Surat Jalan terkait terlebih dahulu.`,
+      };
+    }
+
+    const linkedReturn = returnList.filter(r => r.spkId === id);
+    if (linkedReturn.length > 0) {
+      return {
+        success: false,
+        message: `SPK ${targetSpk.spkNumber} memiliki ${linkedReturn.length} tiket retur. Hapus tiket retur terkait terlebih dahulu.`,
+      };
+    }
+
+    try {
+      const { data, error } = await apiDeleteSpk(id);
+      if (error) {
+        return { success: false, message: error };
+      }
+    } catch (err) {
+      console.warn('Backend sync delete SPK failed, removing locally:', err);
+    }
+
+    // Kembalikan status rol kain yang digunakan SPK menjadi DI_GUDANG dan meterUsed: 0
+    if (targetSpk.rollIds && targetSpk.rollIds.length > 0) {
+      setInboundRolls(prev =>
+        prev.map(r => {
+          if (targetSpk.rollIds.includes(r.id)) {
+            return { ...r, status: 'DI_GUDANG', meterUsed: 0 };
+          }
+          return r;
+        })
+      );
+    }
+
+    setSpkList(prev => prev.filter(s => s.id !== id));
+    return { success: true, message: `SPK ${targetSpk.spkNumber} berhasil dihapus.` };
   };
 
   // Surat Jalan Handlers (with strict Auto-Deduct logic)
@@ -1000,6 +1072,73 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     return { success: true };
+  };
+
+  const deleteSuratJalan = async (id: string): Promise<{ success: boolean; message?: string }> => {
+    const targetSJ = suratJalanList.find(sj => sj.id === id);
+    if (!targetSJ) {
+      return { success: false, message: 'Surat Jalan tidak ditemukan.' };
+    }
+
+    const linkedReturn = returnList.filter(r => r.suratJalanId === id);
+    if (linkedReturn.length > 0) {
+      return {
+        success: false,
+        message: `Surat Jalan ${targetSJ.noSuratJalan} memiliki ${linkedReturn.length} tiket retur. Hapus tiket retur terlebih dahulu.`,
+      };
+    }
+
+    try {
+      const { data, error } = await apiDeleteSuratJalan(id);
+      if (error) {
+        return { success: false, message: error };
+      }
+    } catch (err) {
+      console.warn('Backend delete Surat Jalan failed, removing locally:', err);
+    }
+
+    // Kembalikan kuantiti terkirim pada SPK terkait
+    setSpkList(prev =>
+      prev.map(spk => {
+        if (spk.id === targetSJ.spkId) {
+          const newDelivered: SizeBreakdown = {
+            s: Math.max(0, spk.deliveredQty.s - targetSJ.qtyDelivered.s),
+            m: Math.max(0, spk.deliveredQty.m - targetSJ.qtyDelivered.m),
+            l: Math.max(0, spk.deliveredQty.l - targetSJ.qtyDelivered.l),
+            xl: Math.max(0, spk.deliveredQty.xl - targetSJ.qtyDelivered.xl),
+            xxl: Math.max(0, spk.deliveredQty.xxl - targetSJ.qtyDelivered.xxl),
+            anak4: Math.max(0, spk.deliveredQty.anak4 - targetSJ.qtyDelivered.anak4),
+            anak6: Math.max(0, spk.deliveredQty.anak6 - targetSJ.qtyDelivered.anak6),
+            anak8: Math.max(0, spk.deliveredQty.anak8 - targetSJ.qtyDelivered.anak8),
+            anak10: Math.max(0, spk.deliveredQty.anak10 - targetSJ.qtyDelivered.anak10),
+            anak12: Math.max(0, spk.deliveredQty.anak12 - targetSJ.qtyDelivered.anak12),
+            anak14: Math.max(0, spk.deliveredQty.anak14 - targetSJ.qtyDelivered.anak14),
+            anak16: Math.max(0, spk.deliveredQty.anak16 - targetSJ.qtyDelivered.anak16),
+          };
+          const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
+          const totalDelivered = Object.values(newDelivered).reduce((a, b) => a + b, 0);
+
+          const newStatus: SPKCutting['status'] =
+            totalDelivered <= 0
+              ? 'IN_PRODUCTION'
+              : targetTotal > 0 && totalDelivered > targetTotal
+              ? 'OVER_DELIVERY'
+              : targetTotal > 0 && totalDelivered === targetTotal
+              ? 'COMPLETED'
+              : 'PARTIAL_DELIVERED';
+
+          return {
+            ...spk,
+            deliveredQty: newDelivered,
+            status: newStatus,
+          };
+        }
+        return spk;
+      })
+    );
+
+    setSuratJalanList(prev => prev.filter(sj => sj.id !== id));
+    return { success: true, message: `Surat Jalan ${targetSJ.noSuratJalan} berhasil dihapus.` };
   };
 
   // Kasbon Handlers
@@ -1445,10 +1584,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         inboundRolls,
         addInboundRoll,
         updateInboundRollStatus,
+        deleteInboundRoll,
         spkList,
         createSPK,
+        deleteSPK,
         suratJalanList,
         createSuratJalan,
+        deleteSuratJalan,
         returnList,
         createReturn,
         updateReturnStatus,

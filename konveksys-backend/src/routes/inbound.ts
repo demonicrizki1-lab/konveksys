@@ -70,9 +70,36 @@ const handleRollUpdate = async (c: any) => {
 inboundRoutes.put('/:id', adminOnly, handleRollUpdate);
 inboundRoutes.patch('/:id', adminOnly, handleRollUpdate);
 
-// DELETE /api/inbound/:id - Delete roll (Admin only)
-inboundRoutes.delete('/:id', adminOnly, async (c) => {
+// DELETE /api/inbound/:id - Delete roll (Admin or Brand if pending)
+inboundRoutes.delete('/:id', async (c) => {
+  const user = c.get('user');
   const { id } = c.req.param();
+
+  const roll = await prisma.inboundRoll.findUnique({
+    where: { id },
+    include: { spkRols: { include: { spk: { select: { spkNumber: true } } } } },
+  });
+
+  if (!roll) {
+    return c.json({ error: 'Rol kain tidak ditemukan' }, 404);
+  }
+
+  // If role is BRAND, only allowed to delete if status is MENUNGGU_FISIK and roll belongs to brand
+  if (user.role === 'BRAND') {
+    if (roll.brand !== user.brandName) {
+      return c.json({ error: 'Tidak memiliki hak akses untuk menghapus rol ini' }, 403);
+    }
+    if (roll.status !== 'MENUNGGU_FISIK') {
+      return c.json({ error: 'Kain yang sudah diterima fisik di gudang tidak dapat dihapus oleh Brand' }, 400);
+    }
+  }
+
+  // If used in SPK
+  if (roll.spkRols && roll.spkRols.length > 0) {
+    const spkNums = roll.spkRols.map((sr: any) => sr.spk.spkNumber).join(', ');
+    return c.json({ error: `Kain tidak dapat dihapus karena sedang digunakan pada ${spkNums}. Hapus SPK terkait terlebih dahulu.` }, 400);
+  }
+
   await prisma.inboundRoll.delete({ where: { id } });
-  return c.json({ message: 'Rol kain dihapus' });
+  return c.json({ success: true, message: 'Rol kain berhasil dihapus' });
 });
