@@ -428,7 +428,7 @@ export const AccessoriesView: React.FC = () => {
                   <th className="p-3.5">Kategori / Brand</th>
                   <th className="p-3.5">Lokasi Rak</th>
                   <th className="p-3.5 text-center whitespace-nowrap">Stok Fisik</th>
-                  <th className="p-3.5 text-center whitespace-nowrap">Safety Stock</th>
+                  <th className="p-3.5 text-center whitespace-nowrap">Batas Minimum</th>
                   <th className="p-3.5 text-right whitespace-nowrap">Harga Beli</th>
                   <th className="p-3.5 text-center whitespace-nowrap">Status</th>
                   {userRole === 'ADMIN' && (

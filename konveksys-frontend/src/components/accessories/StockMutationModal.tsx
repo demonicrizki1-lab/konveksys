@@ -166,7 +166,7 @@ export const StockMutationModal: React.FC<StockMutationModalProps> = ({
                   {currentAcc.stock} {currentAcc.unit}
                 </span>
                 <span className="text-[10px] text-slate-500 block">
-                  Lokasi: {currentAcc.location || '-'} • Safety: {currentAcc.safetyStock} {currentAcc.unit}
+                  Lokasi: {currentAcc.location || '-'} • Min: {currentAcc.safetyStock} {currentAcc.unit}
                 </span>
               </div>
               <div className="text-right">

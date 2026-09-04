@@ -270,7 +270,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
 
             <div>
               <label className="block font-bold text-slate-600 mb-1">
-                Batas Minimum (Safety Stock):
+                Batas Minimum:
               </label>
               <input
                 type="number"
