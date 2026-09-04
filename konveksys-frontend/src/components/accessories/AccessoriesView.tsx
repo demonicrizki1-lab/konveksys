@@ -49,6 +49,23 @@ export const AccessoriesView: React.FC = () => {
 
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
+  // Category format helper
+  const formatCategory = (cat: string) => {
+    const map: Record<string, string> = {
+      LABEL: 'Label',
+      BORDIR: 'Bordir',
+      HANGTAG: 'Hangtag',
+      PLASTIK_PACKING: 'Plastik Packing',
+      WOVEN: 'Woven',
+      KANCING: 'Kancing',
+      RESLETING: 'Resleting',
+      BENANG: 'Benang',
+      KARET_ELASTIS: 'Karet Elastis',
+      LAINNYA: 'Lainnya',
+    };
+    return map[cat] || cat;
+  };
+
   // Status helper
   const getItemStatus = (item: AccessoryItem): 'AMAN' | 'MENIPIS' | 'HABIS' => {
     if (item.stock <= 0) return 'HABIS';
@@ -318,12 +335,15 @@ export const AccessoriesView: React.FC = () => {
               className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-base"
             >
               <option value="ALL">Semua Kategori</option>
+              <option value="LABEL">Label</option>
+              <option value="BORDIR">Bordir</option>
+              <option value="HANGTAG">Hangtag</option>
+              <option value="PLASTIK_PACKING">Plastik Packing</option>
+              <option value="WOVEN">Woven</option>
               <option value="KANCING">Kancing</option>
               <option value="RESLETING">Resleting</option>
-              <option value="LABEL_HANGTAG">Label & Hangtag</option>
-              <option value="KARET_ELASTIS">Karet & Elastis</option>
               <option value="BENANG">Benang</option>
-              <option value="PACKAGING">Packaging</option>
+              <option value="KARET_ELASTIS">Karet Elastis</option>
               <option value="LAINNYA">Lainnya</option>
             </select>
           </div>
@@ -442,7 +462,7 @@ export const AccessoriesView: React.FC = () => {
                         </td>
 
                         <td className="p-3.5">
-                          <span className="font-medium text-slate-800">{item.category}</span>
+                          <span className="font-medium text-slate-800">{formatCategory(item.category)}</span>
                           <span className="text-[10px] text-slate-400 block">
                             {item.brand || 'UMUM'}
                           </span>

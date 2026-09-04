@@ -253,12 +253,15 @@ export interface ReturnItem {
 // ============================================================
 
 export type AccessoryCategory =
+  | 'LABEL'
+  | 'BORDIR'
+  | 'HANGTAG'
+  | 'PLASTIK_PACKING'
+  | 'WOVEN'
   | 'KANCING'
   | 'RESLETING'
-  | 'LABEL_HANGTAG'
-  | 'KARET_ELASTIS'
   | 'BENANG'
-  | 'PACKAGING'
+  | 'KARET_ELASTIS'
   | 'LAINNYA';
 
 export type AccessoryUnit =
