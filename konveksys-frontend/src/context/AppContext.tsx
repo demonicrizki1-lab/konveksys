@@ -344,12 +344,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [accessories, setAccessories] = useState<AccessoryItem[]>(() => {
     const saved = localStorage.getItem('konvek_accessories');
-    return saved ? JSON.parse(saved) : initialAccessories;
+    if (saved) {
+      try {
+        const parsed: AccessoryItem[] = JSON.parse(saved);
+        // Filter out legacy dummy sample IDs (aks-001..010)
+        return parsed.filter(item => !item.id.startsWith('aks-00') && !item.id.startsWith('aks-01'));
+      } catch {
+        return initialAccessories;
+      }
+    }
+    return initialAccessories;
   });
 
   const [accessoryMutations, setAccessoryMutations] = useState<AccessoryMutation[]>(() => {
     const saved = localStorage.getItem('konvek_accessory_mutations');
-    return saved ? JSON.parse(saved) : initialAccessoryMutations;
+    if (saved) {
+      try {
+        const parsed: AccessoryMutation[] = JSON.parse(saved);
+        // Filter out legacy dummy sample mutation IDs (mut-001..005)
+        return parsed.filter(m => !m.id.startsWith('mut-00'));
+      } catch {
+        return initialAccessoryMutations;
+      }
+    }
+    return initialAccessoryMutations;
   });
 
   useEffect(() => {
@@ -590,7 +608,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // 11. Fetch Accessories
       const { data: accData } = await apiGetAccessories();
-      if (Array.isArray(accData) && accData.length > 0) {
+      if (Array.isArray(accData)) {
         setAccessories(accData.map((a: any) => ({
           id: a.id,
           sku: a.sku,
@@ -610,7 +628,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // 12. Fetch Accessory Mutations
       const { data: mutData } = await apiGetAccessoryMutations();
-      if (Array.isArray(mutData) && mutData.length > 0) {
+      if (Array.isArray(mutData)) {
         setAccessoryMutations(mutData.map((m: any) => ({
           id: m.id,
           accessoryId: m.accessoryId,
