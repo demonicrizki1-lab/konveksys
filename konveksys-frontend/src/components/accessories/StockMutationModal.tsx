@@ -63,7 +63,7 @@ export const StockMutationModal: React.FC<StockMutationModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessoryId) {
       setError('Silakan pilih aksesoris terlebih dahulu.');
@@ -77,7 +77,7 @@ export const StockMutationModal: React.FC<StockMutationModalProps> = ({
     }
 
     if (type === 'MASUK') {
-      recordStockIn({
+      await recordStockIn({
         accessoryId,
         quantity: qty,
         date,
@@ -89,7 +89,7 @@ export const StockMutationModal: React.FC<StockMutationModalProps> = ({
       onClose();
     } else {
       // Keluar
-      const result = recordStockOut({
+      const result = await recordStockOut({
         accessoryId,
         quantity: qty,
         date,

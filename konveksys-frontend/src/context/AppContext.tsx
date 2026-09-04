@@ -40,6 +40,12 @@ import {
   apiCreateReturn,
   apiUpdateReturnStatus,
   apiDeleteReturn,
+  apiGetAccessories,
+  apiGetAccessoryMutations,
+  apiCreateAccessory,
+  apiUpdateAccessory,
+  apiDeleteAccessory,
+  apiRecordAccessoryMutation,
 } from '../services/api';
 import {
   AuthUser,
@@ -202,7 +208,7 @@ interface AppContextType {
     spkId?: string;
     recipientOrVendor?: string;
     notes?: string;
-  }) => { success: boolean; message?: string };
+  }) => Promise<{ success: boolean; message?: string }>;
   adjustStock: (accessoryId: string, physicalCount: number, notes: string) => void;
 
   // Helper Lookups & Calculation Engines
@@ -579,6 +585,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           qtyRejectTotal: r.qtyRejectTotal || 0,
           spk: r.spk,
           suratJalan: r.suratJalan,
+        })));
+      }
+
+      // 11. Fetch Accessories
+      const { data: accData } = await apiGetAccessories();
+      if (Array.isArray(accData) && accData.length > 0) {
+        setAccessories(accData.map((a: any) => ({
+          id: a.id,
+          sku: a.sku,
+          name: a.name,
+          category: a.category,
+          brand: a.brand || 'UMUM',
+          unit: a.unit,
+          stock: Number(a.stock),
+          safetyStock: Number(a.safetyStock),
+          location: a.location || '',
+          costPerUnit: a.costPerUnit ? Number(a.costPerUnit) : undefined,
+          notes: a.notes || '',
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+        })));
+      }
+
+      // 12. Fetch Accessory Mutations
+      const { data: mutData } = await apiGetAccessoryMutations();
+      if (Array.isArray(mutData) && mutData.length > 0) {
+        setAccessoryMutations(mutData.map((m: any) => ({
+          id: m.id,
+          accessoryId: m.accessoryId,
+          accessoryName: m.accessoryName,
+          sku: m.sku,
+          type: m.type,
+          quantity: Number(m.quantity),
+          unit: m.unit,
+          date: String(m.date).split('T')[0],
+          sourceOrDestination: m.sourceOrDestination || undefined,
+          spkId: m.spkId || undefined,
+          spkNumber: m.spkNumber || undefined,
+          recipientOrVendor: m.recipientOrVendor || undefined,
+          notes: m.notes || undefined,
+          costTotal: m.costTotal ? Number(m.costTotal) : undefined,
+          createdAt: String(m.createdAt),
         })));
       }
     } catch (err) {
@@ -1624,18 +1672,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Accessory & Trims (Non-Kain) Management Methods
   // ============================================================
 
-  const addAccessory = (item: Omit<AccessoryItem, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newId = 'aks-' + Date.now().toString(36);
+  const addAccessory = async (item: Omit<AccessoryItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const tempId = 'aks-' + Date.now().toString(36);
     const newItem: AccessoryItem = {
       ...item,
-      id: newId,
+      id: tempId,
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setAccessories(prev => [newItem, ...prev]);
+
+    try {
+      const { data } = await apiCreateAccessory({
+        sku: item.sku,
+        name: item.name,
+        category: item.category,
+        brand: item.brand,
+        unit: item.unit,
+        stock: Number(item.stock),
+        safetyStock: Number(item.safetyStock),
+        location: item.location,
+        costPerUnit: item.costPerUnit,
+        notes: item.notes,
+      });
+      if (data?.id) {
+        setAccessories(prev => prev.map(a => a.id === tempId ? { ...a, id: data.id } : a));
+      }
+    } catch (err) {
+      console.warn('Backend create accessory failed, saved locally:', err);
+    }
   };
 
-  const updateAccessory = (item: AccessoryItem) => {
+  const updateAccessory = async (item: AccessoryItem) => {
     setAccessories(prev =>
       prev.map(a =>
         a.id === item.id
@@ -1643,13 +1711,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : a
       )
     );
+
+    try {
+      await apiUpdateAccessory(item.id, {
+        sku: item.sku,
+        name: item.name,
+        category: item.category,
+        brand: item.brand,
+        unit: item.unit,
+        stock: Number(item.stock),
+        safetyStock: Number(item.safetyStock),
+        location: item.location,
+        costPerUnit: item.costPerUnit,
+        notes: item.notes,
+      });
+    } catch (err) {
+      console.warn('Backend update accessory failed, updated locally:', err);
+    }
   };
 
-  const deleteAccessory = (id: string) => {
+  const deleteAccessory = async (id: string) => {
     setAccessories(prev => prev.filter(a => a.id !== id));
+    try {
+      await apiDeleteAccessory(id);
+    } catch (err) {
+      console.warn('Backend delete accessory failed, deleted locally:', err);
+    }
   };
 
-  const recordStockIn = (data: {
+  const recordStockIn = async (data: {
     accessoryId: string;
     quantity: number;
     date: string;
@@ -1686,9 +1776,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : a
       )
     );
+
+    try {
+      await apiRecordAccessoryMutation({
+        accessoryId: acc.id,
+        type: 'MASUK',
+        quantity: qty,
+        date: data.date,
+        sourceOrDestination: data.sourceOrDestination,
+        recipientOrVendor: data.recipientOrVendor,
+        notes: data.notes,
+        costTotal: data.costTotal,
+      });
+    } catch (err) {
+      console.warn('Backend record stock in failed, saved locally:', err);
+    }
   };
 
-  const recordStockOut = (data: {
+  const recordStockOut = async (data: {
     accessoryId: string;
     quantity: number;
     date: string;
@@ -1696,7 +1801,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     spkId?: string;
     recipientOrVendor?: string;
     notes?: string;
-  }): { success: boolean; message?: string } => {
+  }): Promise<{ success: boolean; message?: string }> => {
     const acc = accessories.find(a => a.id === data.accessoryId);
     if (!acc) return { success: false, message: 'Aksesoris tidak ditemukan.' };
 
@@ -1736,10 +1841,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
 
+    try {
+      await apiRecordAccessoryMutation({
+        accessoryId: acc.id,
+        type: 'KELUAR',
+        quantity: qty,
+        date: data.date,
+        sourceOrDestination: data.sourceOrDestination,
+        spkId: data.spkId,
+        spkNumber: spk?.spkNumber,
+        recipientOrVendor: data.recipientOrVendor,
+        notes: data.notes,
+      });
+    } catch (err) {
+      console.warn('Backend record stock out failed, saved locally:', err);
+    }
+
     return { success: true };
   };
 
-  const adjustStock = (accessoryId: string, physicalCount: number, notes: string) => {
+  const adjustStock = async (accessoryId: string, physicalCount: number, notes: string) => {
     const acc = accessories.find(a => a.id === accessoryId);
     if (!acc) return;
 
@@ -1768,6 +1889,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : a
       )
     );
+
+    try {
+      await apiRecordAccessoryMutation({
+        accessoryId: acc.id,
+        type: 'PENYESUAIAN',
+        quantity: count,
+        date: new Date().toISOString().split('T')[0],
+        sourceOrDestination: `Stock Opname (Selisih: ${diff >= 0 ? '+' : ''}${diff} ${acc.unit})`,
+        notes: notes || `Penyesuaian stok fisik dari ${acc.stock} menjadi ${count}`,
+      });
+    } catch (err) {
+      console.warn('Backend adjust stock failed, saved locally:', err);
+    }
   };
 
   const getArusKasSummary = (): ArusKasSummary[] => {

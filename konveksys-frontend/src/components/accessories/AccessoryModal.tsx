@@ -97,7 +97,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
     setSku(`AKS-${code}-${rand}`);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setError('Nama aksesoris wajib diisi.');
@@ -105,7 +105,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
     }
 
     if (accessoryToEdit) {
-      updateAccessory({
+      await updateAccessory({
         ...accessoryToEdit,
         sku: sku.trim() || accessoryToEdit.sku,
         name: name.trim(),
@@ -119,7 +119,7 @@ export const AccessoryModal: React.FC<AccessoryModalProps> = ({
         notes: notes.trim(),
       });
     } else {
-      addAccessory({
+      await addAccessory({
         sku: sku.trim() || `AKS-${Date.now().toString(36).toUpperCase()}`,
         name: name.trim(),
         category,

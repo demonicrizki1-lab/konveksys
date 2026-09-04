@@ -498,3 +498,110 @@ export async function apiDeleteReturn(id: string) {
   });
 }
 
+// ============================================================
+// ACCESSORIES & TRIMS
+// ============================================================
+
+export interface ApiAccessory {
+  id: string;
+  sku: string;
+  name: string;
+  category: string;
+  brand?: string | null;
+  unit: string;
+  stock: number | string;
+  safetyStock: number | string;
+  location?: string | null;
+  costPerUnit?: number | string | null;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiAccessoryMutation {
+  id: string;
+  accessoryId: string;
+  accessoryName: string;
+  sku: string;
+  type: string;
+  quantity: number | string;
+  unit: string;
+  date: string;
+  sourceOrDestination?: string | null;
+  spkId?: string | null;
+  spkNumber?: string | null;
+  recipientOrVendor?: string | null;
+  notes?: string | null;
+  costTotal?: number | string | null;
+  createdAt?: string;
+}
+
+export async function apiGetAccessories() {
+  return apiFetch<ApiAccessory[]>('/api/accessories');
+}
+
+export async function apiGetAccessoryMutations() {
+  return apiFetch<ApiAccessoryMutation[]>('/api/accessories/mutations');
+}
+
+export async function apiCreateAccessory(data: {
+  sku: string;
+  name: string;
+  category: string;
+  brand?: string;
+  unit: string;
+  stock: number;
+  safetyStock: number;
+  location?: string;
+  costPerUnit?: number;
+  notes?: string;
+}) {
+  return apiFetch<ApiAccessory>('/api/accessories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateAccessory(id: string, data: {
+  sku: string;
+  name: string;
+  category: string;
+  brand?: string;
+  unit: string;
+  stock: number;
+  safetyStock: number;
+  location?: string;
+  costPerUnit?: number;
+  notes?: string;
+}) {
+  return apiFetch<ApiAccessory>(`/api/accessories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteAccessory(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/accessories/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function apiRecordAccessoryMutation(data: {
+  accessoryId: string;
+  type: 'MASUK' | 'KELUAR' | 'PENYESUAIAN';
+  quantity: number;
+  date: string;
+  sourceOrDestination?: string;
+  spkId?: string;
+  spkNumber?: string;
+  recipientOrVendor?: string;
+  notes?: string;
+  costTotal?: number;
+}) {
+  return apiFetch<{ mutation: ApiAccessoryMutation; accessory: ApiAccessory }>('/api/accessories/mutations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+

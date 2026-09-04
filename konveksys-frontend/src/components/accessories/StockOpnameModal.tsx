@@ -42,7 +42,7 @@ export const StockOpnameModal: React.FC<StockOpnameModalProps> = ({
   const currentStock = currentAcc ? currentAcc.stock : 0;
   const difference = Number(physicalCount) - currentStock;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessoryId) {
       setError('Silakan pilih aksesoris.');
@@ -56,7 +56,7 @@ export const StockOpnameModal: React.FC<StockOpnameModalProps> = ({
     }
 
     const fullNotes = `[${reason}] ${notes.trim()}`.trim();
-    adjustStock(accessoryId, count, fullNotes);
+    await adjustStock(accessoryId, count, fullNotes);
     onClose();
   };
 
