@@ -248,4 +248,65 @@ export interface ReturnItem {
   suratJalan?: { noSuratJalan: string };
 }
 
+// ============================================================
+// Accessory & Trims (Non-Kain) Types
+// ============================================================
+
+export type AccessoryCategory =
+  | 'KANCING'
+  | 'RESLETING'
+  | 'LABEL_HANGTAG'
+  | 'KARET_ELASTIS'
+  | 'BENANG'
+  | 'PACKAGING'
+  | 'LAINNYA';
+
+export type AccessoryUnit =
+  | 'PCS'
+  | 'GROSS'
+  | 'LUSIN'
+  | 'METER'
+  | 'ROLL'
+  | 'CONE'
+  | 'PACK'
+  | 'LEMBAR'
+  | 'BAL';
+
+export interface AccessoryItem {
+  id: string;
+  sku: string;
+  name: string;
+  category: AccessoryCategory;
+  brand?: string; // Khusus Brand Buyer tertentu atau 'UMUM'
+  unit: AccessoryUnit;
+  stock: number;
+  safetyStock: number;
+  location?: string;
+  costPerUnit?: number;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type MutationType = 'MASUK' | 'KELUAR' | 'PENYESUAIAN';
+
+export interface AccessoryMutation {
+  id: string;
+  accessoryId: string;
+  accessoryName: string;
+  sku: string;
+  type: MutationType;
+  quantity: number;
+  unit: AccessoryUnit;
+  date: string;
+  sourceOrDestination?: string;
+  spkId?: string;
+  spkNumber?: string;
+  recipientOrVendor?: string;
+  notes?: string;
+  costTotal?: number;
+  createdAt: string;
+}
+
+
 

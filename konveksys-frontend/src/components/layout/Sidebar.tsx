@@ -10,6 +10,7 @@ import {
   ReceiptText,
   TrendingUp,
   BarChart3,
+  Archive,
   ChevronLeft,
   ChevronRight,
   X,
@@ -30,6 +31,7 @@ export const Sidebar: React.FC = () => {
     spkList,
     suratJalanList,
     returnList,
+    accessories,
     isSidebarCollapsed,
     toggleSidebar,
     isMobileMenuOpen,
@@ -41,6 +43,7 @@ export const Sidebar: React.FC = () => {
   const filteredRolls = userRole === 'BRAND' ? inboundRolls.filter(r => r.brand === activeBrand) : inboundRolls;
   const filteredSJ = userRole === 'BRAND' ? suratJalanList.filter(s => s.brand === activeBrand) : suratJalanList;
   const filteredReturns = userRole === 'BRAND' ? returnList.filter(r => r.brand === activeBrand) : returnList;
+  const filteredAccessories = userRole === 'BRAND' ? accessories.filter(a => !a.brand || a.brand === 'UMUM' || a.brand === activeBrand) : accessories;
 
   const rollsInStock = filteredRolls.filter(r => r.status === 'DI_GUDANG').length;
   const activeSPKs = spkList.filter(s => {
@@ -52,6 +55,7 @@ export const Sidebar: React.FC = () => {
   }).length;
   const recentSJ = filteredSJ.length;
   const activeReturns = filteredReturns.filter(r => r.status === 'DIAJUKAN' || r.status === 'DIKIRIM_KE_VENDOR').length;
+  const lowStockAccessories = filteredAccessories.filter(a => a.stock <= a.safetyStock).length;
 
   // Outstanding arus kas untuk badge
   const arusKasSummary = getArusKasSummary();
@@ -98,6 +102,14 @@ export const Sidebar: React.FC = () => {
           description: userRole === 'ADMIN' ? 'Pelacakan Rol Semua Brand' : 'Tracking Rol di Gudang',
           icon: PackageCheck,
           badge: rollsInStock > 0 ? `${rollsInStock} Rol` : undefined,
+          roles: ['ADMIN', 'BRAND'],
+        },
+        {
+          id: 'accessories',
+          label: userRole === 'ADMIN' ? 'Stok Aksesoris & Trims' : 'Aksesoris & Trims',
+          description: userRole === 'ADMIN' ? 'Kancing, Zipper, Label, Benang' : 'Ketersediaan Trims',
+          icon: Archive,
+          badge: lowStockAccessories > 0 ? `${lowStockAccessories} Menipis` : undefined,
           roles: ['ADMIN', 'BRAND'],
         },
         {

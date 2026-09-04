@@ -25,8 +25,8 @@ export function parseRupiahInput(formattedStr: string): number {
  * Format number ke tampilan lengkap Rp (contoh: 40000 -> "Rp 40.000")
  */
 export function formatRp(num: number | null | undefined): string {
-  if (!num || num === 0) return 'Rp 0';
-  return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
+  if (!num || num === 0) return 'Rp\u00A00';
+  return 'Rp\u00A0' + new Intl.NumberFormat('id-ID').format(num);
 }
 
 /**

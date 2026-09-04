@@ -623,15 +623,15 @@ export const MarginAnalyticsView: React.FC = () => {
           <table className="w-full text-left text-xs text-slate-700">
             <thead className="bg-slate-900 text-white font-bold uppercase text-[10px]">
               <tr>
-                <th className="p-3">No SJ & SPK</th>
+                <th className="p-3 whitespace-nowrap">No SJ & SPK</th>
                 <th className="p-3">Artikel & Material Kain</th>
                 <th className="p-3">Brand & Penjahit</th>
-                <th className="p-3 text-center">Volume (Pcs)</th>
-                <th className="p-3 text-right">Omzet Buyer</th>
-                <th className="p-3 text-right">Beban CMT</th>
-                <th className="p-3 text-right">Laba Bersih</th>
-                <th className="p-3 text-center">Margin (%)</th>
-                <th className="p-3 text-center">Status</th>
+                <th className="p-3 text-center whitespace-nowrap">Volume (Pcs)</th>
+                <th className="p-3 text-right whitespace-nowrap">Omzet Buyer</th>
+                <th className="p-3 text-right whitespace-nowrap">Beban CMT</th>
+                <th className="p-3 text-right whitespace-nowrap">Laba Bersih</th>
+                <th className="p-3 text-center whitespace-nowrap">Margin (%)</th>
+                <th className="p-3 text-center whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -660,12 +660,12 @@ export const MarginAnalyticsView: React.FC = () => {
                       <div className="font-semibold text-slate-800">{item.brand}</div>
                       <span className="text-[10px] text-slate-500 block">Vendor: {item.vendor}</span>
                     </td>
-                    <td className="p-3 text-center font-bold text-slate-900">{item.totalPcs} Pcs</td>
-                    <td className="p-3 text-right font-medium text-slate-800">{formatRp(item.omzetBuyer)}</td>
-                    <td className="p-3 text-right font-medium text-rose-600">{formatRp(item.biayaCmt)}</td>
-                    <td className="p-3 text-right font-bold text-emerald-700">{formatRp(item.labaBersih)}</td>
-                    <td className="p-3 text-center font-bold text-indigo-700">{item.marginPersen.toFixed(1)}%</td>
-                    <td className="p-3 text-center">
+                    <td className="p-3 text-center font-bold text-slate-900 whitespace-nowrap">{item.totalPcs} Pcs</td>
+                    <td className="p-3 text-right font-medium text-slate-800 whitespace-nowrap tabular-nums">{formatRp(item.omzetBuyer)}</td>
+                    <td className="p-3 text-right font-medium text-rose-600 whitespace-nowrap tabular-nums">{formatRp(item.biayaCmt)}</td>
+                    <td className="p-3 text-right font-bold text-emerald-700 whitespace-nowrap tabular-nums">{formatRp(item.labaBersih)}</td>
+                    <td className="p-3 text-center font-bold text-indigo-700 whitespace-nowrap">{item.marginPersen.toFixed(1)}%</td>
+                    <td className="p-3 text-center whitespace-nowrap">
                       <span
                         className={`px-2 py-1 rounded-full text-[10px] font-bold inline-block ${
                           item.statusMargin === 'SEHAT'
@@ -685,15 +685,15 @@ export const MarginAnalyticsView: React.FC = () => {
             {filteredItems.length > 0 && (
               <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900">
                 <tr>
-                  <td colSpan={3} className="p-3 text-right uppercase text-[10px]">
+                  <td colSpan={3} className="p-3 text-right uppercase text-[10px] whitespace-nowrap">
                     Total Akumulasi:
                   </td>
-                  <td className="p-3 text-center">{kpi.totalPcs} Pcs</td>
-                  <td className="p-3 text-right">{formatRp(kpi.totalRevenue)}</td>
-                  <td className="p-3 text-right text-rose-600">{formatRp(kpi.totalCost)}</td>
-                  <td className="p-3 text-right text-emerald-700">{formatRp(kpi.grossProfit)}</td>
-                  <td className="p-3 text-center text-indigo-700">{kpi.avgMargin.toFixed(1)}%</td>
-                  <td className="p-3 text-center">
+                  <td className="p-3 text-center whitespace-nowrap">{kpi.totalPcs} Pcs</td>
+                  <td className="p-3 text-right whitespace-nowrap tabular-nums">{formatRp(kpi.totalRevenue)}</td>
+                  <td className="p-3 text-right text-rose-600 whitespace-nowrap tabular-nums">{formatRp(kpi.totalCost)}</td>
+                  <td className="p-3 text-right text-emerald-700 whitespace-nowrap tabular-nums">{formatRp(kpi.grossProfit)}</td>
+                  <td className="p-3 text-center text-indigo-700 whitespace-nowrap">{kpi.avgMargin.toFixed(1)}%</td>
+                  <td className="p-3 text-center whitespace-nowrap">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         kpi.avgMargin >= 30

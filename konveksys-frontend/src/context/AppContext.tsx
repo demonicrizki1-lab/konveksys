@@ -61,6 +61,8 @@ import {
   ReturnItem,
   ReturnStatus,
   ReturnSource,
+  AccessoryItem,
+  AccessoryMutation,
 } from '../types';
 import {
   demoUsers,
@@ -73,10 +75,12 @@ import {
   initialSuratJalanList,
   initialKasbonList,
   initialReturnList,
+  initialAccessories,
+  initialAccessoryMutations,
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics';
+export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories';
 
 interface AppContextType {
   // Auth & Session
@@ -174,6 +178,32 @@ interface AppContextType {
     }
   ) => Promise<{ success: boolean; message?: string }>;
   deleteReturn: (id: string) => Promise<{ success: boolean; message?: string }>;
+
+  // Accessories & Trims Management
+  accessories: AccessoryItem[];
+  accessoryMutations: AccessoryMutation[];
+  addAccessory: (item: Omit<AccessoryItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateAccessory: (item: AccessoryItem) => void;
+  deleteAccessory: (id: string) => void;
+  recordStockIn: (data: {
+    accessoryId: string;
+    quantity: number;
+    date: string;
+    sourceOrDestination?: string;
+    recipientOrVendor?: string;
+    notes?: string;
+    costTotal?: number;
+  }) => void;
+  recordStockOut: (data: {
+    accessoryId: string;
+    quantity: number;
+    date: string;
+    sourceOrDestination?: string;
+    spkId?: string;
+    recipientOrVendor?: string;
+    notes?: string;
+  }) => { success: boolean; message?: string };
+  adjustStock: (accessoryId: string, physicalCount: number, notes: string) => void;
 
   // Helper Lookups & Calculation Engines
   getVendorRate: (vendor: string, produk: string, brand: string) => number;
@@ -305,6 +335,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('konvek_returns');
     return saved ? JSON.parse(saved) : initialReturnList;
   });
+
+  const [accessories, setAccessories] = useState<AccessoryItem[]>(() => {
+    const saved = localStorage.getItem('konvek_accessories');
+    return saved ? JSON.parse(saved) : initialAccessories;
+  });
+
+  const [accessoryMutations, setAccessoryMutations] = useState<AccessoryMutation[]>(() => {
+    const saved = localStorage.getItem('konvek_accessory_mutations');
+    return saved ? JSON.parse(saved) : initialAccessoryMutations;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('konvek_accessories', JSON.stringify(accessories));
+  }, [accessories]);
+
+  useEffect(() => {
+    localStorage.setItem('konvek_accessory_mutations', JSON.stringify(accessoryMutations));
+  }, [accessoryMutations]);
 
   // Sync to Backend Database if token exists
   const syncFromBackend = useCallback(async () => {
@@ -1572,6 +1620,156 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
+  // ============================================================
+  // Accessory & Trims (Non-Kain) Management Methods
+  // ============================================================
+
+  const addAccessory = (item: Omit<AccessoryItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newId = 'aks-' + Date.now().toString(36);
+    const newItem: AccessoryItem = {
+      ...item,
+      id: newId,
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
+    };
+    setAccessories(prev => [newItem, ...prev]);
+  };
+
+  const updateAccessory = (item: AccessoryItem) => {
+    setAccessories(prev =>
+      prev.map(a =>
+        a.id === item.id
+          ? { ...item, updatedAt: new Date().toISOString().split('T')[0] }
+          : a
+      )
+    );
+  };
+
+  const deleteAccessory = (id: string) => {
+    setAccessories(prev => prev.filter(a => a.id !== id));
+  };
+
+  const recordStockIn = (data: {
+    accessoryId: string;
+    quantity: number;
+    date: string;
+    sourceOrDestination?: string;
+    recipientOrVendor?: string;
+    notes?: string;
+    costTotal?: number;
+  }) => {
+    const acc = accessories.find(a => a.id === data.accessoryId);
+    if (!acc) return;
+
+    const qty = Number(data.quantity);
+    const newMutation: AccessoryMutation = {
+      id: 'mut-' + Date.now().toString(36),
+      accessoryId: acc.id,
+      accessoryName: acc.name,
+      sku: acc.sku,
+      type: 'MASUK',
+      quantity: qty,
+      unit: acc.unit,
+      date: data.date,
+      sourceOrDestination: data.sourceOrDestination || 'Restock Pembelian',
+      recipientOrVendor: data.recipientOrVendor,
+      notes: data.notes,
+      costTotal: data.costTotal,
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    };
+
+    setAccessoryMutations(prev => [newMutation, ...prev]);
+    setAccessories(prev =>
+      prev.map(a =>
+        a.id === data.accessoryId
+          ? { ...a, stock: a.stock + qty, updatedAt: new Date().toISOString().split('T')[0] }
+          : a
+      )
+    );
+  };
+
+  const recordStockOut = (data: {
+    accessoryId: string;
+    quantity: number;
+    date: string;
+    sourceOrDestination?: string;
+    spkId?: string;
+    recipientOrVendor?: string;
+    notes?: string;
+  }): { success: boolean; message?: string } => {
+    const acc = accessories.find(a => a.id === data.accessoryId);
+    if (!acc) return { success: false, message: 'Aksesoris tidak ditemukan.' };
+
+    const qty = Number(data.quantity);
+    if (acc.stock < qty) {
+      return {
+        success: false,
+        message: `Stok tidak mencukupi! Stok saat ini ${acc.stock} ${acc.unit}, permintaan ${qty} ${acc.unit}.`,
+      };
+    }
+
+    const spk = spkList.find(s => s.id === data.spkId);
+
+    const newMutation: AccessoryMutation = {
+      id: 'mut-' + Date.now().toString(36),
+      accessoryId: acc.id,
+      accessoryName: acc.name,
+      sku: acc.sku,
+      type: 'KELUAR',
+      quantity: qty,
+      unit: acc.unit,
+      date: data.date,
+      sourceOrDestination: data.sourceOrDestination || (spk ? `Alokasi SPK: ${spk.spkNumber}` : 'Pemakaian Produksi'),
+      spkId: data.spkId,
+      spkNumber: spk?.spkNumber,
+      recipientOrVendor: data.recipientOrVendor,
+      notes: data.notes,
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    };
+
+    setAccessoryMutations(prev => [newMutation, ...prev]);
+    setAccessories(prev =>
+      prev.map(a =>
+        a.id === data.accessoryId
+          ? { ...a, stock: Math.max(0, a.stock - qty), updatedAt: new Date().toISOString().split('T')[0] }
+          : a
+      )
+    );
+
+    return { success: true };
+  };
+
+  const adjustStock = (accessoryId: string, physicalCount: number, notes: string) => {
+    const acc = accessories.find(a => a.id === accessoryId);
+    if (!acc) return;
+
+    const count = Number(physicalCount);
+    const diff = count - acc.stock;
+
+    const newMutation: AccessoryMutation = {
+      id: 'mut-' + Date.now().toString(36),
+      accessoryId: acc.id,
+      accessoryName: acc.name,
+      sku: acc.sku,
+      type: 'PENYESUAIAN',
+      quantity: Math.abs(diff),
+      unit: acc.unit,
+      date: new Date().toISOString().split('T')[0],
+      sourceOrDestination: `Stock Opname (Selisih: ${diff >= 0 ? '+' : ''}${diff} ${acc.unit})`,
+      notes: notes || `Penyesuaian stok fisik dari ${acc.stock} menjadi ${count}`,
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    };
+
+    setAccessoryMutations(prev => [newMutation, ...prev]);
+    setAccessories(prev =>
+      prev.map(a =>
+        a.id === accessoryId
+          ? { ...a, stock: count, updatedAt: new Date().toISOString().split('T')[0] }
+          : a
+      )
+    );
+  };
+
   const getArusKasSummary = (): ArusKasSummary[] => {
     return brands.map(brand => {
       const invoice = calculateBuyerInvoice(brand.name);
@@ -1644,6 +1842,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createReturn,
         updateReturnStatus,
         deleteReturn,
+        accessories,
+        accessoryMutations,
+        addAccessory,
+        updateAccessory,
+        deleteAccessory,
+        recordStockIn,
+        recordStockOut,
+        adjustStock,
         kasbonList,
         addKasbon,
         pembayaranList,
