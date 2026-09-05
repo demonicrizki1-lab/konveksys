@@ -94,6 +94,14 @@ export interface SizeBreakdown {
   anak16: number;
 }
 
+export interface SPKProductItem {
+  id: string;
+  produk: string;
+  vendor: string;
+  targetCutQty: SizeBreakdown;
+  deliveredQty: SizeBreakdown;
+}
+
 export interface SPKCutting {
   id: string;
   spkNumber: string;
@@ -107,32 +115,41 @@ export interface SPKCutting {
   targetSelesai: string;
   status: 'DRAFT' | 'IN_PRODUCTION' | 'PARTIAL_DELIVERED' | 'COMPLETED' | 'OVER_DELIVERY';
   catatan?: string;
+  items?: SPKProductItem[]; // 1 s/d Maksimal 3 produk/artikel yang dihasilkan dari kain ini
 }
 
 export interface SuratJalanItem {
+  id?: string;
   spkId: string;
   spkNumber: string;
+  spkItemId?: string;
   brand: string;
   produk: string;
   vendor: string;
+  jenisKain?: string;
   qtyDelivered: SizeBreakdown;
   totalPcs: number;
+  catatan?: string;
 }
 
 export interface SuratJalan {
   id: string;
   noSuratJalan: string;
-  spkId: string;
   brand: string;
-  produk: string;
-  vendor: string;
   tanggal: string;
-  qtyDelivered: SizeBreakdown;
+  items?: SuratJalanItem[]; // Multi-item delivery support (1 SJ = multiple products/SPKs)
   totalPcs: number;
   driverName: string;
   nomorKendaraan: string;
   status: 'DELIVERED' | 'RECEIVED' | 'INVOICED';
   catatan?: string;
+  // Legacy single-item & summary fields
+  spkId?: string;
+  spkItemId?: string;
+  produk: string;
+  vendor: string;
+  qtyDelivered?: SizeBreakdown;
+  jenisKain?: string;
 }
 
 export interface KasbonTransaction {
@@ -157,6 +174,7 @@ export interface VendorPayrollSummary {
     suratJalanNo: string;
     tanggal: string;
     produk: string;
+    jenisKain?: string;
     brand: string;
     pcs: number;
     rate: number;
@@ -176,6 +194,7 @@ export interface BuyerInvoiceSummary {
     suratJalanNo: string;
     tanggal: string;
     produk: string;
+    jenisKain?: string;
     qtySML: number;
     rateSML: number;
     qtyXL: number;

@@ -57,7 +57,9 @@ import {
   HargaBuyer,
   InboundRoll,
   SPKCutting,
+  SPKProductItem,
   SuratJalan,
+  SuratJalanItem,
   KasbonTransaction,
   SizeBreakdown,
   VendorPayrollSummary,
@@ -149,6 +151,7 @@ interface AppContextType {
   suratJalanList: SuratJalan[];
   createSuratJalan: (sj: Omit<SuratJalan, 'id' | 'noSuratJalan' | 'status'>) => Promise<{ success: boolean; message?: string }> | { success: boolean; message?: string };
   deleteSuratJalan: (id: string) => Promise<{ success: boolean; message?: string }>;
+  getSuratJalanItems: (sj: SuratJalan) => SuratJalanItem[];
 
   kasbonList: KasbonTransaction[];
   addKasbon: (kasbon: Omit<KasbonTransaction, 'id'>) => void;
@@ -224,7 +227,7 @@ interface AppContextType {
     rateAnak14: number;
     rateAnak16: number;
   };
-  getSPKRemainingQty: (spk: SPKCutting) => SizeBreakdown & { totalRemaining: number };
+  getSPKRemainingQty: (spk: SPKCutting, spkItemId?: string) => SizeBreakdown & { totalRemaining: number };
   calculateVendorPayroll: (vendorName: string, startDate?: string, endDate?: string) => VendorPayrollSummary;
   calculateBuyerInvoice: (brandName: string, startDate?: string, endDate?: string) => BuyerInvoiceSummary;
   resetToDefaultData: () => void;
@@ -525,11 +528,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSuratJalanList(sjData.map((sj: any) => ({
           id: sj.id,
           noSuratJalan: sj.noSuratJalan,
-          spkId: sj.spkId,
           brand: sj.brand,
+          tanggal: sj.tanggal,
+          items: Array.isArray(sj.items)
+            ? sj.items
+            : typeof sj.items === 'string'
+            ? JSON.parse(sj.items)
+            : undefined,
+          totalPcs: sj.totalPcs || 0,
+          driverName: sj.driverName || '',
+          nomorKendaraan: sj.nomorKendaraan || '',
+          status: sj.status || 'DELIVERED',
+          catatan: sj.catatan || '',
+          spkId: sj.spkId,
+          spkItemId: sj.spkItemId,
           produk: sj.produk,
           vendor: sj.vendor,
-          tanggal: sj.tanggal,
+          jenisKain: sj.jenisKain,
           qtyDelivered: {
             s: sj.qtySML || 0,
             m: sj.qtyM || 0,
@@ -544,11 +559,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak14: sj.qtyAnak14 || 0,
             anak16: sj.qtyAnak16 || 0,
           },
-          totalPcs: sj.totalPcs || 0,
-          driverName: sj.driverName || '',
-          nomorKendaraan: sj.nomorKendaraan || '',
-          status: sj.status || 'DELIVERED',
-          catatan: sj.catatan || '',
         })));
       }
 
@@ -997,10 +1007,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const createSPK = async (spkData: Omit<SPKCutting, 'id' | 'spkNumber' | 'deliveredQty' | 'status'>) => {
     const spkNumber = `SPK-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(spkList.length + 1).padStart(2, '0')}`;
     const tempId = `spk-${Date.now()}`;
+
+    // Normalize items: if provided, use them; otherwise create a single default item
+    let items: SPKProductItem[] = [];
+    if (spkData.items && spkData.items.length > 0) {
+      items = spkData.items.map((it, idx) => ({
+        ...it,
+        id: it.id || `item-${Date.now()}-${idx + 1}`,
+        deliveredQty: it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+      }));
+    } else {
+      items = [
+        {
+          id: `item-${Date.now()}-1`,
+          produk: spkData.produk,
+          vendor: spkData.vendor,
+          targetCutQty: { ...spkData.targetCutQty },
+          deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+        },
+      ];
+    }
+
     const newSPK: SPKCutting = {
       ...spkData,
       id: tempId,
       spkNumber,
+      items,
       deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
       status: 'IN_PRODUCTION',
     };
@@ -1098,84 +1130,208 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true, message: `SPK ${targetSpk.spkNumber} berhasil dihapus.` };
   };
 
-  // Surat Jalan Handlers (with strict Auto-Deduct logic)
+  // Helper to normalize Surat Jalan items (Multi-Item and Legacy support)
+  const getSuratJalanItems = (sj: SuratJalan): SuratJalanItem[] => {
+    if (sj.items && sj.items.length > 0) {
+      return sj.items;
+    }
+    // Fallback for legacy single-item SJ
+    let jenisKain = sj.jenisKain || '';
+    if (!jenisKain && sj.spkId) {
+      const spk = spkList.find(s => s.id === sj.spkId || s.spkNumber === sj.spkId);
+      if (spk && spk.rollIds && spk.rollIds.length > 0) {
+        const rolls = inboundRolls.filter(r => spk.rollIds.includes(r.id));
+        jenisKain = Array.from(new Set(rolls.map(r => r.jenisKain).filter(Boolean))).join(', ');
+      }
+    }
+    return [
+      {
+        id: sj.spkItemId || `item-${sj.id}`,
+        spkId: sj.spkId || '',
+        spkNumber: sj.spkId || '',
+        spkItemId: sj.spkItemId,
+        brand: sj.brand,
+        produk: sj.produk || '',
+        vendor: sj.vendor || '',
+        jenisKain: jenisKain || 'Kain Standar',
+        qtyDelivered: sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+        totalPcs: sj.totalPcs || 0,
+        catatan: sj.catatan,
+      },
+    ];
+  };
+
+  // Surat Jalan Handlers (Multi-Item & Multi-SPK per Brand Delivery)
   const createSuratJalan = async (sjData: Omit<SuratJalan, 'id' | 'noSuratJalan' | 'status'>): Promise<{ success: boolean; message?: string }> => {
-    const targetSPK = spkList.find(s => s.id === sjData.spkId);
-    if (!targetSPK) {
-      return { success: false, message: 'SPK tidak ditemukan.' };
+    // Determine the items array to process
+    let itemsToProcess: SuratJalanItem[] = [];
+    if (sjData.items && sjData.items.length > 0) {
+      itemsToProcess = sjData.items;
+    } else if (sjData.spkId && sjData.produk && sjData.qtyDelivered) {
+      const targetSPK = spkList.find(s => s.id === sjData.spkId || s.spkNumber === sjData.spkId);
+      itemsToProcess = [
+        {
+          id: sjData.spkItemId || `item-${Date.now()}`,
+          spkId: sjData.spkId,
+          spkNumber: targetSPK ? targetSPK.spkNumber : sjData.spkId,
+          spkItemId: sjData.spkItemId,
+          brand: sjData.brand,
+          produk: sjData.produk,
+          vendor: sjData.vendor || targetSPK?.vendor || '',
+          jenisKain: sjData.jenisKain,
+          qtyDelivered: sjData.qtyDelivered,
+          totalPcs: sjData.totalPcs || Object.values(sjData.qtyDelivered).reduce((a, b) => a + b, 0),
+          catatan: sjData.catatan,
+        },
+      ];
     }
 
-    const deliv = sjData.qtyDelivered;
+    if (itemsToProcess.length === 0) {
+      return { success: false, message: 'Tidak ada item produk yang dipilih untuk Surat Jalan ini.' };
+    }
+
+    // Process each item and update corresponding SPKs
+    let updatedSpkList = [...spkList];
+    let grandTotalPcs = 0;
+
+    for (const item of itemsToProcess) {
+      grandTotalPcs += item.totalPcs;
+      const targetSPKIndex = updatedSpkList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
+      if (targetSPKIndex !== -1) {
+        const targetSPK = updatedSpkList[targetSPKIndex];
+        const deliv = item.qtyDelivered;
+
+        let updatedItems = targetSPK.items;
+        if ((!updatedItems || updatedItems.length === 0) && targetSPK.produk && targetSPK.produk.includes('+')) {
+          const parts = targetSPK.produk.split('+').map(p => p.trim()).filter(Boolean);
+          updatedItems = parts.map((p, idx) => ({
+            id: `part-${idx}`,
+            produk: p,
+            vendor: targetSPK.vendor,
+            targetCutQty: { ...targetSPK.targetCutQty },
+            deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+          }));
+        }
+
+        if (updatedItems && updatedItems.length > 0) {
+          updatedItems = updatedItems.map(it => {
+            const isTargetItem = item.spkItemId
+              ? it.id === item.spkItemId || it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase()
+              : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
+
+            if (isTargetItem) {
+              const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+              return {
+                ...it,
+                deliveredQty: {
+                  s: itemDeliv.s + deliv.s,
+                  m: itemDeliv.m + deliv.m,
+                  l: itemDeliv.l + deliv.l,
+                  xl: itemDeliv.xl + deliv.xl,
+                  xxl: itemDeliv.xxl + deliv.xxl,
+                  anak4: itemDeliv.anak4 + deliv.anak4,
+                  anak6: itemDeliv.anak6 + deliv.anak6,
+                  anak8: itemDeliv.anak8 + deliv.anak8,
+                  anak10: itemDeliv.anak10 + deliv.anak10,
+                  anak12: itemDeliv.anak12 + deliv.anak12,
+                  anak14: itemDeliv.anak14 + deliv.anak14,
+                  anak16: itemDeliv.anak16 + deliv.anak16,
+                },
+              };
+            }
+            return it;
+          });
+        }
+
+        const updatedDelivered: SizeBreakdown = {
+          s: targetSPK.deliveredQty.s + deliv.s,
+          m: targetSPK.deliveredQty.m + deliv.m,
+          l: targetSPK.deliveredQty.l + deliv.l,
+          xl: targetSPK.deliveredQty.xl + deliv.xl,
+          xxl: targetSPK.deliveredQty.xxl + deliv.xxl,
+          anak4: targetSPK.deliveredQty.anak4 + deliv.anak4,
+          anak6: targetSPK.deliveredQty.anak6 + deliv.anak6,
+          anak8: targetSPK.deliveredQty.anak8 + deliv.anak8,
+          anak10: targetSPK.deliveredQty.anak10 + deliv.anak10,
+          anak12: targetSPK.deliveredQty.anak12 + deliv.anak12,
+          anak14: targetSPK.deliveredQty.anak14 + deliv.anak14,
+          anak16: targetSPK.deliveredQty.anak16 + deliv.anak16,
+        };
+
+        const targetTotal = Object.values(targetSPK.targetCutQty).reduce((a, b) => a + b, 0);
+        const newTotalDelivered = Object.values(updatedDelivered).reduce((a, b) => a + b, 0);
+
+        const newStatus: SPKCutting['status'] =
+          targetTotal > 0 && newTotalDelivered > targetTotal
+            ? 'OVER_DELIVERY'
+            : newTotalDelivered === targetTotal
+            ? 'COMPLETED'
+            : 'PARTIAL_DELIVERED';
+
+        updatedSpkList[targetSPKIndex] = {
+          ...targetSPK,
+          items: updatedItems,
+          deliveredQty: updatedDelivered,
+          status: newStatus,
+        };
+      }
+    }
+
+    setSpkList(updatedSpkList);
 
     const noSuratJalan = `SJ/${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}/${String(suratJalanList.length + 1).padStart(3, '0')}`;
     const tempId = `sj-${Date.now()}`;
+    const firstItem = itemsToProcess[0];
+
     const newSJ: SuratJalan = {
       ...sjData,
       id: tempId,
       noSuratJalan,
+      brand: sjData.brand,
+      tanggal: sjData.tanggal || new Date().toISOString().split('T')[0],
+      items: itemsToProcess,
+      totalPcs: grandTotalPcs,
+      driverName: sjData.driverName,
+      nomorKendaraan: sjData.nomorKendaraan,
       status: 'DELIVERED',
+      catatan: sjData.catatan,
+      // Backward compatible single item fields
+      spkId: firstItem.spkId,
+      spkItemId: firstItem.spkItemId,
+      produk: itemsToProcess.map(i => i.produk).join(', '),
+      vendor: Array.from(new Set(itemsToProcess.map(i => i.vendor))).join(', '),
+      qtyDelivered: firstItem.qtyDelivered,
+      jenisKain: itemsToProcess.map(i => i.jenisKain).filter(Boolean).join(', '),
     };
-
-    // Update SPK Delivered Quantities (mendukung over-delivery)
-    const updatedDelivered: SizeBreakdown = {
-      s: targetSPK.deliveredQty.s + deliv.s,
-      m: targetSPK.deliveredQty.m + deliv.m,
-      l: targetSPK.deliveredQty.l + deliv.l,
-      xl: targetSPK.deliveredQty.xl + deliv.xl,
-      xxl: targetSPK.deliveredQty.xxl + deliv.xxl,
-      anak4: targetSPK.deliveredQty.anak4 + deliv.anak4,
-      anak6: targetSPK.deliveredQty.anak6 + deliv.anak6,
-      anak8: targetSPK.deliveredQty.anak8 + deliv.anak8,
-      anak10: targetSPK.deliveredQty.anak10 + deliv.anak10,
-      anak12: targetSPK.deliveredQty.anak12 + deliv.anak12,
-      anak14: targetSPK.deliveredQty.anak14 + deliv.anak14,
-      anak16: targetSPK.deliveredQty.anak16 + deliv.anak16,
-    };
-
-    const targetTotal = Object.values(targetSPK.targetCutQty).reduce((a, b) => a + b, 0);
-    const newTotalDelivered = Object.values(updatedDelivered).reduce((a, b) => a + b, 0);
-
-    const newStatus: SPKCutting['status'] =
-      targetTotal > 0 && newTotalDelivered > targetTotal
-        ? 'OVER_DELIVERY'
-        : newTotalDelivered === targetTotal
-        ? 'COMPLETED'
-        : 'PARTIAL_DELIVERED';
-
-    setSpkList(prev =>
-      prev.map(spk =>
-        spk.id === targetSPK.id
-          ? { ...spk, deliveredQty: updatedDelivered, status: newStatus }
-          : spk
-      )
-    );
 
     setSuratJalanList(prev => [newSJ, ...prev]);
 
     try {
       const { data } = await apiCreateSuratJalan({
         noSuratJalan,
-        spkId: targetSPK.id,
+        spkId: firstItem.spkId,
         brand: sjData.brand,
-        produk: sjData.produk,
-        vendor: sjData.vendor,
-        tanggal: sjData.tanggal ? new Date(sjData.tanggal).toISOString() : new Date().toISOString(),
+        produk: newSJ.produk,
+        vendor: newSJ.vendor,
+        tanggal: newSJ.tanggal ? new Date(newSJ.tanggal).toISOString() : new Date().toISOString(),
         driverName: sjData.driverName || '',
         nomorKendaraan: sjData.nomorKendaraan || '',
         catatan: sjData.catatan || '',
         status: 'DELIVERED',
-        qtySML: deliv.s,
-        qtyM: deliv.m,
-        qtyL: deliv.l,
-        qtyXL: deliv.xl,
-        qtyXXL: deliv.xxl,
-        qtyAnak4: deliv.anak4,
-        qtyAnak6: deliv.anak6,
-        qtyAnak8: deliv.anak8,
-        qtyAnak10: deliv.anak10,
-        qtyAnak12: deliv.anak12,
-        qtyAnak14: deliv.anak14,
-        qtyAnak16: deliv.anak16,
+        totalPcs: grandTotalPcs,
+        items: itemsToProcess,
+        qtySML: firstItem.qtyDelivered.s + firstItem.qtyDelivered.m + firstItem.qtyDelivered.l,
+        qtyM: firstItem.qtyDelivered.m,
+        qtyL: firstItem.qtyDelivered.l,
+        qtyXL: firstItem.qtyDelivered.xl,
+        qtyXXL: firstItem.qtyDelivered.xxl,
+        qtyAnak4: firstItem.qtyDelivered.anak4,
+        qtyAnak6: firstItem.qtyDelivered.anak6,
+        qtyAnak8: firstItem.qtyDelivered.anak8,
+        qtyAnak10: firstItem.qtyDelivered.anak10,
+        qtyAnak12: firstItem.qtyDelivered.anak12,
+        qtyAnak14: firstItem.qtyDelivered.anak14,
+        qtyAnak16: firstItem.qtyDelivered.anak16,
       });
 
       if (data && (data as any).id) {
@@ -1204,7 +1360,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      const { data, error } = await apiDeleteSuratJalan(id);
+      const { error } = await apiDeleteSuratJalan(id);
       if (error) {
         return { success: false, message: error };
       }
@@ -1212,23 +1368,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Backend delete Surat Jalan failed, removing locally:', err);
     }
 
-    // Kembalikan kuantiti terkirim pada SPK terkait
-    setSpkList(prev =>
-      prev.map(spk => {
-        if (spk.id === targetSJ.spkId) {
+    // Revert kuantiti terkirim pada semua SPK terkait
+    const itemsToRevert: SuratJalanItem[] = getSuratJalanItems(targetSJ);
+
+    setSpkList(prev => {
+      let updatedList = [...prev];
+      for (const item of itemsToRevert) {
+        const spkIdx = updatedList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
+        if (spkIdx !== -1) {
+          const spk = updatedList[spkIdx];
+          let updatedItems = spk.items;
+          if (updatedItems && updatedItems.length > 0) {
+            updatedItems = updatedItems.map(it => {
+              const isTargetItem = item.spkItemId
+                ? it.id === item.spkItemId
+                : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
+
+              if (isTargetItem && it.deliveredQty) {
+                return {
+                  ...it,
+                  deliveredQty: {
+                    s: Math.max(0, it.deliveredQty.s - item.qtyDelivered.s),
+                    m: Math.max(0, it.deliveredQty.m - item.qtyDelivered.m),
+                    l: Math.max(0, it.deliveredQty.l - item.qtyDelivered.l),
+                    xl: Math.max(0, it.deliveredQty.xl - item.qtyDelivered.xl),
+                    xxl: Math.max(0, it.deliveredQty.xxl - item.qtyDelivered.xxl),
+                    anak4: Math.max(0, it.deliveredQty.anak4 - item.qtyDelivered.anak4),
+                    anak6: Math.max(0, it.deliveredQty.anak6 - item.qtyDelivered.anak6),
+                    anak8: Math.max(0, it.deliveredQty.anak8 - item.qtyDelivered.anak8),
+                    anak10: Math.max(0, it.deliveredQty.anak10 - item.qtyDelivered.anak10),
+                    anak12: Math.max(0, it.deliveredQty.anak12 - item.qtyDelivered.anak12),
+                    anak14: Math.max(0, it.deliveredQty.anak14 - item.qtyDelivered.anak14),
+                    anak16: Math.max(0, it.deliveredQty.anak16 - item.qtyDelivered.anak16),
+                  },
+                };
+              }
+              return it;
+            });
+          }
+
           const newDelivered: SizeBreakdown = {
-            s: Math.max(0, spk.deliveredQty.s - targetSJ.qtyDelivered.s),
-            m: Math.max(0, spk.deliveredQty.m - targetSJ.qtyDelivered.m),
-            l: Math.max(0, spk.deliveredQty.l - targetSJ.qtyDelivered.l),
-            xl: Math.max(0, spk.deliveredQty.xl - targetSJ.qtyDelivered.xl),
-            xxl: Math.max(0, spk.deliveredQty.xxl - targetSJ.qtyDelivered.xxl),
-            anak4: Math.max(0, spk.deliveredQty.anak4 - targetSJ.qtyDelivered.anak4),
-            anak6: Math.max(0, spk.deliveredQty.anak6 - targetSJ.qtyDelivered.anak6),
-            anak8: Math.max(0, spk.deliveredQty.anak8 - targetSJ.qtyDelivered.anak8),
-            anak10: Math.max(0, spk.deliveredQty.anak10 - targetSJ.qtyDelivered.anak10),
-            anak12: Math.max(0, spk.deliveredQty.anak12 - targetSJ.qtyDelivered.anak12),
-            anak14: Math.max(0, spk.deliveredQty.anak14 - targetSJ.qtyDelivered.anak14),
-            anak16: Math.max(0, spk.deliveredQty.anak16 - targetSJ.qtyDelivered.anak16),
+            s: Math.max(0, spk.deliveredQty.s - item.qtyDelivered.s),
+            m: Math.max(0, spk.deliveredQty.m - item.qtyDelivered.m),
+            l: Math.max(0, spk.deliveredQty.l - item.qtyDelivered.l),
+            xl: Math.max(0, spk.deliveredQty.xl - item.qtyDelivered.xl),
+            xxl: Math.max(0, spk.deliveredQty.xxl - item.qtyDelivered.xxl),
+            anak4: Math.max(0, spk.deliveredQty.anak4 - item.qtyDelivered.anak4),
+            anak6: Math.max(0, spk.deliveredQty.anak6 - item.qtyDelivered.anak6),
+            anak8: Math.max(0, spk.deliveredQty.anak8 - item.qtyDelivered.anak8),
+            anak10: Math.max(0, spk.deliveredQty.anak10 - item.qtyDelivered.anak10),
+            anak12: Math.max(0, spk.deliveredQty.anak12 - item.qtyDelivered.anak12),
+            anak14: Math.max(0, spk.deliveredQty.anak14 - item.qtyDelivered.anak14),
+            anak16: Math.max(0, spk.deliveredQty.anak16 - item.qtyDelivered.anak16),
           };
           const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
           const totalDelivered = Object.values(newDelivered).reduce((a, b) => a + b, 0);
@@ -1242,15 +1433,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ? 'COMPLETED'
               : 'PARTIAL_DELIVERED';
 
-          return {
+          updatedList[spkIdx] = {
             ...spk,
+            items: updatedItems,
             deliveredQty: newDelivered,
             status: newStatus,
           };
         }
-        return spk;
-      })
-    );
+      }
+      return updatedList;
+    });
 
     setSuratJalanList(prev => prev.filter(sj => sj.id !== id));
     return { success: true, message: `Surat Jalan ${targetSJ.noSuratJalan} berhasil dihapus.` };
@@ -1331,19 +1523,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
   };
 
-  const getSPKRemainingQty = (spk: SPKCutting): SizeBreakdown & { totalRemaining: number } => {
-    const s = Math.max(0, spk.targetCutQty.s - spk.deliveredQty.s);
-    const m = Math.max(0, spk.targetCutQty.m - spk.deliveredQty.m);
-    const l = Math.max(0, spk.targetCutQty.l - spk.deliveredQty.l);
-    const xl = Math.max(0, spk.targetCutQty.xl - spk.deliveredQty.xl);
-    const xxl = Math.max(0, spk.targetCutQty.xxl - spk.deliveredQty.xxl);
-    const anak4 = Math.max(0, spk.targetCutQty.anak4 - spk.deliveredQty.anak4);
-    const anak6 = Math.max(0, spk.targetCutQty.anak6 - spk.deliveredQty.anak6);
-    const anak8 = Math.max(0, spk.targetCutQty.anak8 - spk.deliveredQty.anak8);
-    const anak10 = Math.max(0, spk.targetCutQty.anak10 - spk.deliveredQty.anak10);
-    const anak12 = Math.max(0, spk.targetCutQty.anak12 - spk.deliveredQty.anak12);
-    const anak14 = Math.max(0, spk.targetCutQty.anak14 - spk.deliveredQty.anak14);
-    const anak16 = Math.max(0, spk.targetCutQty.anak16 - spk.deliveredQty.anak16);
+  const getSPKRemainingQty = (spk: SPKCutting, spkItemId?: string): SizeBreakdown & { totalRemaining: number } => {
+    let target: SizeBreakdown = spk.targetCutQty;
+    let deliv: SizeBreakdown = spk.deliveredQty;
+
+    if (spkItemId && spk.items && spk.items.length > 0) {
+      const matchedItem = spk.items.find(it => it.id === spkItemId || it.produk.trim().toUpperCase() === spkItemId.trim().toUpperCase());
+      if (matchedItem) {
+        target = matchedItem.targetCutQty;
+        deliv = matchedItem.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+      }
+    }
+
+    const s = Math.max(0, target.s - deliv.s);
+    const m = Math.max(0, target.m - deliv.m);
+    const l = Math.max(0, target.l - deliv.l);
+    const xl = Math.max(0, target.xl - deliv.xl);
+    const xxl = Math.max(0, target.xxl - deliv.xxl);
+    const anak4 = Math.max(0, target.anak4 - deliv.anak4);
+    const anak6 = Math.max(0, target.anak6 - deliv.anak6);
+    const anak8 = Math.max(0, target.anak8 - deliv.anak8);
+    const anak10 = Math.max(0, target.anak10 - deliv.anak10);
+    const anak12 = Math.max(0, target.anak12 - deliv.anak12);
+    const anak14 = Math.max(0, target.anak14 - deliv.anak14);
+    const anak16 = Math.max(0, target.anak16 - deliv.anak16);
     const totalRemaining = s + m + l + xl + xxl + anak4 + anak6 + anak8 + anak10 + anak12 + anak14 + anak16;
 
     return { s, m, l, xl, xxl, anak4, anak6, anak8, anak10, anak12, anak14, anak16, totalRemaining };
@@ -1355,9 +1558,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     startDate?: string,
     endDate?: string
   ): VendorPayrollSummary => {
-    const vendorSJs = suratJalanList.filter(sj => {
-      const matchVendor = sj.vendor === vendorName;
-      if (!matchVendor) return false;
+    const matchedSJs = suratJalanList.filter(sj => {
       const sjDate = sj.tanggal.split('T')[0];
       if (startDate && sjDate < startDate) return false;
       if (endDate && sjDate > endDate) return false;
@@ -1369,23 +1570,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let totalPcs = 0;
     let totalGrossPay = 0;
+    const items: VendorPayrollSummary['items'] = [];
 
-    const items = vendorSJs.map(sj => {
-      const rate = getVendorRate(sj.vendor, sj.produk, sj.brand);
-      const subtotal = sj.totalPcs * rate;
-      totalPcs += sj.totalPcs;
-      totalGrossPay += subtotal;
+    for (const sj of matchedSJs) {
+      const sjItems = getSuratJalanItems(sj);
+      for (const it of sjItems) {
+        if (it.vendor === vendorName) {
+          const rate = getVendorRate(it.vendor, it.produk, it.brand);
+          const subtotal = it.totalPcs * rate;
+          totalPcs += it.totalPcs;
+          totalGrossPay += subtotal;
 
-      return {
-        suratJalanNo: sj.noSuratJalan,
-        tanggal: sj.tanggal,
-        produk: sj.produk,
-        brand: sj.brand,
-        pcs: sj.totalPcs,
-        rate,
-        subtotal,
-      };
-    });
+          items.push({
+            suratJalanNo: sj.noSuratJalan,
+            tanggal: sj.tanggal,
+            produk: it.produk,
+            jenisKain: it.jenisKain,
+            brand: it.brand,
+            pcs: it.totalPcs,
+            rate,
+            subtotal,
+          });
+        }
+      }
+    }
 
     const netPay = Math.max(0, totalGrossPay - kasbon);
 
@@ -1424,59 +1632,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let grandTotal = 0;
     let totalPcs = 0;
+    const items: BuyerInvoiceSummary['items'] = [];
 
-    const items = brandSJs.map(sj => {
-      const rates = getBuyerRates(sj.brand, sj.produk);
-      const qtySML = sj.qtyDelivered.s + sj.qtyDelivered.m + sj.qtyDelivered.l;
-      const qtyXL = sj.qtyDelivered.xl + sj.qtyDelivered.xxl;
-      const qtyAnak4 = sj.qtyDelivered.anak4;
-      const qtyAnak6 = sj.qtyDelivered.anak6;
-      const qtyAnak8 = sj.qtyDelivered.anak8;
-      const qtyAnak10 = sj.qtyDelivered.anak10;
-      const qtyAnak12 = sj.qtyDelivered.anak12;
-      const qtyAnak14 = sj.qtyDelivered.anak14;
-      const qtyAnak16 = sj.qtyDelivered.anak16;
+    for (const sj of brandSJs) {
+      const sjItems = getSuratJalanItems(sj);
+      for (const it of sjItems) {
+        const rates = getBuyerRates(brandName, it.produk);
+        const qtySML = (it.qtyDelivered?.s || 0) + (it.qtyDelivered?.m || 0) + (it.qtyDelivered?.l || 0);
+        const qtyXL = (it.qtyDelivered?.xl || 0) + (it.qtyDelivered?.xxl || 0);
+        const qtyAnak4 = it.qtyDelivered?.anak4 || 0;
+        const qtyAnak6 = it.qtyDelivered?.anak6 || 0;
+        const qtyAnak8 = it.qtyDelivered?.anak8 || 0;
+        const qtyAnak10 = it.qtyDelivered?.anak10 || 0;
+        const qtyAnak12 = it.qtyDelivered?.anak12 || 0;
+        const qtyAnak14 = it.qtyDelivered?.anak14 || 0;
+        const qtyAnak16 = it.qtyDelivered?.anak16 || 0;
 
-      const subSML = qtySML * rates.rateSML;
-      const subXL = qtyXL * rates.rateXL;
-      const subAnak4 = qtyAnak4 * rates.rateAnak4;
-      const subAnak6 = qtyAnak6 * rates.rateAnak6;
-      const subAnak8 = qtyAnak8 * rates.rateAnak8;
-      const subAnak10 = qtyAnak10 * rates.rateAnak10;
-      const subAnak12 = qtyAnak12 * rates.rateAnak12;
-      const subAnak14 = qtyAnak14 * rates.rateAnak14;
-      const subAnak16 = qtyAnak16 * rates.rateAnak16;
+        const subSML = qtySML * rates.rateSML;
+        const subXL = qtyXL * rates.rateXL;
+        const subAnak4 = qtyAnak4 * rates.rateAnak4;
+        const subAnak6 = qtyAnak6 * rates.rateAnak6;
+        const subAnak8 = qtyAnak8 * rates.rateAnak8;
+        const subAnak10 = qtyAnak10 * rates.rateAnak10;
+        const subAnak12 = qtyAnak12 * rates.rateAnak12;
+        const subAnak14 = qtyAnak14 * rates.rateAnak14;
+        const subAnak16 = qtyAnak16 * rates.rateAnak16;
 
-      const totalAmount = subSML + subXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
-      grandTotal += totalAmount;
-      totalPcs += sj.totalPcs;
+        const totalAmount = subSML + subXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        grandTotal += totalAmount;
+        totalPcs += it.totalPcs;
 
-      return {
-        suratJalanNo: sj.noSuratJalan,
-        tanggal: sj.tanggal,
-        produk: sj.produk,
-        qtySML,
-        rateSML: rates.rateSML,
-        qtyXL,
-        rateXL: rates.rateXL,
-        qtyAnak4,
-        rateAnak4: rates.rateAnak4,
-        qtyAnak6,
-        rateAnak6: rates.rateAnak6,
-        qtyAnak8,
-        rateAnak8: rates.rateAnak8,
-        qtyAnak10,
-        rateAnak10: rates.rateAnak10,
-        qtyAnak12,
-        rateAnak12: rates.rateAnak12,
-        qtyAnak14,
-        rateAnak14: rates.rateAnak14,
-        qtyAnak16,
-        rateAnak16: rates.rateAnak16,
-        totalPcs: sj.totalPcs,
-        totalAmount,
-      };
-    });
+        items.push({
+          suratJalanNo: sj.noSuratJalan,
+          tanggal: sj.tanggal,
+          produk: it.produk,
+          jenisKain: it.jenisKain,
+          qtySML,
+          rateSML: rates.rateSML,
+          qtyXL,
+          rateXL: rates.rateXL,
+          qtyAnak4,
+          rateAnak4: rates.rateAnak4,
+          qtyAnak6,
+          rateAnak6: rates.rateAnak6,
+          qtyAnak8,
+          rateAnak8: rates.rateAnak8,
+          qtyAnak10,
+          rateAnak10: rates.rateAnak10,
+          qtyAnak12,
+          rateAnak12: rates.rateAnak12,
+          qtyAnak14,
+          rateAnak14: rates.rateAnak14,
+          qtyAnak16,
+          rateAnak16: rates.rateAnak16,
+          totalPcs: it.totalPcs,
+          totalAmount,
+        });
+      }
+    }
 
     const now = new Date();
     const invoiceNo = `INV/${brandName.toUpperCase()}/${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}/01`;
@@ -1990,6 +2203,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         suratJalanList,
         createSuratJalan,
         deleteSuratJalan,
+        getSuratJalanItems,
         returnList,
         createReturn,
         updateReturnStatus,

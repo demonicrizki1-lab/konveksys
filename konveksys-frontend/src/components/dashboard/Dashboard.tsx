@@ -24,6 +24,7 @@ export const Dashboard: React.FC = () => {
     vendors,
     getVendorRate,
     getBuyerRates,
+    getSuratJalanItems,
   } = useApp();
 
   // Filter berdasarkan role
@@ -37,24 +38,32 @@ export const Dashboard: React.FC = () => {
   const totalPcsDelivered = filteredSJ.reduce((acc, sj) => acc + sj.totalPcs, 0);
 
   const totalBuyerBilling = filteredSJ.reduce((acc, sj) => {
-    const rates = getBuyerRates(sj.brand, sj.produk);
-    const qtySML = sj.qtyDelivered.s + sj.qtyDelivered.m + sj.qtyDelivered.l;
-    const qtyXL = sj.qtyDelivered.xl + sj.qtyDelivered.xxl;
-    const subAnak =
-      (sj.qtyDelivered.anak4 || 0) * (rates.rateAnak4 || 0) +
-      (sj.qtyDelivered.anak6 || 0) * (rates.rateAnak6 || 0) +
-      (sj.qtyDelivered.anak8 || 0) * (rates.rateAnak8 || 0) +
-      (sj.qtyDelivered.anak10 || 0) * (rates.rateAnak10 || 0) +
-      (sj.qtyDelivered.anak12 || 0) * (rates.rateAnak12 || 0) +
-      (sj.qtyDelivered.anak14 || 0) * (rates.rateAnak14 || 0) +
-      (sj.qtyDelivered.anak16 || 0) * (rates.rateAnak16 || 0);
+    const sjItems = getSuratJalanItems(sj);
+    const sjSum = sjItems.reduce((sAcc, item) => {
+      const rates = getBuyerRates(item.brand, item.produk);
+      const qtySML = (item.qtyDelivered?.s || 0) + (item.qtyDelivered?.m || 0) + (item.qtyDelivered?.l || 0);
+      const qtyXL = (item.qtyDelivered?.xl || 0) + (item.qtyDelivered?.xxl || 0);
+      const subAnak =
+        (item.qtyDelivered?.anak4 || 0) * (rates.rateAnak4 || 0) +
+        (item.qtyDelivered?.anak6 || 0) * (rates.rateAnak6 || 0) +
+        (item.qtyDelivered?.anak8 || 0) * (rates.rateAnak8 || 0) +
+        (item.qtyDelivered?.anak10 || 0) * (rates.rateAnak10 || 0) +
+        (item.qtyDelivered?.anak12 || 0) * (rates.rateAnak12 || 0) +
+        (item.qtyDelivered?.anak14 || 0) * (rates.rateAnak14 || 0) +
+        (item.qtyDelivered?.anak16 || 0) * (rates.rateAnak16 || 0);
 
-    return acc + (qtySML * rates.rateSML + qtyXL * rates.rateXL + subAnak);
+      return sAcc + (qtySML * rates.rateSML + qtyXL * rates.rateXL + subAnak);
+    }, 0);
+    return acc + sjSum;
   }, 0);
 
   const totalVendorExpense = filteredSJ.reduce((acc, sj) => {
-    const rate = getVendorRate(sj.vendor, sj.produk, sj.brand);
-    return acc + sj.totalPcs * rate;
+    const sjItems = getSuratJalanItems(sj);
+    const sjExp = sjItems.reduce((sAcc, item) => {
+      const rate = getVendorRate(item.vendor, item.produk, item.brand);
+      return sAcc + item.totalPcs * rate;
+    }, 0);
+    return acc + sjExp;
   }, 0);
 
   const totalActiveKasbon = vendors.reduce((acc, v) => acc + v.currentKasbon, 0);

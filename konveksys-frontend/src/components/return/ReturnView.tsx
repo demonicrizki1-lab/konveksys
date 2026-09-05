@@ -132,8 +132,8 @@ export const ReturnView: React.FC = () => {
         const firstSJ = brandSJs[0];
         setSelectedSJId(firstSJ.id);
         setBrand(firstSJ.brand);
-        setProduk(firstSJ.produk);
-        setVendor(firstSJ.vendor);
+        setProduk(firstSJ.produk || '');
+        setVendor(firstSJ.vendor || '');
       }
     }
   };
@@ -146,15 +146,15 @@ export const ReturnView: React.FC = () => {
       if (brandSJs.length > 0) {
         setSelectedSJId(brandSJs[0].id);
         setBrand(activeBrand);
-        setProduk(brandSJs[0].produk);
-        setVendor(brandSJs[0].vendor);
+        setProduk(brandSJs[0].produk || '');
+        setVendor(brandSJs[0].vendor || '');
       }
     } else {
       if (spkList.length > 0) {
         setSelectedSPKId(spkList[0].id);
         setBrand(spkList[0].brand);
-        setProduk(spkList[0].produk);
-        setVendor(spkList[0].vendor);
+        setProduk(spkList[0].produk || '');
+        setVendor(spkList[0].vendor || '');
       }
     }
     setKategoriCacat('JAHITAN');
@@ -170,8 +170,8 @@ export const ReturnView: React.FC = () => {
     const matched = spkList.find((s) => s.id === spkId);
     if (matched) {
       setBrand(matched.brand);
-      setProduk(matched.produk);
-      setVendor(matched.vendor);
+      setProduk(matched.produk || '');
+      setVendor(matched.vendor || '');
     }
   };
 
@@ -181,8 +181,8 @@ export const ReturnView: React.FC = () => {
     const matched = suratJalanList.find((sj) => sj.id === sjId);
     if (matched) {
       setBrand(matched.brand);
-      setProduk(matched.produk);
-      setVendor(matched.vendor);
+      setProduk(matched.produk || '');
+      setVendor(matched.vendor || '');
     }
   };
 

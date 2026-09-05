@@ -30,6 +30,7 @@ export const MarginAnalyticsView: React.FC = () => {
     vendors,
     getBuyerRates,
     getVendorRate,
+    getSuratJalanItems,
   } = useApp();
 
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL'); // 'ALL' or 'YYYY-MM'
@@ -65,76 +66,80 @@ export const MarginAnalyticsView: React.FC = () => {
 
   // Transform each Surat Jalan into full Margin Analytical Item
   const allMarginItems: MarginReportItem[] = useMemo(() => {
-    return suratJalanList.map((sj) => {
-      const matchedSpk = spkList.find((s) => s.id === sj.spkId || s.spkNumber === sj.spkId);
-      
-      // Fabric name lookup
-      let jenisKain = 'Kain Standar';
-      if (matchedSpk && matchedSpk.rollIds && matchedSpk.rollIds.length > 0) {
-        const matchedRolls = inboundRolls.filter((r) => matchedSpk.rollIds.includes(r.id));
-        if (matchedRolls.length > 0) {
-          const names = Array.from(new Set(matchedRolls.map((r) => r.jenisKain).filter(Boolean)));
-          jenisKain = names.join(', ');
+    const list: MarginReportItem[] = [];
+    suratJalanList.forEach((sj) => {
+      const sjItems = getSuratJalanItems(sj);
+      sjItems.forEach((it, idx) => {
+        const matchedSpk = spkList.find((s) => s.id === it.spkId || s.spkNumber === it.spkId);
+        
+        let jenisKain = it.jenisKain || 'Kain Standar';
+        if ((!jenisKain || jenisKain === 'Kain Standar') && matchedSpk && matchedSpk.rollIds && matchedSpk.rollIds.length > 0) {
+          const matchedRolls = inboundRolls.filter((r) => matchedSpk.rollIds.includes(r.id));
+          if (matchedRolls.length > 0) {
+            const names = Array.from(new Set(matchedRolls.map((r) => r.jenisKain).filter(Boolean)));
+            jenisKain = names.join(', ');
+          }
         }
-      }
 
-      // 1. Calculate Buyer Revenue
-      const buyerRates = getBuyerRates(sj.brand, sj.produk);
-      const qtySML = (sj.qtyDelivered.s || 0) + (sj.qtyDelivered.m || 0) + (sj.qtyDelivered.l || 0);
-      const qtyXL = (sj.qtyDelivered.xl || 0) + (sj.qtyDelivered.xxl || 0);
-      const qtyAnak4 = sj.qtyDelivered.anak4 || 0;
-      const qtyAnak6 = sj.qtyDelivered.anak6 || 0;
-      const qtyAnak8 = sj.qtyDelivered.anak8 || 0;
-      const qtyAnak10 = sj.qtyDelivered.anak10 || 0;
-      const qtyAnak12 = sj.qtyDelivered.anak12 || 0;
-      const qtyAnak14 = sj.qtyDelivered.anak14 || 0;
-      const qtyAnak16 = sj.qtyDelivered.anak16 || 0;
+        // 1. Calculate Buyer Revenue
+        const buyerRates = getBuyerRates(it.brand, it.produk);
+        const qtySML = (it.qtyDelivered.s || 0) + (it.qtyDelivered.m || 0) + (it.qtyDelivered.l || 0);
+        const qtyXL = (it.qtyDelivered.xl || 0) + (it.qtyDelivered.xxl || 0);
+        const qtyAnak4 = it.qtyDelivered.anak4 || 0;
+        const qtyAnak6 = it.qtyDelivered.anak6 || 0;
+        const qtyAnak8 = it.qtyDelivered.anak8 || 0;
+        const qtyAnak10 = it.qtyDelivered.anak10 || 0;
+        const qtyAnak12 = it.qtyDelivered.anak12 || 0;
+        const qtyAnak14 = it.qtyDelivered.anak14 || 0;
+        const qtyAnak16 = it.qtyDelivered.anak16 || 0;
 
-      const subSML = qtySML * buyerRates.rateSML;
-      const subXL = qtyXL * buyerRates.rateXL;
-      const subAnak4 = qtyAnak4 * buyerRates.rateAnak4;
-      const subAnak6 = qtyAnak6 * buyerRates.rateAnak6;
-      const subAnak8 = qtyAnak8 * buyerRates.rateAnak8;
-      const subAnak10 = qtyAnak10 * buyerRates.rateAnak10;
-      const subAnak12 = qtyAnak12 * buyerRates.rateAnak12;
-      const subAnak14 = qtyAnak14 * buyerRates.rateAnak14;
-      const subAnak16 = qtyAnak16 * buyerRates.rateAnak16;
+        const subSML = qtySML * buyerRates.rateSML;
+        const subXL = qtyXL * buyerRates.rateXL;
+        const subAnak4 = qtyAnak4 * buyerRates.rateAnak4;
+        const subAnak6 = qtyAnak6 * buyerRates.rateAnak6;
+        const subAnak8 = qtyAnak8 * buyerRates.rateAnak8;
+        const subAnak10 = qtyAnak10 * buyerRates.rateAnak10;
+        const subAnak12 = qtyAnak12 * buyerRates.rateAnak12;
+        const subAnak14 = qtyAnak14 * buyerRates.rateAnak14;
+        const subAnak16 = qtyAnak16 * buyerRates.rateAnak16;
 
-      const omzetBuyer = subSML + subXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        const omzetBuyer = subSML + subXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
 
-      // 2. Calculate Vendor CMT Cost
-      const vendorRate = getVendorRate(sj.vendor, sj.produk, sj.brand);
-      const biayaCmt = sj.totalPcs * vendorRate;
+        // 2. Calculate Vendor CMT Cost
+        const vendorRate = getVendorRate(it.vendor, it.produk, it.brand);
+        const biayaCmt = it.totalPcs * vendorRate;
 
-      // 3. Gross Profit & Margin Percentage
-      const labaBersih = Math.max(0, omzetBuyer - biayaCmt);
-      const marginPersen = omzetBuyer > 0 ? (labaBersih / omzetBuyer) * 100 : 0;
+        // 3. Gross Profit & Margin Percentage
+        const labaBersih = Math.max(0, omzetBuyer - biayaCmt);
+        const marginPersen = omzetBuyer > 0 ? (labaBersih / omzetBuyer) * 100 : 0;
 
-      let statusMargin: 'SEHAT' | 'MODERAT' | 'TIPIS' = 'SEHAT';
-      if (marginPersen < 15) {
-        statusMargin = 'TIPIS';
-      } else if (marginPersen < 30) {
-        statusMargin = 'MODERAT';
-      }
+        let statusMargin: 'SEHAT' | 'MODERAT' | 'TIPIS' = 'SEHAT';
+        if (marginPersen < 15) {
+          statusMargin = 'TIPIS';
+        } else if (marginPersen < 30) {
+          statusMargin = 'MODERAT';
+        }
 
-      return {
-        id: sj.id,
-        noSuratJalan: sj.noSuratJalan,
-        spkNumber: matchedSpk ? matchedSpk.spkNumber : sj.spkId || '-',
-        tanggal: sj.tanggal,
-        produk: sj.produk,
-        jenisKain,
-        brand: sj.brand,
-        vendor: sj.vendor,
-        totalPcs: sj.totalPcs,
-        omzetBuyer,
-        biayaCmt,
-        labaBersih,
-        marginPersen,
-        statusMargin,
-      };
+        list.push({
+          id: `${sj.id}-${it.spkItemId || idx}`,
+          noSuratJalan: sj.noSuratJalan,
+          spkNumber: matchedSpk ? matchedSpk.spkNumber : it.spkNumber || it.spkId || '-',
+          tanggal: sj.tanggal,
+          produk: it.produk,
+          jenisKain,
+          brand: it.brand,
+          vendor: it.vendor,
+          totalPcs: it.totalPcs,
+          omzetBuyer,
+          biayaCmt,
+          labaBersih,
+          marginPersen,
+          statusMargin,
+        });
+      });
     });
-  }, [suratJalanList, spkList, inboundRolls, getBuyerRates, getVendorRate]);
+    return list;
+  }, [suratJalanList, spkList, inboundRolls, getBuyerRates, getVendorRate, getSuratJalanItems]);
 
   // Filtered margin items based on controls
   const filteredItems = useMemo(() => {

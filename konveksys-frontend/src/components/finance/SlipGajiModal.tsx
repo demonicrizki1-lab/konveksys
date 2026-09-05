@@ -153,6 +153,9 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                         </td>
                         <td className="p-2">
                           <div className="font-bold text-slate-800">{item.produk}</div>
+                          {item.jenisKain && (
+                            <div className="text-[9px] text-slate-500 font-normal">{item.jenisKain}</div>
+                          )}
                           <span className="text-[10px] text-slate-500 font-medium">Brand: {item.brand}</span>
                         </td>
                         <td className="p-2 text-center font-bold text-slate-800">{item.pcs}</td>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { SuratJalan, SizeBreakdown } from '../../types';
+import { SuratJalan, SuratJalanItem, SizeBreakdown, SPKCutting } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { printIsolatedDocument } from '../../utils/printHelper';
 import {
   Truck,
   Plus,
@@ -13,18 +14,64 @@ import {
   Eye,
   ShieldCheck,
   Trash2,
+  Printer,
+  Package,
+  Layers,
+  Sparkles,
+  ArrowRight,
+  Check,
 } from 'lucide-react';
+
+interface ArticleOption {
+  id?: string;
+  produk: string;
+  vendor: string;
+}
+
+const emptySizeBreakdown = (): SizeBreakdown => ({
+  s: 0,
+  m: 0,
+  l: 0,
+  xl: 0,
+  xxl: 0,
+  anak4: 0,
+  anak6: 0,
+  anak8: 0,
+  anak10: 0,
+  anak12: 0,
+  anak14: 0,
+  anak16: 0,
+});
+
+const calculateTotalPcs = (sz: SizeBreakdown): number => {
+  return (
+    (sz.s || 0) +
+    (sz.m || 0) +
+    (sz.l || 0) +
+    (sz.xl || 0) +
+    (sz.xxl || 0) +
+    (sz.anak4 || 0) +
+    (sz.anak6 || 0) +
+    (sz.anak8 || 0) +
+    (sz.anak10 || 0) +
+    (sz.anak12 || 0) +
+    (sz.anak14 || 0) +
+    (sz.anak16 || 0)
+  );
+};
 
 export const OutboundView: React.FC = () => {
   const {
     suratJalanList,
     createSuratJalan,
     deleteSuratJalan,
+    getSuratJalanItems,
     spkList,
     getSPKRemainingQty,
     userRole,
     activeBrand,
     inboundRolls,
+    brands,
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,184 +79,287 @@ export const OutboundView: React.FC = () => {
 
   // Modal State for Create Surat Jalan
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedSPKId, setSelectedSPKId] = useState<string>('');
+  const [selectedBrand, setSelectedBrand] = useState<string>('CREADIVE');
   const [driverName, setDriverName] = useState('Pak Wardi');
   const [nomorKendaraan, setNomorKendaraan] = useState('D 1829 XYZ');
-  const [catatan, setCatatan] = useState('');
-  const [qtySend, setQtySend] = useState<SizeBreakdown>({
-    s: 0,
-    m: 0,
-    l: 0,
-    xl: 0,
-    xxl: 0,
-    anak4: 0,
-    anak6: 0,
-    anak8: 0,
-    anak10: 0,
-    anak12: 0,
-    anak14: 0,
-    anak16: 0,
-  });
+  const [tanggalKirim, setTanggalKirim] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [catatan, setCatatan] = useState('Pengiriman parsial harian');
 
+  // Multi-Item Draft List (Items currently in the cargo of this Surat Jalan)
+  const [draftItems, setDraftItems] = useState<SuratJalanItem[]>([]);
+
+  // Selected SPK in sub-form
+  const [selectedSPKId, setSelectedSPKId] = useState<string>('');
+  
+  // Selected Article within the SPK
+  const [selectedArticleName, setSelectedArticleName] = useState<string>('');
+  const [selectedArticleVendor, setSelectedArticleVendor] = useState<string>('');
+  const [selectedSpkItemId, setSelectedSpkItemId] = useState<string>('');
+  const [customJenisKain, setCustomJenisKain] = useState<string>('');
+  const [qtySend, setQtySend] = useState<SizeBreakdown>(emptySizeBreakdown());
+
+  // Modal State for View / Print Detail Surat Jalan
   const [selectedSJDetail, setSelectedSJDetail] = useState<SuratJalan | null>(null);
+  const printPaperRef = useRef<HTMLDivElement>(null);
 
-  // Helper functions for SPK Fabric info
-  const getSPKFabricName = (spk: (typeof spkList)[0]) => {
-    const matchedRolls = inboundRolls.filter((r) => spk.rollIds?.includes(r.id));
+  // Helper function for SPK Fabric info
+  const getSPKFabricName = (spk: SPKCutting) => {
+    if (!spk.rollIds || spk.rollIds.length === 0) return '';
+    const matchedRolls = inboundRolls.filter((r) => spk.rollIds.includes(r.id));
     if (matchedRolls.length === 0) return '';
     const names = Array.from(new Set(matchedRolls.map((r) => r.jenisKain).filter(Boolean)));
     return names.join(', ');
   };
 
-  const getSPKFabricDetail = (spk: (typeof spkList)[0]) => {
-    const matchedRolls = inboundRolls.filter((r) => spk.rollIds?.includes(r.id));
-    if (matchedRolls.length === 0) return 'Kain Standar';
-    const details = matchedRolls.map((r) => `${r.jenisKain} (${r.meterLength}m)`);
-    const uniqueDetails = Array.from(new Set(details));
-    return uniqueDetails.join(' + ');
+  // Helper to extract article options from an SPK (supports spk.items and spk.produk with "+")
+  const getArticlesForSPK = (spk?: SPKCutting): ArticleOption[] => {
+    if (!spk) return [];
+    if (spk.items && spk.items.length > 0) {
+      return spk.items.map((it) => ({
+        id: it.id,
+        produk: it.produk,
+        vendor: it.vendor || spk.vendor,
+      }));
+    }
+    if (spk.produk && spk.produk.includes('+')) {
+      return spk.produk
+        .split('+')
+        .map((p, idx) => ({
+          id: `part-${idx}`,
+          produk: p.trim(),
+          vendor: spk.vendor,
+        }))
+        .filter((p) => Boolean(p.produk));
+    }
+    return [
+      {
+        id: undefined,
+        produk: spk.produk,
+        vendor: spk.vendor,
+      },
+    ];
   };
 
-  // Active SPKs available for shipping
-  const activeSPKs = spkList.filter((s) => s.status !== 'COMPLETED');
+  // Active SPKs available for the selected brand
+  const activeSPKsForBrand = spkList.filter(
+    (s) => s.brand === selectedBrand && s.status !== 'COMPLETED'
+  );
 
-  // Selected SPK object & remaining calculation
-  const currentSPK = spkList.find((s) => s.id === selectedSPKId) || activeSPKs[0];
-  const remaining = currentSPK ? getSPKRemainingQty(currentSPK) : null;
+  const currentSPK = spkList.find((s) => s.id === selectedSPKId) || activeSPKsForBrand[0];
+  const availableArticles = getArticlesForSPK(currentSPK);
 
-  const totalSendingPcs =
-    qtySend.s +
-    qtySend.m +
-    qtySend.l +
-    qtySend.xl +
-    qtySend.xxl +
-    qtySend.anak4 +
-    qtySend.anak6 +
-    qtySend.anak8 +
-    qtySend.anak10 +
-    qtySend.anak12 +
-    qtySend.anak14 +
-    qtySend.anak16;
+  // Remaining and Target calculation for currently selected article
+  const currentRemaining = currentSPK
+    ? getSPKRemainingQty(currentSPK, selectedSpkItemId || selectedArticleName)
+    : null;
 
-  // Validation: Check if sending exceeds remaining
-  const isOverDelivering =
-    remaining &&
-    (qtySend.s > remaining.s ||
-      qtySend.m > remaining.m ||
-      qtySend.l > remaining.l ||
-      qtySend.xl > remaining.xl ||
-      qtySend.xxl > remaining.xxl ||
-      qtySend.anak4 > remaining.anak4 ||
-      qtySend.anak6 > remaining.anak6 ||
-      qtySend.anak8 > remaining.anak8 ||
-      qtySend.anak10 > remaining.anak10 ||
-      qtySend.anak12 > remaining.anak12 ||
-      qtySend.anak14 > remaining.anak14 ||
-      qtySend.anak16 > remaining.anak16);
+  const currentTargetCut = currentSPK?.items?.find(
+    (it) => it.id === selectedSpkItemId || it.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase()
+  )?.targetCutQty || currentSPK?.targetCutQty || null;
 
+  const currentDelivered = currentSPK?.items?.find(
+    (it) => it.id === selectedSpkItemId || it.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase()
+  )?.deliveredQty || currentSPK?.deliveredQty || null;
+
+  const currentSendingPcs = calculateTotalPcs(qtySend);
+
+  // Setup initial selection when changing SPK
+  const selectSPK = (spkId: string) => {
+    setSelectedSPKId(spkId);
+    const spk = spkList.find((s) => s.id === spkId);
+    const articles = getArticlesForSPK(spk);
+    if (articles.length > 0) {
+      setSelectedArticleName(articles[0].produk);
+      setSelectedArticleVendor(articles[0].vendor);
+      setSelectedSpkItemId(articles[0].id || '');
+    } else {
+      setSelectedArticleName(spk?.produk || '');
+      setSelectedArticleVendor(spk?.vendor || '');
+      setSelectedSpkItemId('');
+    }
+    if (spk) {
+      setCustomJenisKain(getSPKFabricName(spk) || 'Kain Standar');
+    }
+    setQtySend(emptySizeBreakdown());
+  };
+
+  // Setup initial selection when changing article
+  const selectArticle = (article: ArticleOption) => {
+    setSelectedArticleName(article.produk);
+    setSelectedArticleVendor(article.vendor);
+    setSelectedSpkItemId(article.id || '');
+    setQtySend(emptySizeBreakdown());
+  };
+
+  // Open Create Modal
+  const handleOpenCreate = () => {
+    const initialBrand = userRole === 'BRAND' ? activeBrand : 'CREADIVE';
+    setSelectedBrand(initialBrand);
+
+    const availableSpks = spkList.filter((s) => s.brand === initialBrand && s.status !== 'COMPLETED');
+    if (availableSpks.length > 0) {
+      selectSPK(availableSpks[0].id);
+    } else {
+      setSelectedSPKId('');
+      setSelectedArticleName('');
+      setSelectedArticleVendor('');
+      setSelectedSpkItemId('');
+      setCustomJenisKain('');
+    }
+
+    setDriverName('Pak Wardi');
+    setNomorKendaraan('D 1829 XYZ');
+    setTanggalKirim(new Date().toISOString().split('T')[0]);
+    setCatatan('Pengiriman parsial harian');
+    setDraftItems([]);
+    setQtySend(emptySizeBreakdown());
+    setIsCreateModalOpen(true);
+  };
+
+  // Change Brand in Modal
+  const handleBrandChange = (brand: string) => {
+    setSelectedBrand(brand);
+    const availableSpks = spkList.filter((s) => s.brand === brand && s.status !== 'COMPLETED');
+    if (availableSpks.length > 0) {
+      selectSPK(availableSpks[0].id);
+    } else {
+      setSelectedSPKId('');
+      setSelectedArticleName('');
+      setSelectedArticleVendor('');
+      setSelectedSpkItemId('');
+      setCustomJenisKain('');
+    }
+    setDraftItems([]);
+    setQtySend(emptySizeBreakdown());
+  };
+
+  // Add Item to Draft Cargo List
+  const handleAddItemToDraft = () => {
+    if (!currentSPK) {
+      alert('Silakan pilih SPK terlebih dahulu.');
+      return;
+    }
+
+    if (currentSendingPcs <= 0) {
+      alert(`Harap masukkan kuantiti minimal 1 pcs untuk artikel "${selectedArticleName}"!`);
+      return;
+    }
+
+    const newItem: SuratJalanItem = {
+      id: `draft-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      spkId: currentSPK.id,
+      spkNumber: currentSPK.spkNumber,
+      spkItemId: selectedSpkItemId || undefined,
+      brand: selectedBrand,
+      produk: selectedArticleName,
+      vendor: selectedArticleVendor || currentSPK.vendor,
+      jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
+      qtyDelivered: { ...qtySend },
+      totalPcs: currentSendingPcs,
+    };
+
+    setDraftItems((prev) => [...prev, newItem]);
+    setQtySend(emptySizeBreakdown());
+
+    // Auto-advance to next article if available in this SPK
+    const currentIdx = availableArticles.findIndex(
+      (a) => a.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase()
+    );
+    if (currentIdx !== -1 && currentIdx + 1 < availableArticles.length) {
+      const nextArt = availableArticles[currentIdx + 1];
+      selectArticle(nextArt);
+    }
+  };
+
+  // Remove Item from Draft Cargo List
+  const handleRemoveDraftItem = (index: number) => {
+    setDraftItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Total Pcs of All Draft Items
+  const grandTotalDraftPcs = draftItems.reduce((acc, item) => acc + item.totalPcs, 0);
+
+  // Filtered Surat Jalan list for table
   const filteredSJ = suratJalanList.filter((sj) => {
     const effectiveBrand = userRole === 'BRAND' ? activeBrand : brandFilter;
     const matchBrand = effectiveBrand === 'ALL' || sj.brand === effectiveBrand;
+    const items = getSuratJalanItems(sj);
+    const searchLow = searchTerm.toLowerCase();
+
     const matchSearch =
-      sj.noSuratJalan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sj.produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sj.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sj.driverName.toLowerCase().includes(searchTerm.toLowerCase());
+      sj.noSuratJalan.toLowerCase().includes(searchLow) ||
+      (sj.produk && sj.produk.toLowerCase().includes(searchLow)) ||
+      (sj.vendor && sj.vendor.toLowerCase().includes(searchLow)) ||
+      (sj.driverName && sj.driverName.toLowerCase().includes(searchLow)) ||
+      (sj.nomorKendaraan && sj.nomorKendaraan.toLowerCase().includes(searchLow)) ||
+      items.some(
+        (it) =>
+          it.produk.toLowerCase().includes(searchLow) ||
+          it.vendor.toLowerCase().includes(searchLow) ||
+          (it.jenisKain && it.jenisKain.toLowerCase().includes(searchLow))
+      );
 
     return matchBrand && matchSearch;
   });
 
-  const handleOpenCreate = () => {
-    if (activeSPKs.length === 0) {
-      alert('Tidak ada SPK aktif yang memiliki sisa barang di konveksi.');
-      return;
-    }
-    const defaultSPK = activeSPKs[0];
-    setSelectedSPKId(defaultSPK.id);
-    setQtySend({
-      s: 0,
-      m: 0,
-      l: 0,
-      xl: 0,
-      xxl: 0,
-      anak4: 0,
-      anak6: 0,
-      anak8: 0,
-      anak10: 0,
-      anak12: 0,
-      anak14: 0,
-      anak16: 0,
-    });
-    setCatatan('Pengiriman parsial harian');
-    setIsCreateModalOpen(true);
-  };
-
-  const handleSPKChange = (spkId: string) => {
-    setSelectedSPKId(spkId);
-    setQtySend({
-      s: 0,
-      m: 0,
-      l: 0,
-      xl: 0,
-      xxl: 0,
-      anak4: 0,
-      anak6: 0,
-      anak8: 0,
-      anak10: 0,
-      anak12: 0,
-      anak14: 0,
-      anak16: 0,
-    });
-  };
-
+  // Submit and Create Surat Jalan
   const handleSaveSJ = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentSPK) return;
 
-    if (totalSendingPcs <= 0) {
-      alert('Total kuantiti barang kirim harus lebih dari 0!');
+    let finalItems = [...draftItems];
+
+    // If no draft items yet, but user filled quantities in the current form, auto-add it
+    if (finalItems.length === 0 && currentSendingPcs > 0 && currentSPK) {
+      finalItems.push({
+        id: `draft-${Date.now()}`,
+        spkId: currentSPK.id,
+        spkNumber: currentSPK.spkNumber,
+        spkItemId: selectedSpkItemId || undefined,
+        brand: selectedBrand,
+        produk: selectedArticleName,
+        vendor: selectedArticleVendor || currentSPK.vendor,
+        jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
+        qtyDelivered: { ...qtySend },
+        totalPcs: currentSendingPcs,
+      });
+    }
+
+    if (finalItems.length === 0) {
+      alert('Surat Jalan harus memuat minimal 1 artikel produk. Masukkan kuantiti ukuran lalu klik "+ Tambahkan Artikel Ini ke Surat Jalan".');
       return;
     }
 
+    const firstItem = finalItems[0];
     const payload = {
-      spkId: currentSPK.id,
-      brand: currentSPK.brand,
-      produk: currentSPK.produk,
-      vendor: currentSPK.vendor,
-      tanggal: new Date().toISOString().split('T')[0],
-      qtyDelivered: { ...qtySend },
-      totalPcs: totalSendingPcs,
+      brand: selectedBrand,
+      produk: finalItems.map((i) => i.produk).join(', '),
+      vendor: Array.from(new Set(finalItems.map((i) => i.vendor))).join(', '),
+      tanggal: tanggalKirim,
+      items: finalItems,
+      totalPcs: finalItems.reduce((acc, item) => acc + item.totalPcs, 0),
       driverName,
       nomorKendaraan,
       catatan,
+      spkId: firstItem?.spkId,
+      spkItemId: firstItem?.spkItemId,
+      jenisKain: finalItems.map((i) => i.jenisKain).filter(Boolean).join(', '),
+      qtyDelivered: firstItem?.qtyDelivered,
     };
 
-    // Langsung tutup modal dan reset angka kirim seketika agar tidak ada validasi ulang pada sisa 0
     setIsCreateModalOpen(false);
-    setQtySend({
-      s: 0,
-      m: 0,
-      l: 0,
-      xl: 0,
-      xxl: 0,
-      anak4: 0,
-      anak6: 0,
-      anak8: 0,
-      anak10: 0,
-      anak12: 0,
-      anak14: 0,
-      anak16: 0,
-    });
+    setDraftItems([]);
 
     const result = await createSuratJalan(payload);
-
     if (!result.success) {
       alert(result.message || 'Gagal menyimpan Surat Jalan');
       setIsCreateModalOpen(true);
     }
   };
 
+  // Delete Surat Jalan
   const handleDeleteSJ = async (sj: SuratJalan) => {
-    const confirmMsg = `Apakah Anda yakin ingin menghapus Surat Jalan ${sj.noSuratJalan} (${sj.produk} - ${sj.totalPcs} Pcs)?\n\nKuantiti terkirim pada SPK terkait akan otomatis dikembalikan (revert).`;
+    const items = getSuratJalanItems(sj);
+    const confirmMsg = `Apakah Anda yakin ingin menghapus Surat Jalan ${sj.noSuratJalan} (${items.length} Artikel - ${sj.totalPcs} Pcs)?\n\nKuantiti terkirim pada semua SPK terkait akan otomatis dikembalikan (revert).`;
     if (!window.confirm(confirmMsg)) return;
 
     const res = await deleteSuratJalan(sj.id);
@@ -218,20 +368,42 @@ export const OutboundView: React.FC = () => {
     }
   };
 
+  // Print Isolated Document
+  const handlePrintSJ = () => {
+    if (!printPaperRef.current || !selectedSJDetail) return;
+    const safeSJNo = (selectedSJDetail.noSuratJalan || 'SJ').replace(/[/\\?%*:|"<>]/g, '-');
+    const docTitle = `SuratJalan_${selectedSJDetail.brand}_${safeSJNo}`;
+    printIsolatedDocument(printPaperRef.current, docTitle);
+  };
+
+  const isOverDelivering =
+    currentRemaining &&
+    (qtySend.s > currentRemaining.s ||
+      qtySend.m > currentRemaining.m ||
+      qtySend.l > currentRemaining.l ||
+      qtySend.xl > currentRemaining.xl ||
+      qtySend.xxl > currentRemaining.xxl ||
+      qtySend.anak4 > currentRemaining.anak4 ||
+      qtySend.anak6 > currentRemaining.anak6 ||
+      qtySend.anak8 > currentRemaining.anak8 ||
+      qtySend.anak10 > currentRemaining.anak10 ||
+      qtySend.anak12 > currentRemaining.anak12 ||
+      qtySend.anak14 > currentRemaining.anak14 ||
+      qtySend.anak16 > currentRemaining.anak16);
+
   return (
     <div className="space-y-6">
-      
       {/* Header Banner */}
       <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg mb-2 border border-indigo-100">
               <Truck className="w-3.5 h-3.5" />
-              Outbound Surat Jalan
+              Outbound Surat Jalan Multi-Item
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Pengiriman Barang (Surat Jalan)</h1>
             <p className="text-slate-500 text-xs mt-1">
-              Pencatatan pengiriman parsial harian dari mitra penjahit. Dilengkapi validasi *auto-deduct* untuk mencegah *over-delivery*.
+              Pencatatan pengiriman multi-artikel dalam 1 armada/trip dengan keterangan bahan kain lengkap. Dilengkapi validasi *auto-deduct*.
             </p>
           </div>
 
@@ -252,7 +424,7 @@ export const OutboundView: React.FC = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Cari no surat jalan, produk, driver, atau vendor..."
+              placeholder="Cari no surat jalan, produk, jenis kain, driver, atau vendor..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-base outline-none"
@@ -267,10 +439,11 @@ export const OutboundView: React.FC = () => {
                 className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-base outline-none"
               >
                 <option value="ALL">Semua Brand</option>
-                <option value="GREYWOLF">GREYWOLF</option>
-                <option value="CITA-CITA">CITA-CITA</option>
-                <option value="CREADIVE">CREADIVE</option>
-                <option value="JENAKA KIDS">JENAKA KIDS</option>
+                {brands.map((b) => (
+                  <option key={b.id} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
               </select>
             </div>
           )}
@@ -281,10 +454,9 @@ export const OutboundView: React.FC = () => {
       <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
-            
             Riwayat Surat Jalan Outbound ({filteredSJ.length} Kiriman)
           </h3>
-          <span className="text-[11px] text-slate-400">Tersinkronisasi ke modul Finance</span>
+          <span className="text-[11px] text-slate-400">Tersinkronisasi ke modul Finance & Invoice</span>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -293,13 +465,13 @@ export const OutboundView: React.FC = () => {
               <tr>
                 <th className="p-3.5">No Surat Jalan</th>
                 <th className="p-3.5">Brand</th>
-                <th className="p-3.5">Nama Produk</th>
+                <th className="p-3.5">Rincian Artikel & Bahan Kain</th>
                 <th className="p-3.5">Vendor Penjahit</th>
-                <th className="p-3.5">Total Pcs</th>
+                <th className="p-3.5">Total Muatan</th>
                 <th className="p-3.5">Driver & No Polisi</th>
                 <th className="p-3.5">Tgl Kirim</th>
                 <th className="p-3.5">Status</th>
-                <th className="p-3.5 text-right">Rincian</th>
+                <th className="p-3.5 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -310,542 +482,718 @@ export const OutboundView: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredSJ.map((sj) => (
-                  <tr key={sj.id} className="hover:bg-slate-50 transition">
-                    <td className="p-3.5 font-mono font-bold text-indigo-600">{sj.noSuratJalan}</td>
-                    <td className="p-3.5">
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-md text-[10px]">
-                        {sj.brand}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-semibold text-slate-900">{sj.produk}</td>
-                    <td className="p-3.5 font-bold text-slate-700">{sj.vendor}</td>
-                    <td className="p-3.5 font-bold text-slate-900 text-sm">{sj.totalPcs} Pcs</td>
-                    <td className="p-3.5 text-slate-500">
-                      <div>{sj.driverName}</div>
-                      <span className="text-[10px] text-slate-400 font-mono">{sj.nomorKendaraan}</span>
-                    </td>
-                    <td className="p-3.5 text-slate-500 font-medium">{formatDateIndo(sj.tanggal)}</td>
-                    <td className="p-3.5">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[10px] border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3" /> {sj.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-right space-x-1 whitespace-nowrap">
-                      <button
-                        onClick={() => setSelectedSJDetail(sj)}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition btn-press inline-flex items-center align-middle"
-                        title="Lihat Detail Size"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      {userRole === 'ADMIN' && (
+                filteredSJ.map((sj) => {
+                  const items = getSuratJalanItems(sj);
+                  const uniqueVendors = Array.from(new Set(items.map((i) => i.vendor).filter(Boolean)));
+
+                  return (
+                    <tr key={sj.id} className="hover:bg-slate-50 transition">
+                      <td className="p-3.5 font-mono font-bold text-indigo-600 align-top">
+                        {sj.noSuratJalan}
+                      </td>
+                      <td className="p-3.5 align-top">
+                        <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-md text-[10px]">
+                          {sj.brand}
+                        </span>
+                      </td>
+                      <td className="p-3.5 align-top space-y-1.5 min-w-[240px]">
+                        {items.map((it, idx) => (
+                          <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-0.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-bold text-slate-900">{it.produk}</span>
+                              <span className="font-bold text-indigo-600 shrink-0">{it.totalPcs} Pcs</span>
+                            </div>
+                            {it.jenisKain && (
+                              <div className="text-[10px] text-slate-500 flex items-center gap-1 font-medium">
+                                <span>🧵</span>
+                                <span className="truncate">{it.jenisKain}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </td>
+                      <td className="p-3.5 font-bold text-slate-700 align-top">
+                        {uniqueVendors.join(', ') || sj.vendor || '-'}
+                      </td>
+                      <td className="p-3.5 align-top">
+                        <div className="font-bold text-slate-900 text-sm">{sj.totalPcs} Pcs</div>
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          {items.length} Artikel
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-slate-500 align-top">
+                        <div className="font-semibold text-slate-800">{sj.driverName}</div>
+                        <span className="text-[10px] text-slate-400 font-mono">{sj.nomorKendaraan}</span>
+                      </td>
+                      <td className="p-3.5 text-slate-500 font-medium align-top whitespace-nowrap">
+                        {formatDateIndo(sj.tanggal)}
+                      </td>
+                      <td className="p-3.5 align-top">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[10px] border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3" /> {sj.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-right space-x-1 whitespace-nowrap align-top">
                         <button
-                          onClick={() => handleDeleteSJ(sj)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition btn-press inline-flex items-center align-middle"
-                          title="Hapus Surat Jalan ini"
+                          onClick={() => setSelectedSJDetail(sj)}
+                          className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition btn-press inline-flex items-center align-middle"
+                          title="Lihat & Cetak Surat Jalan"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                        {userRole === 'ADMIN' && (
+                          <button
+                            onClick={() => handleDeleteSJ(sj)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition btn-press inline-flex items-center align-middle"
+                            title="Hapus Surat Jalan ini"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* MODAL: Terbitkan Surat Jalan Baru (Auto-Deduct) */}
-      {isCreateModalOpen && currentSPK && remaining && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-lg border border-slate-100 space-y-5 animate-slideUp">
+      {/* MODAL: Terbitkan Surat Jalan Baru (Multi-Item Cargo Builder) */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-5 sm:p-6 max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 space-y-4 animate-slideUp">
+            
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Terbitkan Surat Jalan (Outbound)</h3>
-                <p className="text-[11px] text-slate-400">Otomatis mengurangi sisa kuota potong di SPK</p>
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-indigo-600" />
+                  Terbitkan Surat Jalan (Outbound Multi-Artikel)
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Pilih SPK/Kain, tentukan artikel produk yang dikirim, isi ukuran, lalu tambahkan ke muatan Surat Jalan
+                </p>
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveSJ} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              
+              {/* Header Info: Brand, Driver, Plat, Tanggal */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <div>
-                  <label className="block font-bold text-slate-600 mb-1">Pilih SPK yang Dikirim:</label>
+                  <label className="block font-bold text-slate-700 mb-1">Brand Penerima:</label>
                   <select
-                    value={selectedSPKId}
-                    onChange={(e) => handleSPKChange(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none font-mono text-slate-800"
+                    value={selectedBrand}
+                    onChange={(e) => handleBrandChange(e.target.value)}
+                    className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-800 outline-none"
                   >
-                    {activeSPKs.map((spk) => {
-                      const fabric = getSPKFabricName(spk);
-                      const fabricLabel = fabric ? ` • ${fabric}` : '';
-                      return (
-                        <option key={spk.id} value={spk.id}>
-                          {spk.spkNumber} - {spk.brand} ({spk.produk}{fabricLabel})
-                        </option>
-                      );
-                    })}
+                    {brands.map((b) => (
+                      <option key={b.id} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-600 mb-1">Vendor & Brand:</label>
-                  <div className="p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-700 truncate">
-                    {currentSPK.vendor} &rarr; {currentSPK.brand}
-                  </div>
-                </div>
-              </div>
-
-              {/* Detail Material Kain & Spesifikasi SPK Terpilih */}
-              <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">🧵</span>
-                  <div>
-                    <span className="text-[10px] text-indigo-600 font-bold uppercase block">Material Kain SPK:</span>
-                    <strong className="text-slate-900 font-bold text-xs">{getSPKFabricDetail(currentSPK)}</strong>
-                  </div>
-                </div>
-                <div className="text-left sm:text-right">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Artikel & Vendor:</span>
-                  <span className="text-indigo-900 font-bold text-xs">{currentSPK.produk} <span className="text-slate-400 font-normal">(@ {currentSPK.vendor})</span></span>
-                </div>
-              </div>
-
-              {/* Real-Time Auto Deduct Checker */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                {/* SPK Overall Progress Summary Card */}
-                <div className="grid grid-cols-3 gap-2 text-center p-2.5 bg-white border border-slate-200 rounded-xl text-xs">
-                  <div>
-                    <span className="text-slate-400 block text-[10px] font-medium">Target SPK Awal</span>
-                    <span className="text-slate-900 font-bold">
-                      {currentSPK.targetCutQty.s +
-                        currentSPK.targetCutQty.m +
-                        currentSPK.targetCutQty.l +
-                        currentSPK.targetCutQty.xl +
-                        currentSPK.targetCutQty.xxl +
-                        currentSPK.targetCutQty.anak4 +
-                        currentSPK.targetCutQty.anak6 +
-                        currentSPK.targetCutQty.anak8 +
-                        currentSPK.targetCutQty.anak10 +
-                        currentSPK.targetCutQty.anak12 +
-                        currentSPK.targetCutQty.anak14 +
-                        currentSPK.targetCutQty.anak16}{' '}
-                      Pcs
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] font-medium">Sudah Terkirim (SJ Lain)</span>
-                    <span className="text-indigo-600 font-bold">
-                      {currentSPK.deliveredQty.s +
-                        currentSPK.deliveredQty.m +
-                        currentSPK.deliveredQty.l +
-                        currentSPK.deliveredQty.xl +
-                        currentSPK.deliveredQty.xxl +
-                        currentSPK.deliveredQty.anak4 +
-                        currentSPK.deliveredQty.anak6 +
-                        currentSPK.deliveredQty.anak8 +
-                        currentSPK.deliveredQty.anak10 +
-                        currentSPK.deliveredQty.anak12 +
-                        currentSPK.deliveredQty.anak14 +
-                        currentSPK.deliveredQty.anak16}{' '}
-                      Pcs
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] font-medium">Sisa Belum Dikirim</span>
-                    <span className="text-emerald-700 font-bold">{remaining.totalRemaining} Pcs</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    Kuantitas Kirim per Size (Auto-Deduct Validator)
-                  </span>
-                  <span className="font-bold text-slate-900 text-sm">Total Kirim: {totalSendingPcs} Pcs</span>
-                </div>
-
-                {isOverDelivering && (
-                  <div className="bg-amber-50 border border-amber-300 text-amber-950 p-3.5 rounded-xl flex items-center gap-2.5 font-medium text-xs">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-                    <span>
-                      <strong className="font-bold text-amber-900">Perhatian (Over-Delivery):</strong> Kuantitas kirim pada beberapa size melebihi sisa kuota potong SPK yang belum dikirim. Surat Jalan tetap dapat diterbitkan dan status SPK otomatis diset ke <strong>OVER_DELIVERY</strong>.
-                    </span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size S (Target {currentSPK.targetCutQty.s}):</span>
-                      <span className={`font-bold ${qtySend.s > remaining.s ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.s}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.s}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, s: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.s > remaining.s ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size M (Target {currentSPK.targetCutQty.m}):</span>
-                      <span className={`font-bold ${qtySend.m > remaining.m ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.m}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.m}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, m: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.m > remaining.m ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size L (Target {currentSPK.targetCutQty.l}):</span>
-                      <span className={`font-bold ${qtySend.l > remaining.l ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.l}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.l}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, l: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.l > remaining.l ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size XL (Target {currentSPK.targetCutQty.xl}):</span>
-                      <span className={`font-bold ${qtySend.xl > remaining.xl ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.xl}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.xl}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, xl: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.xl > remaining.xl ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Size 2XL (Target {currentSPK.targetCutQty.xxl}):</span>
-                      <span className={`font-bold ${qtySend.xxl > remaining.xxl ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.xxl}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.xxl}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, xxl: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.xxl > remaining.xxl ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  {/* Anak Sizes */}
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 4 (Target {currentSPK.targetCutQty.anak4}):</span>
-                      <span className={`font-bold ${qtySend.anak4 > remaining.anak4 ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.anak4}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.anak4}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, anak4: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.anak4 > remaining.anak4 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 6 (Target {currentSPK.targetCutQty.anak6}):</span>
-                      <span className={`font-bold ${qtySend.anak6 > remaining.anak6 ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.anak6}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.anak6}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, anak6: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.anak6 > remaining.anak6 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 8 (Target {currentSPK.targetCutQty.anak8}):</span>
-                      <span className={`font-bold ${qtySend.anak8 > remaining.anak8 ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.anak8}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.anak8}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, anak8: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.anak8 > remaining.anak8 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 10 (Target {currentSPK.targetCutQty.anak10}):</span>
-                      <span className={`font-bold ${qtySend.anak10 > remaining.anak10 ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.anak10}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.anak10}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, anak10: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.anak10 > remaining.anak10 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 12 (Target {currentSPK.targetCutQty.anak12}):</span>
-                      <span className={`font-bold ${qtySend.anak12 > remaining.anak12 ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.anak12}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.anak12}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, anak12: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.anak12 > remaining.anak12 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 14 (Target {currentSPK.targetCutQty.anak14}):</span>
-                      <span className={`font-bold ${qtySend.anak14 > remaining.anak14 ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.anak14}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.anak14}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, anak14: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.anak14 > remaining.anak14 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-slate-500 mb-1">
-                      <span>Anak 16 (Target {currentSPK.targetCutQty.anak16}):</span>
-                      <span className={`font-bold ${qtySend.anak16 > remaining.anak16 ? 'text-amber-600' : 'text-indigo-600'}`}>
-                        Sisa {remaining.anak16}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      value={qtySend.anak16}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setQtySend({ ...qtySend, anak16: Number(e.target.value) || 0 })}
-                      className={`w-full p-2 border rounded-xl font-bold text-center outline-none ${
-                        qtySend.anak16 > remaining.anak16 ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-white border-slate-200 focus:border-indigo-400'
-                      }`}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Nama Driver / Kurir:</label>
+                  <label className="block font-bold text-slate-700 mb-1">Nama Driver / Kurir:</label>
                   <input
                     type="text"
                     value={driverName}
                     onChange={(e) => setDriverName(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
+                    className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-800 outline-none"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-600 mb-1">Nomor Polisi Kendaraan:</label>
+                  <label className="block font-bold text-slate-700 mb-1">No Polisi Kendaraan:</label>
                   <input
                     type="text"
                     value={nomorKendaraan}
                     onChange={(e) => setNomorKendaraan(e.target.value.toUpperCase())}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold outline-none uppercase"
+                    className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono font-bold text-slate-800 outline-none uppercase"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tanggal Pengiriman:</label>
+                  <input
+                    type="date"
+                    value={tanggalKirim}
+                    onChange={(e) => setTanggalKirim(e.target.value)}
+                    className="w-full p-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-800 outline-none"
                     required
                   />
                 </div>
               </div>
 
+              {/* SECTION: Daftar Muatan Surat Jalan Ini */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                    <Package className="w-4 h-4 text-indigo-600" />
+                    Daftar Muatan Surat Jalan Ini ({draftItems.length} Artikel Siap Kirim):
+                  </span>
+                  <span className="font-bold text-indigo-600 text-sm">
+                    Total Muatan: {grandTotalDraftPcs} Pcs
+                  </span>
+                </div>
+
+                {draftItems.length === 0 ? (
+                  <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-slate-400">
+                    Belum ada artikel yang ditambahkan. Silakan pilih SPK & artikel di bawah, isi kuantiti size, lalu klik <strong>"+ Tambahkan Artikel Ini ke Surat Jalan"</strong>.
+                  </div>
+                ) : (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white">
+                    {draftItems.map((item, idx) => (
+                      <div key={item.id || idx} className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50/60 transition">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] border border-indigo-100">
+                              Artikel {idx + 1}
+                            </span>
+                            <span className="font-mono text-[10px] text-slate-400 font-bold">
+                              [{item.spkNumber}]
+                            </span>
+                            <strong className="font-bold text-slate-900 text-xs">{item.produk}</strong>
+                            <span className="text-slate-500 font-medium text-[11px]">(@ {item.vendor})</span>
+                          </div>
+                          {item.jenisKain && (
+                            <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                              <span>🧵</span>
+                              <span>{item.jenisKain}</span>
+                            </div>
+                          )}
+                          <div className="text-[10px] text-slate-500 flex flex-wrap gap-1 pt-0.5">
+                            {Object.entries(item.qtyDelivered).map(([sz, qty]) => {
+                              if (qty === 0) return null;
+                              return (
+                                <span key={sz} className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold">
+                                  {sz.toUpperCase()}: {qty}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <strong className="text-sm font-bold text-indigo-600 block">
+                              {item.totalPcs} Pcs
+                            </strong>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDraftItem(idx)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                            title="Hapus artikel ini dari Surat Jalan"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION: Form Pemilih SPK, Artikel Produk, dan Size Matrix */}
+              <div className="p-4 bg-indigo-50/50 border border-indigo-200 rounded-2xl space-y-3.5">
+                <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+                  <span className="font-bold text-indigo-950 text-xs flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-indigo-600" />
+                    Pilih & Muat Artikel dari Kain SPK
+                  </span>
+                  <span className="text-[11px] text-indigo-600 font-bold">
+                    {activeSPKsForBrand.length} SPK Aktif ({selectedBrand})
+                  </span>
+                </div>
+
+                {activeSPKsForBrand.length === 0 ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs">
+                    Tidak ada SPK aktif untuk Brand <strong>{selectedBrand}</strong>. Silakan buat SPK baru terlebih dahulu.
+                  </div>
+                ) : (
+                  <>
+                    {/* SPK Selector */}
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        1. Pilih SPK Sumber / Batch Kain:
+                      </label>
+                      <select
+                        value={selectedSPKId}
+                        onChange={(e) => selectSPK(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold font-mono text-slate-800 outline-none text-xs"
+                      >
+                        {activeSPKsForBrand.map((spk) => {
+                          const fabric = getSPKFabricName(spk);
+                          const fabricLabel = fabric ? ` • ${fabric}` : '';
+                          const multiLabel =
+                            spk.items && spk.items.length > 1
+                              ? ` [${spk.items.length} Artikel Combo]`
+                              : spk.produk.includes('+')
+                              ? ' [Artikel Combo]'
+                              : '';
+                          return (
+                            <option key={spk.id} value={spk.id}>
+                              {spk.spkNumber} - {spk.produk}
+                              {fabricLabel}
+                              {multiLabel}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    {/* Article Selector (Ketika 1 kain menghasilkan > 1 produk, user dapat memilih artikel mana yang dikirim sekarang) */}
+                    {availableArticles.length > 1 && (
+                      <div className="p-3 bg-white rounded-xl border border-indigo-100 space-y-2">
+                        <label className="font-bold text-indigo-950 text-xs block">
+                          2. Pilih Artikel yang Dikirim Sekarang (Kain ini menghasilkan {availableArticles.length} produk):
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {availableArticles.map((art) => {
+                            const isSelected =
+                              art.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase();
+                            const rem = currentSPK
+                              ? getSPKRemainingQty(currentSPK, art.id || art.produk)
+                              : null;
+
+                            return (
+                              <button
+                                key={art.id || art.produk}
+                                type="button"
+                                onClick={() => selectArticle(art)}
+                                className={`p-2.5 rounded-xl text-left border transition text-xs font-bold flex items-center justify-between gap-2 cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-300'
+                                    : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-indigo-50/50 hover:border-indigo-200'
+                                }`}
+                              >
+                                <div className="truncate">
+                                  <div className="truncate">{art.produk}</div>
+                                  <div className={`text-[10px] font-normal ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                    Vendor: {art.vendor}
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  {rem && (
+                                    <span className={`text-[10px] font-bold block ${isSelected ? 'text-indigo-100' : 'text-emerald-700'}`}>
+                                      Sisa: {rem.totalRemaining} pcs
+                                    </span>
+                                  )}
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-white inline-block mt-0.5" />}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Article & Fabric Metadata */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-3 rounded-xl border border-slate-200">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Artikel Terpilih:</span>
+                        <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5 mt-0.5">
+                          <span>👕</span>
+                          <span>{selectedArticleName || currentSPK?.produk}</span>
+                          <span className="text-slate-400 font-normal text-xs">(@ {selectedArticleVendor || currentSPK?.vendor})</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Keterangan Bahan Kain:</span>
+                        <input
+                          type="text"
+                          value={customJenisKain}
+                          onChange={(e) => setCustomJenisKain(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 p-1.5 rounded-lg font-bold text-slate-800 outline-none text-xs mt-0.5"
+                          placeholder="Contoh: Poly Micro Emerald / Cotton 24s"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Sisa & Target Stats Card */}
+                    {currentSPK && currentRemaining && (
+                      <div className="grid grid-cols-3 gap-2 text-center p-2.5 bg-white border border-slate-200 rounded-xl text-xs">
+                        <div>
+                          <span className="text-slate-400 block text-[10px] font-medium">Target Potong Artikel</span>
+                          <span className="text-slate-900 font-bold">
+                            {currentTargetCut
+                              ? Object.values(currentTargetCut).reduce((a, b) => a + b, 0)
+                              : 0}{' '}
+                            Pcs
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px] font-medium">Sudah Terkirim</span>
+                          <span className="text-indigo-600 font-bold">
+                            {currentDelivered
+                              ? Object.values(currentDelivered).reduce((a, b) => a + b, 0)
+                              : 0}{' '}
+                            Pcs
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px] font-medium">Sisa Belum Kirim</span>
+                          <span className="text-emerald-700 font-bold">
+                            {currentRemaining.totalRemaining} Pcs
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Over-Delivery Alert */}
+                    {isOverDelivering && (
+                      <div className="bg-amber-50 border border-amber-300 text-amber-950 p-2.5 rounded-xl flex items-center gap-2 font-medium text-[11px]">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>
+                          <strong>Over-Delivery:</strong> Kuantitas kirim pada ukuran tertentu melebihi sisa target potong artikel ini.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Size Inputs Grid */}
+                    <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="font-bold text-slate-800 text-xs">
+                          3. Masukkan Kuantitas Ukuran untuk Artikel "{selectedArticleName}":
+                        </span>
+                        <span className="font-bold text-indigo-600 text-xs">
+                          Subtotal Artikel Ini: {currentSendingPcs} Pcs
+                        </span>
+                      </div>
+
+                      {/* Ukuran Dewasa */}
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                          Ukuran Dewasa (S - XXL)
+                        </div>
+                        <div className="grid grid-cols-5 gap-2">
+                          {(['s', 'm', 'l', 'xl', 'xxl'] as (keyof SizeBreakdown)[]).map((sz) => {
+                            const rem = currentRemaining?.[sz] || 0;
+                            const val = qtySend[sz] || 0;
+                            const isSizeOver = val > rem;
+
+                            return (
+                              <div key={sz} className="space-y-1">
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="uppercase font-bold text-slate-700">Size {sz}</span>
+                                  <span className={`font-semibold ${isSizeOver ? 'text-amber-600' : 'text-slate-400'}`}>
+                                    Sisa {rem}
+                                  </span>
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={val === 0 ? '' : val}
+                                  placeholder="0"
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) =>
+                                    setQtySend({
+                                      ...qtySend,
+                                      [sz]: Number(e.target.value) || 0,
+                                    })
+                                  }
+                                  className={`w-full p-2 border rounded-lg font-bold text-center outline-none text-xs transition ${
+                                    isSizeOver
+                                      ? 'bg-amber-50 border-amber-400 text-amber-950'
+                                      : val > 0
+                                      ? 'bg-indigo-50/80 border-indigo-400 text-indigo-900 font-extrabold'
+                                      : 'bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-400 text-slate-800'
+                                  }`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Ukuran Anak */}
+                      <div className="pt-2 border-t border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                          Ukuran Anak (Size 4 - 16)
+                        </div>
+                        <div className="grid grid-cols-7 gap-1.5">
+                          {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                            const rem = currentRemaining?.[sz] || 0;
+                            const val = qtySend[sz] || 0;
+                            const isSizeOver = val > rem;
+
+                            return (
+                              <div key={sz} className="space-y-1">
+                                <div className="text-[9px] text-center font-bold text-slate-600 truncate">
+                                  {sz.replace('anak', 'A')}
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={val === 0 ? '' : val}
+                                  placeholder="0"
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) =>
+                                    setQtySend({
+                                      ...qtySend,
+                                      [sz]: Number(e.target.value) || 0,
+                                    })
+                                  }
+                                  className={`w-full p-1.5 border rounded-lg font-bold text-center outline-none text-xs transition ${
+                                    isSizeOver
+                                      ? 'bg-amber-50 border-amber-400 text-amber-950'
+                                      : val > 0
+                                      ? 'bg-indigo-50/80 border-indigo-400 text-indigo-900 font-extrabold'
+                                      : 'bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-400 text-slate-800'
+                                  }`}
+                                />
+                                <div className="text-[9px] text-center text-slate-400">
+                                  Sisa {rem}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Tombol Tambahkan Artikel Ini ke Surat Jalan */}
+                      <div className="flex justify-end pt-1">
+                        <button
+                          type="button"
+                          onClick={handleAddItemToDraft}
+                          disabled={currentSendingPcs <= 0}
+                          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition ${
+                            currentSendingPcs <= 0
+                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/25 cursor-pointer'
+                          }`}
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>+ Tambahkan Artikel "{selectedArticleName}" ({currentSendingPcs} Pcs) ke Surat Jalan</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Catatan Keseluruhan */}
               <div>
-                <label className="block font-bold text-slate-600 mb-1">Catatan Pengiriman:</label>
+                <label className="block font-bold text-slate-700 mb-1">Catatan Pengiriman:</label>
                 <input
                   type="text"
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium outline-none"
+                  placeholder="Catatan pengiriman untuk driver atau penerima brand..."
                 />
               </div>
 
-              <div className="flex gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={totalSendingPcs <= 0}
-                  className={`flex-1 py-2.5 text-white font-bold rounded-xl transition ${
-                    totalSendingPcs <= 0
-                      ? 'bg-slate-300 cursor-not-allowed'
-                      : 'bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/30 cursor-pointer'
-                  }`}
-                >
-                  {isOverDelivering ? 'Terbitkan Surat Jalan (Over-Delivery)' : 'Terbitkan Surat Jalan'}
-                </button>
+              {/* Bottom Sticky Submit Bar */}
+              <div className="bg-slate-900 text-white p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Ringkasan Surat Jalan</div>
+                  <div className="text-base font-bold text-white flex items-center gap-2">
+                    <span>Total Muatan: {grandTotalDraftPcs > 0 ? grandTotalDraftPcs : currentSendingPcs} Pcs</span>
+                    <span className="text-slate-400 text-xs font-normal">
+                      ({draftItems.length > 0 ? draftItems.length : currentSendingPcs > 0 ? 1 : 0} Artikel)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={draftItems.length === 0 && currentSendingPcs <= 0}
+                    className={`px-5 py-2.5 text-white font-bold rounded-xl transition shadow-md ${
+                      draftItems.length === 0 && currentSendingPcs <= 0
+                        ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                        : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30 cursor-pointer'
+                    }`}
+                  >
+                    Terbitkan Surat Jalan ({draftItems.length > 0 ? draftItems.length : 1} Artikel • {grandTotalDraftPcs > 0 ? grandTotalDraftPcs : currentSendingPcs} Pcs)
+                  </button>
+                </div>
               </div>
+
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL: Detail Surat Jalan */}
+      {/* MODAL: Detail & Cetak Surat Jalan Resmi (Printable Isolated Paper) */}
       {selectedSJDetail && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-lg border border-slate-100 space-y-5 animate-slideUp">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">{selectedSJDetail.noSuratJalan}</h3>
-                <span className="text-xs text-slate-500">{selectedSJDetail.brand} • {selectedSJDetail.produk}</span>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+          <div className="bg-slate-100 rounded-2xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-300 overflow-hidden animate-slideUp">
+            {/* Sticky Header Toolbar */}
+            <div className="bg-white px-5 py-3.5 border-b border-slate-200 flex items-center justify-between shrink-0 z-30 shadow-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span>Surat Jalan Pengiriman Resmi</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-indigo-600">{selectedSJDetail.brand}</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-500">{selectedSJDetail.noSuratJalan}</div>
+                </div>
               </div>
-              <button
-                onClick={() => setSelectedSJDetail(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrintSJ}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition btn-press cursor-pointer"
+                  title="Download & Cetak Surat Jalan PDF"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak / PDF</span>
+                </button>
+                <button
+                  onClick={() => setSelectedSJDetail(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition ml-1 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Paper Canvas */}
+            <div className="overflow-y-auto p-4 sm:p-6 flex-1 flex justify-center bg-slate-200/50">
+              <div
+                ref={printPaperRef}
+                className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 sm:p-8 space-y-4 text-slate-800 max-w-2xl w-full my-auto"
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                {/* Header Kop Perusahaan */}
+                <div className="flex justify-between items-start border-b-2 border-slate-900 pb-3">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight text-slate-900">MAISON RAYYAN MANUFACTURING</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Konveksi & Makloon Garment Terpadu</p>
+                    <p className="text-[10px] text-slate-400">Jl. Industri Makloon No. 88, Bandung • Telp: 0812-3456-7890</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="bg-slate-900 text-white text-[11px] font-bold px-3 py-1 rounded uppercase tracking-wider inline-block">
+                      SURAT JALAN
+                    </span>
+                    <div className="text-xs font-mono font-bold text-slate-800 mt-1.5">{selectedSJDetail.noSuratJalan}</div>
+                    <div className="text-[11px] text-slate-500">Tgl: {formatDateIndo(selectedSJDetail.tanggal)}</div>
+                  </div>
+                </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-slate-400 block text-[10px]">Vendor Penjahit:</span>
-                  <strong className="text-slate-800">{selectedSJDetail.vendor}</strong>
+                {/* Info Pengiriman Box */}
+                <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Brand Tujuan:</span>
+                    <strong className="text-slate-900 text-sm font-bold">{selectedSJDetail.brand}</strong>
+                    <div className="text-slate-500 text-[11px] mt-0.5">Partner Brand Makloon</div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Armada & Driver:</span>
+                    <strong className="text-slate-900 text-xs font-bold">{selectedSJDetail.driverName}</strong>
+                    <div className="text-slate-600 font-mono text-[11px]">{selectedSJDetail.nomorKendaraan}</div>
+                  </div>
+                  {selectedSJDetail.catatan && (
+                    <div className="col-span-2 pt-1 border-t border-slate-200/60 text-[11px] text-slate-600">
+                      <span className="font-bold">Catatan:</span> {selectedSJDetail.catatan}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px]">Tanggal Kirim:</span>
-                  <strong className="text-slate-800">{formatDateIndo(selectedSJDetail.tanggal)}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px]">Driver:</span>
-                  <span className="text-slate-700">{selectedSJDetail.driverName}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px]">No Polisi:</span>
-                  <span className="text-slate-700 font-mono">{selectedSJDetail.nomorKendaraan}</span>
-                </div>
-              </div>
 
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-center text-xs">
-                  <thead className="bg-slate-900 text-white font-bold text-[10px]">
-                    <tr>
-                      <th className="p-2 text-left pl-3">Size</th>
-                      <th className="p-2">Jumlah Pcs Terkirim</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {Object.entries(selectedSJDetail.qtyDelivered).map(([size, qty]) => {
-                      if (qty === 0) return null;
-                      return (
-                        <tr key={size}>
-                          <td className="p-2 text-left pl-3 font-bold uppercase">{size.replace('anak', 'Anak ')}</td>
-                          <td className="p-2 font-bold text-emerald-600">{qty} Pcs</td>
+                {/* Table of Shipped Items */}
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                    Rincian Barang yang Dikirim
+                  </div>
+
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase">
+                        <tr>
+                          <th className="p-2 w-[6%] text-center">No</th>
+                          <th className="p-2 w-[24%]">Artikel Produk</th>
+                          <th className="p-2 w-[22%]">Bahan / Kain</th>
+                          <th className="p-2 w-[16%]">Penjahit</th>
+                          <th className="p-2 w-[22%]">Rincian Size</th>
+                          <th className="p-2 w-[10%] text-right whitespace-nowrap">Qty Pcs</th>
                         </tr>
-                      );
-                    })}
-                    <tr className="bg-slate-50 font-bold">
-                      <td className="p-2 text-left pl-3">Total Kirim</td>
-                      <td className="p-2 text-indigo-600">{selectedSJDetail.totalPcs} Pcs</td>
-                    </tr>
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {getSuratJalanItems(selectedSJDetail).map((item, idx) => (
+                          <tr key={idx} className="align-top">
+                            <td className="p-2 text-center font-bold text-slate-400">{idx + 1}</td>
+                            <td className="p-2 font-bold text-slate-900">{item.produk}</td>
+                            <td className="p-2 text-slate-600 text-[11px]">{item.jenisKain || 'Kain Standar'}</td>
+                            <td className="p-2 text-slate-700 font-medium">{item.vendor}</td>
+                            <td className="p-2 text-[10px] text-slate-600 space-y-0.5">
+                              {Object.entries(item.qtyDelivered).map(([sz, qty]) => {
+                                if (qty === 0) return null;
+                                return (
+                                  <div key={sz} className="whitespace-nowrap">
+                                    <span className="font-bold uppercase">{sz.replace('anak', 'Anak ')}:</span> {qty} pcs
+                                  </div>
+                                );
+                              })}
+                            </td>
+                            <td className="p-2 text-right font-bold text-slate-900 whitespace-nowrap">
+                              {item.totalPcs} Pcs
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
+                        <tr>
+                          <td colSpan={5} className="p-2 text-right uppercase text-[10px]">
+                            Total Keseluruhan Barang:
+                          </td>
+                          <td className="p-2 text-right text-indigo-700 font-bold text-sm whitespace-nowrap">
+                            {selectedSJDetail.totalPcs} Pcs
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Kolom Tanda Tangan */}
+                <div className="grid grid-cols-3 gap-2 pt-4 text-center text-xs">
+                  <div className="border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between h-24">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Penerima (Brand)</span>
+                    <div className="border-b border-slate-300 w-3/4 mx-auto"></div>
+                    <span className="text-[10px] text-slate-400">(Nama & Cap)</span>
+                  </div>
+                  <div className="border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between h-24">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Pengemudi (Driver)</span>
+                    <div className="border-b border-slate-300 w-3/4 mx-auto"></div>
+                    <span className="text-[10px] text-slate-700 font-bold">{selectedSJDetail.driverName}</span>
+                  </div>
+                  <div className="border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between h-24">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Petugas Gudang</span>
+                    <div className="border-b border-slate-300 w-3/4 mx-auto"></div>
+                    <span className="text-[10px] text-slate-400">(QC / Gudang)</span>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <button
-              onClick={() => setSelectedSJDetail(null)}
-              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs hover:bg-slate-800 transition"
-            >
-              Tutup
-            </button>
           </div>
         </div>
       )}
-
     </div>
   );
 };

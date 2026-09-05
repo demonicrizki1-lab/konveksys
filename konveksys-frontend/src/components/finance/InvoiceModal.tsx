@@ -154,7 +154,12 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                             {formatDateIndo(item.tanggal)}
                           </span>
                         </td>
-                        <td className="p-2 font-bold text-slate-900">{item.produk}</td>
+                        <td className="p-2">
+                          <div className="font-bold text-slate-900">{item.produk}</div>
+                          {item.jenisKain && (
+                            <div className="text-[10px] text-slate-500 font-normal mt-0.5">{item.jenisKain}</div>
+                          )}
+                        </td>
                         <td className="p-2 text-[11px] space-y-0.5 text-slate-700">
                           {item.qtySML > 0 && (
                             <div className="whitespace-nowrap">S/M/L ({item.qtySML} pcs x {formatRp(item.rateSML)})</div>

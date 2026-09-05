@@ -1,20 +1,41 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { SPKCutting, SizeBreakdown } from '../../types';
+import { SPKCutting, SPKProductItem, SizeBreakdown } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
 import {
   Scissors,
   Plus,
   Search,
-  CheckCircle2,
-  Clock,
   Layers,
   X,
   Eye,
-  AlertCircle,
   ShieldAlert,
   Trash2,
+  Package,
+  CheckCircle2,
 } from 'lucide-react';
+
+interface ProductFormItem {
+  id: string;
+  produk: string;
+  vendor: string;
+  targetCut: SizeBreakdown;
+}
+
+const emptySizeBreakdown: SizeBreakdown = {
+  s: 0,
+  m: 0,
+  l: 0,
+  xl: 0,
+  xxl: 0,
+  anak4: 0,
+  anak6: 0,
+  anak8: 0,
+  anak10: 0,
+  anak12: 0,
+  anak14: 0,
+  anak16: 0,
+};
 
 export const SPKView: React.FC = () => {
   const { spkList, createSPK, deleteSPK, inboundRolls, brands, vendors, getSPKRemainingQty, userRole } = useApp();
@@ -26,23 +47,16 @@ export const SPKView: React.FC = () => {
   // Modal State for New SPK
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState(brands[0]?.name || 'GREYWOLF');
-  const [selectedVendor, setSelectedVendor] = useState(vendors[0]?.name || 'SAHIRA');
-  const [produkName, setProdukName] = useState('');
   const [selectedRollIds, setSelectedRollIds] = useState<string[]>([]);
-  const [targetCut, setTargetCut] = useState<SizeBreakdown>({
-    s: 0,
-    m: 0,
-    l: 0,
-    xl: 0,
-    xxl: 0,
-    anak4: 0,
-    anak6: 0,
-    anak8: 0,
-    anak10: 0,
-    anak12: 0,
-    anak14: 0,
-    anak16: 0,
-  });
+  const [productItems, setProductItems] = useState<ProductFormItem[]>([
+    {
+      id: 'prod-1',
+      produk: '',
+      vendor: vendors[0]?.name || 'SAHIRA',
+      targetCut: { ...emptySizeBreakdown },
+    },
+  ]);
+  const [activeProductTab, setActiveProductTab] = useState(0);
   const [targetSelesai, setTargetSelesai] = useState(
     new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
@@ -50,6 +64,7 @@ export const SPKView: React.FC = () => {
 
   // Detail Modal State
   const [selectedSPKDetail, setSelectedSPKDetail] = useState<SPKCutting | null>(null);
+  const [activeDetailTab, setActiveDetailTab] = useState(0);
 
   // Available rolls in warehouse for selected Brand
   const availableRolls = inboundRolls.filter(
@@ -60,19 +75,26 @@ export const SPKView: React.FC = () => {
     .filter((r) => selectedRollIds.includes(r.id))
     .reduce((a, b) => a + (b.meterLength - b.meterUsed), 0);
 
-  const totalTargetPcs =
-    targetCut.s +
-    targetCut.m +
-    targetCut.l +
-    targetCut.xl +
-    targetCut.xxl +
-    targetCut.anak4 +
-    targetCut.anak6 +
-    targetCut.anak8 +
-    targetCut.anak10 +
-    targetCut.anak12 +
-    targetCut.anak14 +
-    targetCut.anak16;
+  // Calculate sum of a single product item
+  const getItemTotalPcs = (cut: SizeBreakdown) =>
+    (cut.s || 0) +
+    (cut.m || 0) +
+    (cut.l || 0) +
+    (cut.xl || 0) +
+    (cut.xxl || 0) +
+    (cut.anak4 || 0) +
+    (cut.anak6 || 0) +
+    (cut.anak8 || 0) +
+    (cut.anak10 || 0) +
+    (cut.anak12 || 0) +
+    (cut.anak14 || 0) +
+    (cut.anak16 || 0);
+
+  // Grand Total of all products
+  const grandTotalPcs = productItems.reduce(
+    (acc, it) => acc + getItemTotalPcs(it.targetCut),
+    0
+  );
 
   const filteredSPK = spkList.filter((spk) => {
     const matchBrand = brandFilter === 'ALL' || spk.brand === brandFilter;
@@ -80,31 +102,27 @@ export const SPKView: React.FC = () => {
     const matchSearch =
       spk.spkNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       spk.produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      spk.vendor.toLowerCase().includes(searchTerm.toLowerCase());
+      spk.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (spk.items && spk.items.some((it) => it.produk.toLowerCase().includes(searchTerm.toLowerCase())));
     return matchBrand && matchStatus && matchSearch;
   });
 
   const handleOpenCreate = () => {
     const initBrand = brands[0]?.name || 'GREYWOLF';
+    const initVendor = vendors[0]?.name || 'SAHIRA';
     setSelectedBrand(initBrand);
-    setSelectedVendor(vendors[0]?.name || 'SAHIRA');
-    setProdukName('');
     setSelectedRollIds([]);
-    setTargetCut({
-      s: 0,
-      m: 0,
-      l: 0,
-      xl: 0,
-      xxl: 0,
-      anak4: 0,
-      anak6: 0,
-      anak8: 0,
-      anak10: 0,
-      anak12: 0,
-      anak14: 0,
-      anak16: 0,
-    });
+    setProductItems([
+      {
+        id: `prod-${Date.now()}-1`,
+        produk: '',
+        vendor: initVendor,
+        targetCut: { ...emptySizeBreakdown },
+      },
+    ]);
+    setActiveProductTab(0);
     setCatatan('');
+    setTargetSelesai(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     setIsCreateModalOpen(true);
   };
 
@@ -114,50 +132,125 @@ export const SPKView: React.FC = () => {
     );
   };
 
-  const handleSaveSPK = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!produkName.trim()) {
-      alert('Nama produk artikel wajib diisi!');
+  const addProductItem = () => {
+    if (productItems.length >= 3) {
+      alert('Maksimal 3 produk per SPK kain.');
       return;
     }
+    const newIdx = productItems.length + 1;
+    const defaultVendor = productItems[0]?.vendor || vendors[0]?.name || 'SAHIRA';
+    const newItem: ProductFormItem = {
+      id: `prod-${Date.now()}-${newIdx}`,
+      produk: '',
+      vendor: defaultVendor,
+      targetCut: { ...emptySizeBreakdown },
+    };
+    setProductItems((prev) => [...prev, newItem]);
+    setActiveProductTab(productItems.length);
+  };
+
+  const removeProductItem = (index: number) => {
+    if (productItems.length <= 1) {
+      alert('Minimal harus ada 1 produk dalam SPK.');
+      return;
+    }
+    const updated = productItems.filter((_, idx) => idx !== index);
+    setProductItems(updated);
+    setActiveProductTab(Math.min(activeProductTab, updated.length - 1));
+  };
+
+  const updateProductItem = (
+    index: number,
+    field: keyof ProductFormItem,
+    value: any
+  ) => {
+    setProductItems((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const updateProductSize = (
+    itemIndex: number,
+    sizeKey: keyof SizeBreakdown,
+    value: number
+  ) => {
+    setProductItems((prev) =>
+      prev.map((item, idx) =>
+        idx === itemIndex
+          ? {
+              ...item,
+              targetCut: {
+                ...item.targetCut,
+                [sizeKey]: Math.max(0, value || 0),
+              },
+            }
+          : item
+      )
+    );
+  };
+
+  const handleSaveSPK = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validasi pemilihan rol kain
     if (selectedRollIds.length === 0) {
       alert('Pilih minimal 1 rol kain untuk di-pool ke dalam SPK ini!');
       return;
     }
-    if (totalTargetPcs <= 0) {
-      alert('Total kuantiti potong harus lebih dari 0!');
-      return;
+
+    // Validasi setiap produk item
+    for (let i = 0; i < productItems.length; i++) {
+      const item = productItems[i];
+      if (!item.produk.trim()) {
+        alert(`Nama Produk #${i + 1} wajib diisi!`);
+        setActiveProductTab(i);
+        return;
+      }
+      const itemTotal = getItemTotalPcs(item.targetCut);
+      if (itemTotal <= 0) {
+        alert(`Kuantiti potong untuk Produk #${i + 1} (${item.produk}) harus lebih dari 0!`);
+        setActiveProductTab(i);
+        return;
+      }
     }
+
+    // Bangun kombinasi targetCutQty
+    const combinedTargetCut: SizeBreakdown = { ...emptySizeBreakdown };
+    productItems.forEach((it) => {
+      (Object.keys(emptySizeBreakdown) as (keyof SizeBreakdown)[]).forEach((sz) => {
+        combinedTargetCut[sz] += it.targetCut[sz] || 0;
+      });
+    });
+
+    const produkSummary = productItems
+      .map((it) => it.produk.trim().toUpperCase())
+      .join(' + ');
+
+    const vendorSummary = Array.from(
+      new Set(productItems.map((it) => it.vendor))
+    ).join(', ');
+
+    const itemsPayload: SPKProductItem[] = productItems.map((it, idx) => ({
+      id: `item-${Date.now()}-${idx + 1}`,
+      produk: it.produk.trim().toUpperCase(),
+      vendor: it.vendor,
+      targetCutQty: { ...it.targetCut },
+      deliveredQty: { ...emptySizeBreakdown },
+    }));
 
     const payload = {
       brand: selectedBrand,
-      produk: produkName.toUpperCase(),
-      vendor: selectedVendor,
+      produk: produkSummary,
+      vendor: vendorSummary,
       rollIds: [...selectedRollIds],
-      targetCutQty: { ...targetCut },
+      targetCutQty: combinedTargetCut,
       tanggalSPK: new Date().toISOString().split('T')[0],
       targetSelesai,
       catatan,
+      items: itemsPayload,
     };
 
     setIsCreateModalOpen(false);
-    setProdukName('');
-    setSelectedRollIds([]);
-    setTargetCut({
-      s: 0,
-      m: 0,
-      l: 0,
-      xl: 0,
-      xxl: 0,
-      anak4: 0,
-      anak6: 0,
-      anak8: 0,
-      anak10: 0,
-      anak12: 0,
-      anak14: 0,
-      anak16: 0,
-    });
-    setCatatan('');
 
     try {
       await createSPK(payload);
@@ -189,9 +282,11 @@ export const SPKView: React.FC = () => {
     );
   }
 
+  const currentActiveProduct = productItems[activeProductTab] || productItems[0];
+  const currentItemTotalPcs = getItemTotalPcs(currentActiveProduct.targetCut);
+
   return (
     <div className="space-y-6">
-      
       {/* Header Banner */}
       <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -202,13 +297,13 @@ export const SPKView: React.FC = () => {
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Surat Perintah Kerja (SPK) Potong</h1>
             <p className="text-slate-500 text-xs mt-1">
-              Penggabungan beberapa rol kain (*Smart Pooling*) milik Brand yang sama menjadi satu batch SPK produksi per size.
+              Penggabungan rol kain (*Smart Pooling*) dan alokasi potong 1 hingga maksimal 3 produk/artikel per batch kain.
             </p>
           </div>
 
           <button
             onClick={handleOpenCreate}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-base btn-press shrink-0"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-base btn-press shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Terbitkan SPK Baru
@@ -221,7 +316,7 @@ export const SPKView: React.FC = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Cari nomor SPK, produk, atau vendor penjahit..."
+              placeholder="Cari nomor SPK, nama produk, atau vendor penjahit..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-base outline-none"
@@ -281,6 +376,8 @@ export const SPKView: React.FC = () => {
               ? 'PARTIAL_DELIVERED'
               : spk.status;
 
+            const hasMultipleProducts = spk.items && spk.items.length > 1;
+
             return (
               <div
                 key={spk.id}
@@ -293,6 +390,11 @@ export const SPKView: React.FC = () => {
                       <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-md text-[10px]">
                         {spk.brand}
                       </span>
+                      {hasMultipleProducts && (
+                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 font-bold rounded-md text-[10px] border border-purple-200">
+                          {spk.items?.length} Produk Combo
+                        </span>
+                      )}
                     </div>
                     <h3 className="font-semibold text-slate-800 text-sm mt-1">{spk.produk}</h3>
                   </div>
@@ -312,9 +414,43 @@ export const SPKView: React.FC = () => {
                   </span>
                 </div>
 
+                {/* Multi-product Breakdown Badges */}
+                {hasMultipleProducts && spk.items && (
+                  <div className="space-y-1.5 bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/60">
+                    <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
+                      Rincian Produk Hasil Potong Kain Ini:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {spk.items.map((it, idx) => {
+                        const itTarget = Object.values(it.targetCutQty).reduce((a, b) => a + b, 0);
+                        const itDeliv = Object.values(it.deliveredQty || {}).reduce((a, b) => a + b, 0);
+                        return (
+                          <div
+                            key={it.id || idx}
+                            className="bg-white p-2 rounded-lg border border-indigo-100 flex items-center justify-between text-xs"
+                          >
+                            <div>
+                              <div className="font-bold text-slate-800 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                                {it.produk}
+                              </div>
+                              <div className="text-[10px] text-slate-500">Penjahit: {it.vendor}</div>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-bold text-indigo-600 text-xs">
+                                {itDeliv} / {itTarget} Pcs
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-semibold">Vendor Penjahit:</span>
+                    <span className="text-[10px] text-slate-400 block font-semibold">Vendor Utama:</span>
                     <strong className="text-slate-800">{spk.vendor}</strong>
                   </div>
                   <div>
@@ -334,7 +470,7 @@ export const SPKView: React.FC = () => {
                 {/* Progress Bar */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs font-bold">
-                    <span className="text-slate-600">Progress Pengiriman (Surat Jalan):</span>
+                    <span className="text-slate-600">Total Akumulasi Pengiriman:</span>
                     <span className={isOverDelivery ? 'text-amber-700 font-extrabold' : 'text-indigo-600'}>
                       {delivTotal} / {targetTotal} Pcs ({percent}%) {isOverDelivery && `(+${delivTotal - targetTotal} Pcs Over)`}
                     </span>
@@ -352,7 +488,9 @@ export const SPKView: React.FC = () => {
                       {isOverDelivery ? (
                         <span className="text-amber-700 font-bold">Over-Kirim: +{delivTotal - targetTotal} Pcs</span>
                       ) : (
-                        <span>Sisa di Konveksi: <strong>{remaining.totalRemaining} Pcs</strong></span>
+                        <span>
+                          Sisa Total di Konveksi: <strong>{remaining.totalRemaining} Pcs</strong>
+                        </span>
                       )}
                     </span>
                     {spk.catatan && <span className="truncate max-w-[200px]">Note: {spk.catatan}</span>}
@@ -369,10 +507,15 @@ export const SPKView: React.FC = () => {
                       <Trash2 className="w-3.5 h-3.5" />
                       Hapus SPK
                     </button>
-                  ) : <div></div>}
+                  ) : (
+                    <div></div>
+                  )}
 
                   <button
-                    onClick={() => setSelectedSPKDetail(spk)}
+                    onClick={() => {
+                      setSelectedSPKDetail(spk);
+                      setActiveDetailTab(0);
+                    }}
                     className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -385,14 +528,16 @@ export const SPKView: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL: Tambah SPK Baru (Smart Pooling) */}
+      {/* MODAL: Tambah SPK Baru (Multi-Product Combo) */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-lg border border-slate-100 space-y-5 animate-slideUp">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100 space-y-5 animate-slideUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">Terbitkan SPK Cutting Baru</h3>
-                <p className="text-[11px] text-slate-400">Smart Pooling Rol Kain & Alokasi Potong per Size</p>
+                <p className="text-[11px] text-slate-400">
+                  Smart Pooling Rol Kain & Alokasi Multi-Produk (Maksimal 3 Produk dari 1 Kain)
+                </p>
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
@@ -402,15 +547,16 @@ export const SPKView: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveSPK} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <form onSubmit={handleSaveSPK} className="space-y-5 text-xs">
+              {/* Brand & Pool Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-600 mb-1">Pilih Brand:</label>
+                  <label className="block font-bold text-slate-600 mb-1">Pilih Brand Pemilik Kain:</label>
                   <select
                     value={selectedBrand}
                     onChange={(e) => {
                       setSelectedBrand(e.target.value);
-                      setSelectedRollIds([]); // Reset selection when brand changes
+                      setSelectedRollIds([]);
                     }}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
                   >
@@ -423,28 +569,12 @@ export const SPKView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-600 mb-1">Mitra Konveksi (Vendor):</label>
-                  <select
-                    value={selectedVendor}
-                    onChange={(e) => setSelectedVendor(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
-                  >
-                    {vendors.map((v) => (
-                      <option key={v.id} value={v.name}>
-                        {v.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Nama Produk / Artikel:</label>
+                  <label className="block font-bold text-slate-600 mb-1">Target Selesai Jahit:</label>
                   <input
-                    type="text"
-                    value={produkName}
-                    onChange={(e) => setProdukName(e.target.value.toUpperCase())}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none uppercase"
-                    placeholder="BEDAH PANJANG..."
+                    type="date"
+                    value={targetSelesai}
+                    onChange={(e) => setTargetSelesai(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
                     required
                   />
                 </div>
@@ -494,185 +624,222 @@ export const SPKView: React.FC = () => {
                 )}
               </div>
 
-              {/* Rincian Target Potong per Size */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <span className="font-semibold text-slate-800">Rincian Hasil Potong Kotor per Size (Pcs)</span>
-                  <span className="font-bold text-slate-900 text-sm">Total: {totalTargetPcs} Pcs</span>
+              {/* Multi-Product Builder Section */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                  <div>
+                    <span className="font-bold text-slate-900 text-xs block">
+                      Daftar Produk yang Dipotong dari Kain Ini (Maks. 3 Produk):
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      Gunakan fitur ini jika 1 gelaran kain menghasilkan beberapa artikel berbeda (misal: Atasan + Bawahan + Perca).
+                    </span>
+                  </div>
+
+                  {productItems.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={addProductItem}
+                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-lg text-xs flex items-center gap-1 transition shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Tambah Produk ({productItems.length + 1}/3)
+                    </button>
+                  )}
                 </div>
 
-                {/* Dewasa Sizes */}
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                    Kategori Dewasa (S - 2XL):
-                  </span>
-                  <div className="grid grid-cols-5 gap-2">
+                {/* Product Tabs Header */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {productItems.map((item, idx) => {
+                    const isActive = activeProductTab === idx;
+                    const itemPcs = getItemTotalPcs(item.targetCut);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setActiveProductTab(idx)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 border shrink-0 ${
+                          isActive
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Package className="w-3.5 h-3.5" />
+                        <span>
+                          {idx === 0 ? '1. Produk Utama' : `${idx + 1}. Produk #${idx + 1}`}
+                          {item.produk ? `: ${item.produk}` : ''}
+                        </span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                            isActive ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {itemPcs} Pcs
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Active Product Form Tab */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <span className="font-bold text-slate-800 text-xs">
+                      Pengaturan Artikel #{activeProductTab + 1}:
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+                        Subtotal: {currentItemTotalPcs} Pcs
+                      </span>
+                      {productItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeProductItem(activeProductTab)}
+                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                          title="Hapus produk ini dari SPK"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Hapus Artikel Ini
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 block">Size S:</label>
+                      <label className="block font-bold text-slate-600 mb-1">
+                        Nama Produk / Artikel #{activeProductTab + 1}:
+                      </label>
                       <input
-                        type="number"
-                        min="0"
-                        value={targetCut.s}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, s: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
+                        type="text"
+                        value={currentActiveProduct.produk}
+                        onChange={(e) =>
+                          updateProductItem(activeProductTab, 'produk', e.target.value.toUpperCase())
+                        }
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none uppercase"
+                        placeholder={
+                          activeProductTab === 0
+                            ? 'Contoh: KEMEJA RAYON DEWASA'
+                            : activeProductTab === 1
+                            ? 'Contoh: CELANA KULOT RAYON'
+                            : 'Contoh: BANDANA / POUCH KAIN'
+                        }
+                        required
                       />
                     </div>
+
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 block">Size M:</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.m}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, m: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
+                      <label className="block font-bold text-slate-600 mb-1">
+                        Mitra Konveksi (Vendor Penjahit):
+                      </label>
+                      <select
+                        value={currentActiveProduct.vendor}
+                        onChange={(e) =>
+                          updateProductItem(activeProductTab, 'vendor', e.target.value)
+                        }
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
+                      >
+                        {vendors.map((v) => (
+                          <option key={v.id} value={v.name}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+                  </div>
+
+                  {/* Size Breakdown per Product */}
+                  <div className="space-y-3 pt-2">
+                    {/* Dewasa Sizes */}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 block">Size L:</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.l}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, l: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                        Kategori Dewasa (S - 2XL):
+                      </span>
+                      <div className="grid grid-cols-5 gap-2">
+                        {(['s', 'm', 'l', 'xl', 'xxl'] as (keyof SizeBreakdown)[]).map((sz) => (
+                          <div key={sz}>
+                            <label className="text-[10px] font-bold text-slate-500 block text-center uppercase">
+                              {sz}
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={currentActiveProduct.targetCut[sz]}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) =>
+                                updateProductSize(activeProductTab, sz, Number(e.target.value))
+                              }
+                              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Anak Sizes */}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 block">Size XL:</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.xl}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, xl: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block">Size 2XL:</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.xxl}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, xxl: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                        Kategori Anak-Anak (Terpisah Ukuran 4 - 16):
+                      </span>
+                      <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                        {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                          (sz) => (
+                            <div key={sz}>
+                              <label className="text-[10px] font-bold text-slate-500 block text-center">
+                                {sz.replace('anak', 'Anak ')}
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={currentActiveProduct.targetCut[sz]}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) =>
+                                  updateProductSize(activeProductTab, sz, Number(e.target.value))
+                                }
+                                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
+                              />
+                            </div>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Anak Sizes */}
-                <div className="pt-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                    Kategori Anak-Anak (Terpisah Ukuran 4 - 16):
-                  </span>
-                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 4</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.anak4}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak4: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
+                {/* Grand Total Summary Bar */}
+                <div className="bg-indigo-900 text-white p-3.5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="text-xs font-bold">
+                      Akumulasi Hasil Potong Seluruh Produk ({productItems.length} Artikel):
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-indigo-200">
+                      {productItems.map((p, idx) => (
+                        <span key={p.id} className="mr-2">
+                          {p.produk || `Produk #${idx + 1}`}: <strong>{getItemTotalPcs(p.targetCut)} Pcs</strong>
+                        </span>
+                      ))}
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 6</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.anak6}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak6: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 8</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.anak8}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak8: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 10</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.anak10}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak10: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 12</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.anak12}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak12: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 14</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.anak14}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak14: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block text-center">Anak 16</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={targetCut.anak16}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => setTargetCut({ ...targetCut, anak16: Number(e.target.value) || 0 })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                      />
-                    </div>
+                    <span className="bg-white text-indigo-950 px-3 py-1 rounded-lg font-black text-sm shrink-0">
+                      Total: {grandTotalPcs} Pcs
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Target Selesai:</label>
-                  <input
-                    type="date"
-                    value={targetSelesai}
-                    onChange={(e) => setTargetSelesai(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Catatan Khusus Penjahit:</label>
-                  <input
-                    type="text"
-                    placeholder="Warna benang, model kancing, label..."
-                    value={catatan}
-                    onChange={(e) => setCatatan(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium outline-none"
-                  />
-                </div>
+              {/* Catatan Khusus */}
+              <div>
+                <label className="block font-bold text-slate-600 mb-1">Catatan Khusus SPK Potong / Penjahit:</label>
+                <input
+                  type="text"
+                  placeholder="Instruksi pola, warna benang, kancing, label, packaging..."
+                  value={catatan}
+                  onChange={(e) => setCatatan(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium outline-none"
+                />
               </div>
 
               <div className="flex gap-2 pt-3 border-t border-slate-100">
@@ -685,9 +852,9 @@ export const SPKView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition"
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer"
                 >
-                  Simpan & Terbitkan SPK
+                  Simpan & Terbitkan SPK ({grandTotalPcs} Pcs)
                 </button>
               </div>
             </form>
@@ -695,14 +862,16 @@ export const SPKView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: Detail SPK */}
+      {/* MODAL: Detail SPK (Multi-Product Inspection) */}
       {selectedSPKDetail && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-lg border border-slate-100 space-y-5 animate-slideUp">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-slideUp max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">{selectedSPKDetail.spkNumber}</h3>
-                <span className="text-xs text-slate-500">{selectedSPKDetail.produk} ({selectedSPKDetail.brand})</span>
+                <span className="text-xs text-slate-500">
+                  {selectedSPKDetail.produk} ({selectedSPKDetail.brand})
+                </span>
               </div>
               <button
                 onClick={() => setSelectedSPKDetail(null)}
@@ -713,61 +882,140 @@ export const SPKView: React.FC = () => {
             </div>
 
             <div className="space-y-4 text-xs">
+              {/* Rol Kain yang Di-Pool */}
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <span className="font-bold text-slate-700 block mb-2">Rol Kain yang Di-Pool:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedSPKDetail.rollIds.map((id) => {
                     const r = inboundRolls.find((item) => item.id === id);
                     return (
-                      <span key={id} className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-mono font-bold text-indigo-700">
-                        {r?.rollCode || id} ({r?.meterLength}m)
+                      <span
+                        key={id}
+                        className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-mono font-bold text-indigo-700"
+                      >
+                        {r?.rollCode || id} ({r?.meterLength}m - {r?.jenisKain})
                       </span>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-center text-xs">
-                  <thead className="bg-slate-900 text-white font-bold text-[10px]">
-                    <tr>
-                      <th className="p-2 text-left pl-3">Size</th>
-                      <th className="p-2">Target Potong</th>
-                      <th className="p-2">Terkirim (SJ)</th>
-                      <th className="p-2 text-indigo-300">Sisa di Vendor</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {(['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
-                      const target = selectedSPKDetail.targetCutQty[sz];
-                      const deliv = selectedSPKDetail.deliveredQty[sz];
-                      const rem = Math.max(0, target - deliv);
-                      if (target === 0 && deliv === 0) return null;
+              {/* Multi-product tab or table */}
+              {selectedSPKDetail.items && selectedSPKDetail.items.length > 1 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+                    {selectedSPKDetail.items.map((item, idx) => (
+                      <button
+                        key={item.id || idx}
+                        onClick={() => setActiveDetailTab(idx)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                          activeDetailTab === idx
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {item.produk} ({item.vendor})
+                      </button>
+                    ))}
+                  </div>
 
-                      return (
-                        <tr key={sz}>
-                          <td className="p-2 text-left pl-3 font-bold uppercase">{sz.replace('anak', 'Anak ')}</td>
-                          <td className="p-2 font-semibold text-slate-700">{target} Pcs</td>
-                          <td className="p-2 font-bold text-emerald-600">{deliv} Pcs</td>
-                          <td className="p-2 font-bold text-indigo-600">{rem} Pcs</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  {(() => {
+                    const currentDetailItem =
+                      selectedSPKDetail.items[activeDetailTab] || selectedSPKDetail.items[0];
+                    const itemRemaining = getSPKRemainingQty(
+                      selectedSPKDetail,
+                      currentDetailItem.id
+                    );
+
+                    return (
+                      <div className="border border-slate-200 rounded-xl overflow-hidden">
+                        <div className="bg-slate-100 px-3 py-2 font-bold text-slate-800 flex justify-between">
+                          <span>
+                            Artikel: <strong>{currentDetailItem.produk}</strong> (Mitra:{' '}
+                            {currentDetailItem.vendor})
+                          </span>
+                        </div>
+                        <table className="w-full text-center text-xs">
+                          <thead className="bg-slate-900 text-white font-bold text-[10px]">
+                            <tr>
+                              <th className="p-2 text-left pl-3">Size</th>
+                              <th className="p-2">Target Potong</th>
+                              <th className="p-2">Terkirim (SJ)</th>
+                              <th className="p-2 text-indigo-300">Sisa di Vendor</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {(['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                              (sz) => {
+                                const target = currentDetailItem.targetCutQty[sz] || 0;
+                                const deliv = currentDetailItem.deliveredQty?.[sz] || 0;
+                                const rem = itemRemaining[sz] || 0;
+                                if (target === 0 && deliv === 0) return null;
+
+                                return (
+                                  <tr key={sz}>
+                                    <td className="p-2 text-left pl-3 font-bold uppercase">
+                                      {sz.replace('anak', 'Anak ')}
+                                    </td>
+                                    <td className="p-2 font-semibold text-slate-700">{target} Pcs</td>
+                                    <td className="p-2 font-bold text-emerald-600">{deliv} Pcs</td>
+                                    <td className="p-2 font-bold text-indigo-600">{rem} Pcs</td>
+                                  </tr>
+                                );
+                              }
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-center text-xs">
+                    <thead className="bg-slate-900 text-white font-bold text-[10px]">
+                      <tr>
+                        <th className="p-2 text-left pl-3">Size</th>
+                        <th className="p-2">Target Potong</th>
+                        <th className="p-2">Terkirim (SJ)</th>
+                        <th className="p-2 text-indigo-300">Sisa di Vendor</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                        (sz) => {
+                          const target = selectedSPKDetail.targetCutQty[sz] || 0;
+                          const deliv = selectedSPKDetail.deliveredQty[sz] || 0;
+                          const rem = Math.max(0, target - deliv);
+                          if (target === 0 && deliv === 0) return null;
+
+                          return (
+                            <tr key={sz}>
+                              <td className="p-2 text-left pl-3 font-bold uppercase">
+                                {sz.replace('anak', 'Anak ')}
+                              </td>
+                              <td className="p-2 font-semibold text-slate-700">{target} Pcs</td>
+                              <td className="p-2 font-bold text-emerald-600">{deliv} Pcs</td>
+                              <td className="p-2 font-bold text-indigo-600">{rem} Pcs</td>
+                            </tr>
+                          );
+                        }
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <button
               onClick={() => setSelectedSPKDetail(null)}
-              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs hover:bg-slate-800 transition"
+              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs hover:bg-slate-800 transition cursor-pointer"
             >
               Tutup
             </button>
           </div>
         </div>
       )}
-
     </div>
   );
 };
