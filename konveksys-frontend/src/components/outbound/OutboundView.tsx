@@ -464,7 +464,7 @@ export const OutboundView: React.FC = () => {
             <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px]">
               <tr>
                 <th className="p-3.5">No Surat Jalan</th>
-                <th className="p-3.5">Brand</th>
+                <th className="p-3.5 text-center whitespace-nowrap">Brand</th>
                 <th className="p-3.5">Rincian Artikel & Bahan Kain</th>
                 <th className="p-3.5">Vendor Penjahit</th>
                 <th className="p-3.5">Total Muatan</th>
@@ -491,8 +491,8 @@ export const OutboundView: React.FC = () => {
                       <td className="p-3.5 font-mono font-bold text-indigo-600 align-top">
                         {sj.noSuratJalan}
                       </td>
-                      <td className="p-3.5 align-top">
-                        <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-md text-[10px]">
+                      <td className="p-3.5 align-top text-center whitespace-nowrap">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-md text-[10px] whitespace-nowrap">
                           {sj.brand}
                         </span>
                       </td>

@@ -246,7 +246,7 @@ export const InboundView: React.FC = () => {
             <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px]">
               <tr>
                 <th className="p-3.5">Kode Rol</th>
-                <th className="p-3.5">Pemilik (Brand)</th>
+                <th className="p-3.5 text-center whitespace-nowrap">Pemilik (Brand)</th>
                 <th className="p-3.5">Jenis Kain</th>
                 <th className="p-3.5">Panjang Kain</th>
                 <th className="p-3.5">Status Fisik</th>
@@ -266,8 +266,8 @@ export const InboundView: React.FC = () => {
                 filteredRolls.map((roll) => (
                   <tr key={roll.id} className="hover:bg-slate-50 transition">
                     <td className="p-3.5 font-semibold text-indigo-600 font-mono">{roll.rollCode}</td>
-                    <td className="p-3.5">
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-md text-[10px]">
+                    <td className="p-3.5 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-md text-[10px] whitespace-nowrap">
                         {roll.brand}
                       </span>
                     </td>

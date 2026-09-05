@@ -491,7 +491,7 @@ export const MasterHargaView: React.FC = () => {
             <table className="w-full text-left text-xs text-slate-700 min-w-[980px]">
               <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="p-3 border-r border-slate-800">Brand</th>
+                  <th className="p-3 text-center whitespace-nowrap border-r border-slate-800">Brand</th>
                   <th className="p-3 border-r border-slate-800">Nama Produk</th>
                   <th className="p-3 text-center bg-indigo-950 border-r border-slate-800">S/M/L</th>
                   <th className="p-3 text-center bg-indigo-900 border-r border-slate-800">XL/2XL</th>
@@ -508,8 +508,8 @@ export const MasterHargaView: React.FC = () => {
               <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredBuyer.map((row) => (
                   <tr key={row.id} className="hover:bg-emerald-50/40 transition">
-                    <td className="p-3 font-bold text-slate-900 border-r border-slate-100">
-                      <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-md text-[10px]">
+                    <td className="p-3 font-bold text-slate-900 border-r border-slate-100 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-md text-[10px] whitespace-nowrap">
                         {row.brand}
                       </span>
                     </td>

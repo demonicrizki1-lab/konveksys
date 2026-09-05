@@ -320,7 +320,7 @@ export const ArusKasView: React.FC = () => {
               <thead className="bg-slate-900 text-white text-[10px] font-medium uppercase tracking-wider">
                 <tr>
                   <th className="p-3.5">Tanggal</th>
-                  <th className="p-3.5">Brand</th>
+                  <th className="p-3.5 text-center whitespace-nowrap">Brand</th>
                   <th className="p-3.5">Nominal</th>
                   <th className="p-3.5">Metode</th>
                   <th className="p-3.5">Keterangan</th>
@@ -332,8 +332,8 @@ export const ArusKasView: React.FC = () => {
                 {filteredPembayaran.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50 transition-base">
                     <td className="p-3.5 font-medium text-slate-700">{formatDateIndo(p.tanggal)}</td>
-                    <td className="p-3.5">
-                      <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-100">
+                    <td className="p-3.5 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-100 whitespace-nowrap">
                         {p.brand}
                       </span>
                     </td>
