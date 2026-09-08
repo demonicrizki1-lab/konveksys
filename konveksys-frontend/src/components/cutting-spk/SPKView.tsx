@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SPKCutting, SPKProductItem, SizeBreakdown } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { ConfirmModal } from '../common/ConfirmModal';
 import {
   Scissors,
   Plus,
@@ -46,6 +47,14 @@ export const SPKView: React.FC = () => {
 
   // Modal State for New SPK
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    spk?: SPKCutting;
+    isBlocked?: boolean;
+    blockMessage?: string;
+  }>({ isOpen: false });
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [selectedBrand, setSelectedBrand] = useState(brands[0]?.name || 'GREYWOLF');
   const [selectedRollIds, setSelectedRollIds] = useState<string[]>([]);
   const [productItems, setProductItems] = useState<ProductFormItem[]>([
@@ -260,13 +269,31 @@ export const SPKView: React.FC = () => {
     }
   };
 
-  const handleDeleteSPK = async (spk: SPKCutting) => {
-    const confirmMsg = `Apakah Anda yakin ingin menghapus SPK ${spk.spkNumber} (${spk.produk} - ${spk.brand})?\n\nKain rol yang di-pool akan otomatis dikembalikan ke status 'Di Gudang'.`;
-    if (!window.confirm(confirmMsg)) return;
+  const handleDeleteSPK = (spk: SPKCutting) => {
+    setDeleteModal({
+      isOpen: true,
+      spk,
+      isBlocked: false,
+    });
+  };
 
-    const res = await deleteSPK(spk.id);
-    if (!res.success) {
-      alert(res.message || 'Gagal menghapus SPK.');
+  const executeDeleteSPK = async () => {
+    if (!deleteModal.spk) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteSPK(deleteModal.spk.id);
+      if (!res.success) {
+        setDeleteModal({
+          isOpen: true,
+          spk: deleteModal.spk,
+          isBlocked: true,
+          blockMessage: res.message || 'Gagal menghapus SPK.',
+        });
+      } else {
+        setDeleteModal({ isOpen: false });
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1016,6 +1043,36 @@ export const SPKView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Konfirmasi / Peringatan Hapus SPK */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        onConfirm={deleteModal.isBlocked ? undefined : executeDeleteSPK}
+        title={deleteModal.isBlocked ? 'Gagal Menghapus SPK' : 'Hapus SPK Cutting?'}
+        variant={deleteModal.isBlocked ? 'warning' : 'danger'}
+        confirmText="Ya, Hapus SPK"
+        cancelText="Batal"
+        isLoading={isDeleting}
+        message={
+          deleteModal.isBlocked ? (
+            deleteModal.blockMessage
+          ) : deleteModal.spk ? (
+            <span>
+              Apakah Anda yakin ingin menghapus SPK{' '}
+              <strong className="text-slate-900 font-mono">{deleteModal.spk.spkNumber}</strong>{' '}
+              ({deleteModal.spk.produk} - {deleteModal.spk.brand})?
+            </span>
+          ) : (
+            'Apakah Anda yakin ingin menghapus SPK ini?'
+          )
+        }
+        note={
+          deleteModal.isBlocked
+            ? undefined
+            : "Kain rol yang di-pool akan otomatis dikembalikan ke status 'Di Gudang'."
+        }
+      />
     </div>
   );
 };

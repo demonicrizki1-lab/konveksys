@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InboundRoll, RollStatus } from '../../types';
 import { formatRupiahInput, parseRupiahInput, formatDateIndo } from '../../utils/formatters';
+import { ConfirmModal } from '../common/ConfirmModal';
 import {
   PackageCheck,
   Plus,
@@ -25,6 +26,14 @@ export const InboundView: React.FC = () => {
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    roll?: InboundRoll;
+    isBlocked?: boolean;
+    blockMessage?: string;
+  }>({ isOpen: false });
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [form, setForm] = useState({
     rollCode: '',
     brand: userRole === 'BRAND' ? activeBrand : 'GREYWOLF',
@@ -94,17 +103,41 @@ export const InboundView: React.FC = () => {
     setIsAddModalOpen(false);
   };
 
-  const handleDeleteRoll = async (roll: InboundRoll) => {
+  const handleDeleteRoll = (roll: InboundRoll) => {
     if (roll.status === 'DIPROSES') {
-      alert(`Rol kain ${roll.rollCode} sedang digunakan dalam SPK aktif. Hapus SPK terkait terlebih dahulu.`);
+      setDeleteModal({
+        isOpen: true,
+        roll,
+        isBlocked: true,
+        blockMessage: `Rol kain ${roll.rollCode} sedang digunakan dalam SPK aktif. Hapus SPK terkait terlebih dahulu sebelum menghapus data kain ini.`,
+      });
       return;
     }
-    const confirmMsg = `Apakah Anda yakin ingin menghapus data rol kain ${roll.rollCode} (${roll.jenisKain} - ${roll.meterLength}m)?`;
-    if (!window.confirm(confirmMsg)) return;
 
-    const res = await deleteInboundRoll(roll.id);
-    if (!res.success) {
-      alert(res.message || 'Gagal menghapus data rol kain.');
+    setDeleteModal({
+      isOpen: true,
+      roll,
+      isBlocked: false,
+    });
+  };
+
+  const executeDeleteRoll = async () => {
+    if (!deleteModal.roll) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteInboundRoll(deleteModal.roll.id);
+      if (!res.success) {
+        setDeleteModal({
+          isOpen: true,
+          roll: deleteModal.roll,
+          isBlocked: true,
+          blockMessage: res.message || 'Gagal menghapus data rol kain.',
+        });
+      } else {
+        setDeleteModal({ isOpen: false });
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -432,6 +465,36 @@ export const InboundView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Konfirmasi / Peringatan Hapus Rol Kain */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        onConfirm={deleteModal.isBlocked ? undefined : executeDeleteRoll}
+        title={deleteModal.isBlocked ? 'Tidak Dapat Menghapus Kain' : 'Hapus Data Rol Kain?'}
+        variant={deleteModal.isBlocked ? 'warning' : 'danger'}
+        confirmText="Ya, Hapus Rol Kain"
+        cancelText="Batal"
+        isLoading={isDeleting}
+        message={
+          deleteModal.isBlocked ? (
+            deleteModal.blockMessage
+          ) : deleteModal.roll ? (
+            <span>
+              Apakah Anda yakin ingin menghapus data rol kain{' '}
+              <strong className="text-slate-900 font-mono">{deleteModal.roll.rollCode}</strong>{' '}
+              ({deleteModal.roll.jenisKain} - {deleteModal.roll.meterLength}m)?
+            </span>
+          ) : (
+            'Apakah Anda yakin ingin menghapus data rol kain ini?'
+          )
+        }
+        note={
+          deleteModal.isBlocked
+            ? 'Harap hapus atau selesaikan SPK terkait terlebih dahulu sebelum menghapus data rol kain ini.'
+            : 'Data rol kain yang telah dihapus tidak dapat dipulihkan kembali.'
+        }
+      />
 
     </div>
   );

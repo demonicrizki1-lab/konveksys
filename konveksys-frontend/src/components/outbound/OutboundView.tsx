@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { SuratJalan, SuratJalanItem, SizeBreakdown, SPKCutting } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
 import { printIsolatedDocument } from '../../utils/printHelper';
+import { ConfirmModal } from '../common/ConfirmModal';
 import {
   Truck,
   Plus,
@@ -79,6 +80,14 @@ export const OutboundView: React.FC = () => {
 
   // Modal State for Create Surat Jalan
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    sj?: SuratJalan;
+    isBlocked?: boolean;
+    blockMessage?: string;
+  }>({ isOpen: false });
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [selectedBrand, setSelectedBrand] = useState<string>('NAMI');
   const [driverName, setDriverName] = useState('Pak Wardi');
   const [nomorKendaraan, setNomorKendaraan] = useState('D 1829 XYZ');
@@ -357,14 +366,31 @@ export const OutboundView: React.FC = () => {
   };
 
   // Delete Surat Jalan
-  const handleDeleteSJ = async (sj: SuratJalan) => {
-    const items = getSuratJalanItems(sj);
-    const confirmMsg = `Apakah Anda yakin ingin menghapus Surat Jalan ${sj.noSuratJalan} (${items.length} Artikel - ${sj.totalPcs} Pcs)?\n\nKuantiti terkirim pada semua SPK terkait akan otomatis dikembalikan (revert).`;
-    if (!window.confirm(confirmMsg)) return;
+  const handleDeleteSJ = (sj: SuratJalan) => {
+    setDeleteModal({
+      isOpen: true,
+      sj,
+      isBlocked: false,
+    });
+  };
 
-    const res = await deleteSuratJalan(sj.id);
-    if (!res.success) {
-      alert(res.message || 'Gagal menghapus Surat Jalan.');
+  const executeDeleteSJ = async () => {
+    if (!deleteModal.sj) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteSuratJalan(deleteModal.sj.id);
+      if (!res.success) {
+        setDeleteModal({
+          isOpen: true,
+          sj: deleteModal.sj,
+          isBlocked: true,
+          blockMessage: res.message || 'Gagal menghapus Surat Jalan.',
+        });
+      } else {
+        setDeleteModal({ isOpen: false });
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1186,6 +1212,36 @@ export const OutboundView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Konfirmasi / Peringatan Hapus Surat Jalan */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        onConfirm={deleteModal.isBlocked ? undefined : executeDeleteSJ}
+        title={deleteModal.isBlocked ? 'Gagal Menghapus Surat Jalan' : 'Hapus Surat Jalan?'}
+        variant={deleteModal.isBlocked ? 'warning' : 'danger'}
+        confirmText="Ya, Hapus Surat Jalan"
+        cancelText="Batal"
+        isLoading={isDeleting}
+        message={
+          deleteModal.isBlocked ? (
+            deleteModal.blockMessage
+          ) : deleteModal.sj ? (
+            <span>
+              Apakah Anda yakin ingin menghapus Surat Jalan{' '}
+              <strong className="text-slate-900 font-mono">{deleteModal.sj.noSuratJalan}</strong>{' '}
+              ({getSuratJalanItems(deleteModal.sj).length} Artikel - {deleteModal.sj.totalPcs} Pcs)?
+            </span>
+          ) : (
+            'Apakah Anda yakin ingin menghapus Surat Jalan ini?'
+          )
+        }
+        note={
+          deleteModal.isBlocked
+            ? undefined
+            : 'Kuantiti terkirim pada semua SPK terkait akan otomatis dikembalikan (revert).'
+        }
+      />
     </div>
   );
 };

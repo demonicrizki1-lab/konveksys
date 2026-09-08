@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { HargaKonveksi, HargaBuyer, Vendor } from '../../types';
 import { formatRupiahInput, parseRupiahInput } from '../../utils/formatters';
+import { ConfirmModal } from '../common/ConfirmModal';
 import { Coins, Plus, Search, Edit2, Trash2, Check, X, ShieldAlert, Sparkles, Factory, Phone, Tag } from 'lucide-react';
 
 export const MasterHargaView: React.FC = () => {
@@ -25,6 +26,20 @@ export const MasterHargaView: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'vendor' | 'konveksi' | 'buyer'>('vendor');
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState('ALL');
+
+  // Generic Confirm Modal State
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode;
+    note?: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Vendor Modal State
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
@@ -392,11 +407,23 @@ export const MasterHargaView: React.FC = () => {
                         </button>
                         <button
                           onClick={() => {
-                            if (confirm(`Hapus vendor ${v.name}? Semua riwayat tarif vendor ini akan terhapus.`)) {
-                              deleteVendor(v.id);
-                            }
+                            setDeleteModal({
+                              isOpen: true,
+                              title: 'Hapus Vendor?',
+                              message: (
+                                <span>
+                                  Apakah Anda yakin ingin menghapus vendor{' '}
+                                  <strong className="text-slate-900">{v.name}</strong>?
+                                </span>
+                              ),
+                              note: 'Semua riwayat tarif yang terhubung dengan vendor ini akan dihapus.',
+                              onConfirm: () => {
+                                deleteVendor(v.id);
+                                setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+                              },
+                            });
                           }}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                           title="Hapus"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -458,11 +485,23 @@ export const MasterHargaView: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm(`Hapus tarif ${row.vendor} untuk ${row.produk}?`)) {
-                            deleteHargaKonveksi(row.id);
-                          }
+                          setDeleteModal({
+                            isOpen: true,
+                            title: 'Hapus Tarif Konveksi?',
+                            message: (
+                              <span>
+                                Apakah Anda yakin ingin menghapus tarif{' '}
+                                <strong className="text-slate-900">{row.vendor}</strong> untuk produk{' '}
+                                <strong className="text-slate-900">{row.produk}</strong>?
+                              </span>
+                            ),
+                            onConfirm: () => {
+                              deleteHargaKonveksi(row.id);
+                              setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+                            },
+                          });
                         }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                         title="Hapus"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -551,11 +590,23 @@ export const MasterHargaView: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm(`Hapus matriks tarif ${row.brand} untuk ${row.produk}?`)) {
-                            deleteHargaBuyer(row.id);
-                          }
+                          setDeleteModal({
+                            isOpen: true,
+                            title: 'Hapus Matriks Tarif Buyer?',
+                            message: (
+                              <span>
+                                Apakah Anda yakin ingin menghapus matriks tarif{' '}
+                                <strong className="text-slate-900">{row.brand}</strong> untuk produk{' '}
+                                <strong className="text-slate-900">{row.produk}</strong>?
+                              </span>
+                            ),
+                            onConfirm: () => {
+                              deleteHargaBuyer(row.id);
+                              setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+                            },
+                          });
                         }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                         title="Hapus"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -906,6 +957,19 @@ export const MasterHargaView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Konfirmasi Hapus Data Master */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={deleteModal.onConfirm}
+        title={deleteModal.title}
+        variant="danger"
+        confirmText="Ya, Hapus Data"
+        cancelText="Batal"
+        message={deleteModal.message}
+        note={deleteModal.note}
+      />
 
     </div>
   );

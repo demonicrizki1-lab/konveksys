@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PembayaranBrand, MetodePembayaran } from '../../types';
 import { formatRupiahInput, parseRupiahInput, formatDateIndo } from '../../utils/formatters';
+import { ConfirmModal } from '../common/ConfirmModal';
 import {
   TrendingUp,
   Plus,
@@ -51,6 +52,10 @@ export const ArusKasView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState(userRole === 'BRAND' ? activeBrand : 'ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    item?: PembayaranBrand;
+  }>({ isOpen: false });
   const [form, setForm] = useState({
     brand: userRole === 'BRAND' ? activeBrand : brands[0]?.name || 'GREYWOLF',
     tanggal: new Date().toISOString().split('T')[0],
@@ -118,9 +123,7 @@ export const ArusKasView: React.FC = () => {
   };
 
   const handleDelete = (p: PembayaranBrand) => {
-    if (confirm(`Hapus pencatatan pembayaran ${formatRp(p.jumlah)} dari ${p.brand}?`)) {
-      deletePembayaran(p.id);
-    }
+    setDeleteModal({ isOpen: true, item: p });
   };
 
   return (
@@ -508,6 +511,34 @@ export const ArusKasView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Konfirmasi Hapus Pembayaran */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        onConfirm={async () => {
+          if (deleteModal.item) {
+            await deletePembayaran(deleteModal.item.id);
+            setDeleteModal({ isOpen: false });
+          }
+        }}
+        title="Hapus Pembayaran Brand?"
+        variant="danger"
+        confirmText="Ya, Hapus Pembayaran"
+        cancelText="Batal"
+        message={
+          deleteModal.item ? (
+            <span>
+              Apakah Anda yakin ingin menghapus pencatatan pembayaran{' '}
+              <strong className="text-slate-900">{formatRp(deleteModal.item.jumlah)}</strong> dari{' '}
+              <strong className="text-slate-900">{deleteModal.item.brand}</strong>?
+            </span>
+          ) : (
+            'Apakah Anda yakin ingin menghapus pembayaran ini?'
+          )
+        }
+        note="Data pencatatan kas masuk ini akan dihapus dan total akumulasi terbayar brand akan disesuaikan."
+      />
     </div>
   );
 };

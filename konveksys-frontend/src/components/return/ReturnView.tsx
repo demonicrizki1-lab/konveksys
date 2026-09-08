@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ReturnItem, ReturnStatus, ReturnSource, SizeBreakdown } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { ConfirmModal } from '../common/ConfirmModal';
 import {
   RotateCcw,
   Plus,
@@ -45,6 +46,10 @@ export const ReturnView: React.FC = () => {
 
   // Modal State: Create Return
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    item?: ReturnItem;
+  }>({ isOpen: false });
   const [sumber, setSumber] = useState<ReturnSource>(userRole === 'BRAND' ? 'BRAND_COMPLAINT' : 'INTERNAL_QC');
   const [selectedSPKId, setSelectedSPKId] = useState<string>('');
   const [selectedSJId, setSelectedSJId] = useState<string>('');
@@ -556,11 +561,7 @@ export const ReturnView: React.FC = () => {
                         {/* Admin Action: Delete */}
                         {userRole === 'ADMIN' && (
                           <button
-                            onClick={() => {
-                              if (confirm(`Hapus tiket retur ${item.noRetur}?`)) {
-                                deleteReturn(item.id);
-                              }
-                            }}
+                            onClick={() => setDeleteModal({ isOpen: true, item })}
                             title="Hapus Tiket"
                             className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition cursor-pointer"
                           >
@@ -1280,6 +1281,34 @@ export const ReturnView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: Konfirmasi Hapus Tiket Retur */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        onConfirm={() => {
+          if (deleteModal.item) {
+            deleteReturn(deleteModal.item.id);
+            setDeleteModal({ isOpen: false });
+          }
+        }}
+        title="Hapus Tiket Retur?"
+        variant="danger"
+        confirmText="Ya, Hapus Tiket"
+        cancelText="Batal"
+        message={
+          deleteModal.item ? (
+            <span>
+              Apakah Anda yakin ingin menghapus tiket retur{' '}
+              <strong className="text-slate-900 font-mono">{deleteModal.item.noRetur}</strong>{' '}
+              ({deleteModal.item.produk} - {deleteModal.item.vendor})?
+            </span>
+          ) : (
+            'Apakah Anda yakin ingin menghapus tiket retur ini?'
+          )
+        }
+        note="Data riwayat retur dan QC barang cacat ini akan dihapus dari sistem."
+      />
     </div>
   );
 };

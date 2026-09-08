@@ -19,6 +19,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { AccessoryItem, AccessoryMutation } from '../../types';
 import { formatRp, formatDateIndo } from '../../utils/formatters';
+import { ConfirmModal } from '../common/ConfirmModal';
 import { AccessoryModal } from './AccessoryModal';
 import { StockMutationModal } from './StockMutationModal';
 import { StockOpnameModal } from './StockOpnameModal';
@@ -39,6 +40,10 @@ export const AccessoriesView: React.FC = () => {
   // Modals
   const [isAccessoryModalOpen, setIsAccessoryModalOpen] = useState(false);
   const [editingAccessory, setEditingAccessory] = useState<AccessoryItem | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    item?: AccessoryItem;
+  }>({ isOpen: false });
 
   const [isMutationModalOpen, setIsMutationModalOpen] = useState(false);
   const [mutationType, setMutationType] = useState<'MASUK' | 'KELUAR'>('MASUK');
@@ -137,10 +142,8 @@ export const AccessoriesView: React.FC = () => {
     });
   }, [accessoryMutations, searchTerm]);
 
-  const handleDeleteItem = async (item: AccessoryItem) => {
-    if (window.confirm(`Hapus data master aksesoris "${item.name}" (${item.sku})?`)) {
-      await deleteAccessory(item.id);
-    }
+  const handleDeleteItem = (item: AccessoryItem) => {
+    setDeleteModal({ isOpen: true, item });
   };
 
   const handleExportCSV = () => {
@@ -642,6 +645,34 @@ export const AccessoriesView: React.FC = () => {
           onClose={() => setIsPrintModalOpen(false)}
         />
       )}
+
+      {/* MODAL: Konfirmasi Hapus Master Aksesoris */}
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        onConfirm={async () => {
+          if (deleteModal.item) {
+            await deleteAccessory(deleteModal.item.id);
+            setDeleteModal({ isOpen: false });
+          }
+        }}
+        title="Hapus Master Aksesoris?"
+        variant="danger"
+        confirmText="Ya, Hapus Aksesoris"
+        cancelText="Batal"
+        message={
+          deleteModal.item ? (
+            <span>
+              Apakah Anda yakin ingin menghapus data master aksesoris{' '}
+              <strong className="text-slate-900">{deleteModal.item.name}</strong>{' '}
+              (<span className="font-mono">{deleteModal.item.sku}</span>)?
+            </span>
+          ) : (
+            'Apakah Anda yakin ingin menghapus data master aksesoris ini?'
+          )
+        }
+        note="Data master aksesoris beserta riwayat stoknya akan dihapus."
+      />
 
     </div>
   );

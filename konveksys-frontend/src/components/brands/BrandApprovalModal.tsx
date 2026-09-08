@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PendingBrandUser } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { ConfirmModal } from '../common/ConfirmModal';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -26,6 +27,7 @@ export const BrandApprovalModal: React.FC<BrandApprovalModalProps> = ({ isOpen, 
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [rejectModalUser, setRejectModalUser] = useState<PendingBrandUser | null>(null);
 
   if (!isOpen) return null;
 
@@ -47,8 +49,13 @@ export const BrandApprovalModal: React.FC<BrandApprovalModalProps> = ({ isOpen, 
     }
   };
 
-  const handleReject = async (user: PendingBrandUser) => {
-    if (!window.confirm(`Yakin ingin menolak permohonan kemitraan dari ${user.name}?`)) return;
+  const handleReject = (user: PendingBrandUser) => {
+    setRejectModalUser(user);
+  };
+
+  const executeReject = async () => {
+    if (!rejectModalUser) return;
+    const user = rejectModalUser;
     setProcessingId(user.id);
     setFeedbackMsg(null);
     try {
@@ -60,6 +67,7 @@ export const BrandApprovalModal: React.FC<BrandApprovalModalProps> = ({ isOpen, 
       }
     } finally {
       setProcessingId(null);
+      setRejectModalUser(null);
     }
   };
 
@@ -200,13 +208,37 @@ export const BrandApprovalModal: React.FC<BrandApprovalModalProps> = ({ isOpen, 
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition"
+            className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition cursor-pointer"
           >
             Tutup
           </button>
         </div>
 
       </div>
+
+      {/* MODAL: Konfirmasi Tolak Permohonan Brand */}
+      <ConfirmModal
+        isOpen={Boolean(rejectModalUser)}
+        onClose={() => setRejectModalUser(null)}
+        onConfirm={executeReject}
+        title="Tolak Permohonan Brand?"
+        variant="danger"
+        confirmText="Ya, Tolak Permohonan"
+        cancelText="Batal"
+        isLoading={processingId !== null}
+        message={
+          rejectModalUser ? (
+            <span>
+              Apakah Anda yakin ingin menolak permohonan kemitraan dari{' '}
+              <strong className="text-slate-900">{rejectModalUser.name}</strong> ({rejectModalUser.email})?
+            </span>
+          ) : (
+            'Apakah Anda yakin ingin menolak permohonan ini?'
+          )
+        }
+        note="Akun yang ditolak tidak akan dapat mengakses dashboard brand."
+      />
+
     </div>
   );
 };
