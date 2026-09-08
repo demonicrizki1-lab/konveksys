@@ -98,14 +98,13 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               <div>
                 <h2 className="text-xl font-bold tracking-tight text-slate-900">MAISON RAYYAN MANUFACTURING</h2>
                 <p className="text-xs text-slate-500 mt-0.5">Konveksi & Makloon Garment Terpadu</p>
-                <p className="text-[10px] text-slate-400">Jl. Industri Makloon No. 88, Bandung • Telp: 0812-3456-7890</p>
               </div>
               <div className="text-right">
                 <span className="badge-green bg-emerald-700 text-white text-[11px] font-bold px-3 py-1 rounded uppercase tracking-wider inline-block">
                   INVOICE TAGIHAN
                 </span>
                 <div className="text-xs font-mono font-bold text-slate-800 mt-1.5">{invoice.invoiceNo}</div>
-                <div className="text-[11px] text-slate-500">Tgl: {formatDateIndo(invoice.tanggal)}</div>
+                <div className="text-[11px] text-slate-500">Tgl: {formatDateIndo(new Date().toISOString().split('T')[0])}</div>
               </div>
             </div>
 
@@ -115,23 +114,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Ditagihkan Kepada (Buyer):</span>
                 <strong className="text-slate-900 text-sm font-bold">{invoice.brand}</strong>
                 <div className="text-slate-500 text-[11px] mt-0.5">Partner Brand Makloon Resmi</div>
-                {invoice.periodeLabel && (
-                  <div className="text-[11px] text-emerald-800 font-semibold mt-1">
-                    Periode: {invoice.periodeLabel}
-                  </div>
-                )}
               </div>
-              <div className="text-right">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Jatuh Tempo Pembayaran:</span>
-                <strong className="text-rose text-rose-600 text-sm font-bold">{formatDateIndo(invoice.jatuhTempo)}</strong>
-                <div className="text-[10px] text-slate-500 mt-0.5">Transfer BCA 123-456-7890 a/n Maison Rayyan</div>
+              <div className="text-right flex flex-col justify-center">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Pembayaran Transfer:</span>
+                <strong className="text-slate-900 text-xs font-bold mt-0.5">BCA 3760923906</strong>
+                <div className="text-[11px] text-slate-600">a/n Cecep Dayat</div>
               </div>
             </div>
 
             {/* Table of Delivered Items & Multi-Size Rates */}
             <div className="space-y-1.5">
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                Rincian Pengiriman Barang (Berdasarkan Surat Jalan & Matriks Harga)
+                Rincian Pengiriman Barang
               </div>
               <div className="border border-slate-200 rounded-lg overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">

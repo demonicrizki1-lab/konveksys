@@ -69,14 +69,16 @@ export const FinanceView: React.FC = () => {
 
   // Selected Brand for Invoice
   const [selectedBrandName, setSelectedBrandName] = useState(
-    userRole === 'BRAND' ? activeBrand : brands[0]?.name || 'GREYWOLF'
+    userRole === 'BRAND' ? (activeBrand === 'CREADIVE' ? 'NAMI' : activeBrand) : (brands[0]?.name === 'CREADIVE' ? 'NAMI' : brands[0]?.name) || 'GREYWOLF'
   );
 
   React.useEffect(() => {
     if (userRole === 'BRAND') {
-      setSelectedBrandName(activeBrand);
+      setSelectedBrandName(activeBrand === 'CREADIVE' ? 'NAMI' : activeBrand);
+    } else if (selectedBrandName === 'CREADIVE') {
+      setSelectedBrandName('NAMI');
     }
-  }, [userRole, activeBrand]);
+  }, [userRole, activeBrand, selectedBrandName]);
 
   // Modals for Printing
   const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);

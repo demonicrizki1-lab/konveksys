@@ -79,11 +79,11 @@ export const OutboundView: React.FC = () => {
 
   // Modal State for Create Surat Jalan
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<string>('CREADIVE');
+  const [selectedBrand, setSelectedBrand] = useState<string>('NAMI');
   const [driverName, setDriverName] = useState('Pak Wardi');
   const [nomorKendaraan, setNomorKendaraan] = useState('D 1829 XYZ');
   const [tanggalKirim, setTanggalKirim] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [catatan, setCatatan] = useState('Pengiriman parsial harian');
+  const [catatan, setCatatan] = useState('');
 
   // Multi-Item Draft List (Items currently in the cargo of this Surat Jalan)
   const [draftItems, setDraftItems] = useState<SuratJalanItem[]>([]);
@@ -193,7 +193,7 @@ export const OutboundView: React.FC = () => {
 
   // Open Create Modal
   const handleOpenCreate = () => {
-    const initialBrand = userRole === 'BRAND' ? activeBrand : 'CREADIVE';
+    const initialBrand = userRole === 'BRAND' ? activeBrand : 'NAMI';
     setSelectedBrand(initialBrand);
 
     const availableSpks = spkList.filter((s) => s.brand === initialBrand && s.status !== 'COMPLETED');
@@ -210,7 +210,7 @@ export const OutboundView: React.FC = () => {
     setDriverName('Pak Wardi');
     setNomorKendaraan('D 1829 XYZ');
     setTanggalKirim(new Date().toISOString().split('T')[0]);
-    setCatatan('Pengiriman parsial harian');
+    setCatatan('');
     setDraftItems([]);
     setQtySend(emptySizeBreakdown());
     setIsCreateModalOpen(true);
@@ -1086,7 +1086,6 @@ export const OutboundView: React.FC = () => {
                   <div>
                     <h2 className="text-xl font-bold tracking-tight text-slate-900">MAISON RAYYAN MANUFACTURING</h2>
                     <p className="text-xs text-slate-500 mt-0.5">Konveksi & Makloon Garment Terpadu</p>
-                    <p className="text-[10px] text-slate-400">Jl. Industri Makloon No. 88, Bandung • Telp: 0812-3456-7890</p>
                   </div>
                   <div className="text-right">
                     <span className="bg-slate-900 text-white text-[11px] font-bold px-3 py-1 rounded uppercase tracking-wider inline-block">
@@ -1098,19 +1097,14 @@ export const OutboundView: React.FC = () => {
                 </div>
 
                 {/* Info Pengiriman Box */}
-                <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div className="text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
                   <div>
                     <span className="text-slate-400 block text-[10px] uppercase font-bold">Brand Tujuan:</span>
                     <strong className="text-slate-900 text-sm font-bold">{selectedSJDetail.brand}</strong>
                     <div className="text-slate-500 text-[11px] mt-0.5">Partner Brand Makloon</div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Armada & Driver:</span>
-                    <strong className="text-slate-900 text-xs font-bold">{selectedSJDetail.driverName}</strong>
-                    <div className="text-slate-600 font-mono text-[11px]">{selectedSJDetail.nomorKendaraan}</div>
-                  </div>
                   {selectedSJDetail.catatan && (
-                    <div className="col-span-2 pt-1 border-t border-slate-200/60 text-[11px] text-slate-600">
+                    <div className="pt-2 mt-2 border-t border-slate-200/60 text-[11px] text-slate-600">
                       <span className="font-bold">Catatan:</span> {selectedSJDetail.catatan}
                     </div>
                   )}
@@ -1127,11 +1121,10 @@ export const OutboundView: React.FC = () => {
                       <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase">
                         <tr>
                           <th className="p-2 w-[6%] text-center">No</th>
-                          <th className="p-2 w-[24%]">Artikel Produk</th>
-                          <th className="p-2 w-[22%]">Bahan / Kain</th>
-                          <th className="p-2 w-[16%]">Penjahit</th>
+                          <th className="p-2 w-[32%]">Artikel Produk</th>
+                          <th className="p-2 w-[28%]">Bahan / Kain</th>
                           <th className="p-2 w-[22%]">Rincian Size</th>
-                          <th className="p-2 w-[10%] text-right whitespace-nowrap">Qty Pcs</th>
+                          <th className="p-2 w-[12%] text-right whitespace-nowrap">Qty Pcs</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
@@ -1140,7 +1133,6 @@ export const OutboundView: React.FC = () => {
                             <td className="p-2 text-center font-bold text-slate-400">{idx + 1}</td>
                             <td className="p-2 font-bold text-slate-900">{item.produk}</td>
                             <td className="p-2 text-slate-600 text-[11px]">{item.jenisKain || 'Kain Standar'}</td>
-                            <td className="p-2 text-slate-700 font-medium">{item.vendor}</td>
                             <td className="p-2 text-[10px] text-slate-600 space-y-0.5">
                               {Object.entries(item.qtyDelivered).map(([sz, qty]) => {
                                 if (qty === 0) return null;
@@ -1159,7 +1151,7 @@ export const OutboundView: React.FC = () => {
                       </tbody>
                       <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
                         <tr>
-                          <td colSpan={5} className="p-2 text-right uppercase text-[10px]">
+                          <td colSpan={4} className="p-2 text-right uppercase text-[10px]">
                             Total Keseluruhan Barang:
                           </td>
                           <td className="p-2 text-right text-indigo-700 font-bold text-sm whitespace-nowrap">
@@ -1174,19 +1166,19 @@ export const OutboundView: React.FC = () => {
                 {/* Kolom Tanda Tangan */}
                 <div className="grid grid-cols-3 gap-2 pt-4 text-center text-xs">
                   <div className="border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between h-24">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Penerima (Brand)</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Dibuat Oleh</span>
                     <div className="border-b border-slate-300 w-3/4 mx-auto"></div>
-                    <span className="text-[10px] text-slate-400">(Nama & Cap)</span>
+                    <span className="text-[10px] text-slate-400">(Admin / Gudang)</span>
                   </div>
                   <div className="border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between h-24">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Pengemudi (Driver)</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Dikirim Oleh</span>
                     <div className="border-b border-slate-300 w-3/4 mx-auto"></div>
-                    <span className="text-[10px] text-slate-700 font-bold">{selectedSJDetail.driverName}</span>
+                    <span className="text-[10px] text-slate-400">(Kurir / Driver)</span>
                   </div>
                   <div className="border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between h-24">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Petugas Gudang</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Diterima Oleh</span>
                     <div className="border-b border-slate-300 w-3/4 mx-auto"></div>
-                    <span className="text-[10px] text-slate-400">(QC / Gudang)</span>
+                    <span className="text-[10px] text-slate-400">(Nama & Cap Penerima)</span>
                   </div>
                 </div>
               </div>

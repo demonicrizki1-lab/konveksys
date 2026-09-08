@@ -27,7 +27,7 @@ export const demoUsers: AuthUser[] = [
 export const initialBrands: Brand[] = [
   { id: 'b-1', name: 'GREYWOLF', code: 'GWF', contactPerson: 'Bpk. Adit', phone: '0812-3456-7890' },
   { id: 'b-2', name: 'CITA-CITA', code: 'CTC', contactPerson: 'Ibu Sarah', phone: '0813-9876-5432' },
-  { id: 'b-3', name: 'CREADIVE', code: 'CRD', contactPerson: 'Bpk. Dimas', phone: '0821-1122-3344' },
+  { id: 'b-3', name: 'NAMI', code: 'NMI', contactPerson: 'Bpk. Dimas', phone: '0821-1122-3344' },
   { id: 'b-4', name: 'JENAKA KIDS', code: 'JNK', contactPerson: 'Ibu Rina', phone: '0857-4455-6677' },
 ];
 
@@ -56,9 +56,9 @@ export const initialHargaKonveksi: HargaKonveksi[] = [
   { id: 'hk-14', vendor: 'SAHIRA', produk: 'BEDAH PENDEK', brand: 'CITA-CITA', harga: 14000 },
   { id: 'hk-15', vendor: 'RAKSUKAN', produk: 'BEDAH PANJANG', brand: 'CITA-CITA', harga: 14500 },
   { id: 'hk-16', vendor: 'RAKSUKAN', produk: 'BEDAH PENDEK', brand: 'CITA-CITA', harga: 14500 },
-  { id: 'hk-17', vendor: 'SAHIRA', produk: 'KEMEJA HAWAI', brand: 'CREADIVE', harga: 15000 },
-  { id: 'hk-18', vendor: 'KANG SONY', produk: 'BEDAH PANJANG', brand: 'CREADIVE', harga: 11500 },
-  { id: 'hk-19', vendor: 'KANG SONY', produk: 'BEDAH PENDEK', brand: 'CREADIVE', harga: 11500 },
+  { id: 'hk-17', vendor: 'SAHIRA', produk: 'KEMEJA HAWAI', brand: 'NAMI', harga: 15000 },
+  { id: 'hk-18', vendor: 'KANG SONY', produk: 'BEDAH PANJANG', brand: 'NAMI', harga: 11500 },
+  { id: 'hk-19', vendor: 'KANG SONY', produk: 'BEDAH PENDEK', brand: 'NAMI', harga: 11500 },
   { id: 'hk-20', vendor: 'RAKSUKAN', produk: 'CLARA', brand: 'JENAKA KIDS', harga: 12500 },
 ];
 
@@ -67,9 +67,9 @@ export const initialHargaBuyer: HargaBuyer[] = [
   { id: 'hb-2', brand: 'CITA-CITA', produk: 'BEDAH PENDEK', rateSML: 60000, rateXL: 65000, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
   { id: 'hb-3', brand: 'GREYWOLF', produk: 'BEDAH PANJANG', rateSML: 31000, rateXL: 34000, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
   { id: 'hb-4', brand: 'GREYWOLF', produk: 'BEDAH PENDEK', rateSML: 30000, rateXL: 34000, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
-  { id: 'hb-5', brand: 'CREADIVE', produk: 'BEDAH PANJANG', rateSML: 33500, rateXL: 33500, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
-  { id: 'hb-6', brand: 'CREADIVE', produk: 'BEDAH PENDEK', rateSML: 31500, rateXL: 31500, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
-  { id: 'hb-7', brand: 'CREADIVE', produk: 'KEMEJA HAWAI', rateSML: 30500, rateXL: 30500, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
+  { id: 'hb-5', brand: 'NAMI', produk: 'BEDAH PANJANG', rateSML: 33500, rateXL: 33500, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
+  { id: 'hb-6', brand: 'NAMI', produk: 'BEDAH PENDEK', rateSML: 31500, rateXL: 31500, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
+  { id: 'hb-7', brand: 'NAMI', produk: 'KEMEJA HAWAI', rateSML: 30500, rateXL: 30500, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
   { id: 'hb-8', brand: 'JENAKA KIDS', produk: 'GOLDIE', rateSML: 0, rateXL: 0, rateAnak4: 50000, rateAnak6: 52000, rateAnak8: 54000, rateAnak10: 56000, rateAnak12: 58000, rateAnak14: 60000, rateAnak16: 62000 },
   { id: 'hb-9', brand: 'CITA-CITA', produk: 'AKPOL', rateSML: 83000, rateXL: 83000, rateAnak4: 0, rateAnak6: 0, rateAnak8: 0, rateAnak10: 0, rateAnak12: 0, rateAnak14: 0, rateAnak16: 0 },
   { id: 'hb-10', brand: 'JENAKA KIDS', produk: 'QANITA', rateSML: 0, rateXL: 0, rateAnak4: 40000, rateAnak6: 42000, rateAnak8: 44000, rateAnak10: 46000, rateAnak12: 48000, rateAnak14: 50000, rateAnak16: 52000 },
@@ -83,7 +83,7 @@ export const initialInboundRolls: InboundRoll[] = [
   { id: 'rol-104', rollCode: 'ROL-CTC-001', brand: 'CITA-CITA', jenisKain: 'Rayon Twill Sage', meterLength: 180, meterUsed: 180, hargaModalMeter: 38000, status: 'DIPROSES', tanggalMasuk: '2026-08-12', keterangan: 'Bahan Bedah' },
   { id: 'rol-105', rollCode: 'ROL-CTC-002', brand: 'CITA-CITA', jenisKain: 'Ripstop Navy', meterLength: 140, meterUsed: 140, hargaModalMeter: 55000, status: 'DIPROSES', tanggalMasuk: '2026-08-14', keterangan: 'Bahan TNI' },
   { id: 'rol-106', rollCode: 'ROL-CTC-003', brand: 'CITA-CITA', jenisKain: 'Katun Toyobo Maroon', meterLength: 200, meterUsed: 0, hargaModalMeter: 48000, status: 'MENUNGGU_FISIK', tanggalMasuk: '2026-08-28', keterangan: 'Kirim via Dakota' },
-  { id: 'rol-107', rollCode: 'ROL-CRD-001', brand: 'CREADIVE', jenisKain: 'Rayon Viscose Motif Hawai', meterLength: 220, meterUsed: 220, hargaModalMeter: 36000, status: 'DIPROSES', tanggalMasuk: '2026-08-16', keterangan: 'Motif Tropical' },
+  { id: 'rol-107', rollCode: 'ROL-NMI-001', brand: 'NAMI', jenisKain: 'Rayon Viscose Motif Hawai', meterLength: 220, meterUsed: 220, hargaModalMeter: 36000, status: 'DIPROSES', tanggalMasuk: '2026-08-16', keterangan: 'Motif Tropical' },
   { id: 'rol-108', rollCode: 'ROL-JNK-001', brand: 'JENAKA KIDS', jenisKain: 'Katun Madinah Pastel', meterLength: 160, meterUsed: 160, hargaModalMeter: 40000, status: 'DIPROSES', tanggalMasuk: '2026-08-18', keterangan: 'Goldie Set' },
   { id: 'rol-109', rollCode: 'ROL-JNK-002', brand: 'JENAKA KIDS', jenisKain: 'Linen Crinkle Mint', meterLength: 130, meterUsed: 0, hargaModalMeter: 43000, status: 'DI_GUDANG', tanggalMasuk: '2026-08-22', keterangan: 'Rak B-1' },
 ];
@@ -120,7 +120,7 @@ export const initialSPKList: SPKCutting[] = [
   {
     id: 'spk-003',
     spkNumber: 'SPK-202608-03',
-    brand: 'CREADIVE',
+    brand: 'NAMI',
     produk: 'KEMEJA HAWAI',
     vendor: 'SAHIRA',
     rollIds: ['rol-107'],
@@ -197,7 +197,7 @@ export const initialSuratJalanList: SuratJalan[] = [
     id: 'sj-004',
     noSuratJalan: 'SJ/202608/004',
     spkId: 'spk-003',
-    brand: 'CREADIVE',
+    brand: 'NAMI',
     produk: 'KEMEJA HAWAI',
     vendor: 'SAHIRA',
     tanggal: '2026-08-25',

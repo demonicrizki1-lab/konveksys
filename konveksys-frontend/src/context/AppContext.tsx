@@ -297,7 +297,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Persistence State
   const [brands, setBrands] = useState<Brand[]>(() => {
     const saved = localStorage.getItem('konvek_brands');
-    return saved ? JSON.parse(saved) : initialBrands;
+    if (!saved) return initialBrands;
+    try {
+      const parsed: Brand[] = JSON.parse(saved);
+      return parsed.map(b => b.name === 'CREADIVE' ? { ...b, name: 'NAMI', code: 'NMI' } : b);
+    } catch {
+      return initialBrands;
+    }
   });
 
   const [vendors, setVendors] = useState<Vendor[]>(() => {
@@ -307,27 +313,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [hargaKonveksi, setHargaKonveksi] = useState<HargaKonveksi[]>(() => {
     const saved = localStorage.getItem('konvek_harga_konveksi');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed: HargaKonveksi[] = JSON.parse(saved);
+      return parsed.map(h => h.brand === 'CREADIVE' ? { ...h, brand: 'NAMI' } : h);
+    } catch {
+      return [];
+    }
   });
 
   const [hargaBuyer, setHargaBuyer] = useState<HargaBuyer[]>(() => {
     const saved = localStorage.getItem('konvek_harga_buyer');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed: HargaBuyer[] = JSON.parse(saved);
+      return parsed.map(h => h.brand === 'CREADIVE' ? { ...h, brand: 'NAMI' } : h);
+    } catch {
+      return [];
+    }
   });
 
   const [inboundRolls, setInboundRolls] = useState<InboundRoll[]>(() => {
     const saved = localStorage.getItem('konvek_inbound_rolls');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed: InboundRoll[] = JSON.parse(saved);
+      return parsed.map(r => r.brand === 'CREADIVE' ? { ...r, brand: 'NAMI' } : r);
+    } catch {
+      return [];
+    }
   });
 
   const [spkList, setSpkList] = useState<SPKCutting[]>(() => {
     const saved = localStorage.getItem('konvek_spk_list');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed: SPKCutting[] = JSON.parse(saved);
+      return parsed.map(s => s.brand === 'CREADIVE' ? { ...s, brand: 'NAMI' } : s);
+    } catch {
+      return [];
+    }
   });
 
   const [suratJalanList, setSuratJalanList] = useState<SuratJalan[]>(() => {
     const saved = localStorage.getItem('konvek_surat_jalan');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed: SuratJalan[] = JSON.parse(saved);
+      return parsed.map(sj => sj.brand === 'CREADIVE' ? { ...sj, brand: 'NAMI' } : sj);
+    } catch {
+      return [];
+    }
   });
 
   const [kasbonList, setKasbonList] = useState<KasbonTransaction[]>(() => {
@@ -337,7 +373,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [pembayaranList, setPembayaranList] = useState<PembayaranBrand[]>(() => {
     const saved = localStorage.getItem('konvek_pembayaran');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed: PembayaranBrand[] = JSON.parse(saved);
+      return parsed.map(p => p.brand === 'CREADIVE' ? { ...p, brand: 'NAMI' } : p);
+    } catch {
+      return [];
+    }
   });
 
   const [returnList, setReturnList] = useState<ReturnItem[]>(() => {
@@ -381,6 +423,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('konvek_accessory_mutations', JSON.stringify(accessoryMutations));
   }, [accessoryMutations]);
 
+  // Helper for brand name normalization (CREADIVE -> NAMI)
+  const normalizeBrandName = (name?: string): string => {
+    if (!name) return '';
+    if (name.trim().toUpperCase() === 'CREADIVE') return 'NAMI';
+    return name;
+  };
+
+  const normalizeBrandCode = (name?: string, code?: string): string => {
+    if (name?.trim().toUpperCase() === 'CREADIVE' || name?.trim().toUpperCase() === 'NAMI' || code?.toUpperCase() === 'CRD') return 'NMI';
+    return code || '';
+  };
+
   // Sync to Backend Database if token exists
   const syncFromBackend = useCallback(async () => {
     const token = getToken();
@@ -392,8 +446,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (Array.isArray(bData)) {
         setBrands(bData.map(b => ({
           id: b.id,
-          name: b.name,
-          code: b.code,
+          name: normalizeBrandName(b.name),
+          code: normalizeBrandCode(b.name, b.code),
           contactPerson: b.contactPerson || '',
           phone: b.phone || '',
         })));
@@ -422,7 +476,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setHargaKonveksi(hkData.map(hk => ({
           id: hk.id,
           vendor: hk.vendor,
-          brand: hk.brand,
+          brand: normalizeBrandName(hk.brand),
           produk: hk.produk,
           harga: Number(hk.harga),
         })));
@@ -433,7 +487,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (Array.isArray(hbData)) {
         setHargaBuyer(hbData.map(hb => ({
           id: hb.id,
-          brand: hb.brand,
+          brand: normalizeBrandName(hb.brand),
           produk: hb.produk,
           rateSML: Number(hb.rateSML),
           rateXL: Number(hb.rateXL),
@@ -453,7 +507,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setInboundRolls(rollData.map(r => ({
           id: r.id,
           rollCode: r.rollCode,
-          brand: r.brand,
+          brand: normalizeBrandName(r.brand),
           jenisKain: r.jenisKain,
           meterLength: Number(r.meterLength),
           meterUsed: Number(r.meterUsed || 0),
@@ -483,7 +537,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSpkList(spkData.map((s: any) => ({
           id: s.id,
           spkNumber: s.spkNumber,
-          brand: s.brand,
+          brand: normalizeBrandName(s.brand),
           produk: s.produk,
           vendor: s.vendor,
           rollIds: s.rolsDigunakan ? s.rolsDigunakan.map((r: any) => r.rolId) : [],
@@ -528,7 +582,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSuratJalanList(sjData.map((sj: any) => ({
           id: sj.id,
           noSuratJalan: sj.noSuratJalan,
-          brand: sj.brand,
+          brand: normalizeBrandName(sj.brand),
           tanggal: sj.tanggal,
           items: Array.isArray(sj.items)
             ? sj.items
@@ -567,7 +621,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (Array.isArray(payData)) {
         setPembayaranList(payData.map((p: any) => ({
           id: p.id,
-          brand: p.brand,
+          brand: normalizeBrandName(p.brand),
           tanggal: p.tanggal,
           jumlah: Number(p.jumlah),
           metode: p.metode,
@@ -585,7 +639,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           sumber: r.sumber,
           spkId: r.spkId || undefined,
           suratJalanId: r.suratJalanId || undefined,
-          brand: r.brand,
+          brand: normalizeBrandName(r.brand),
           produk: r.produk,
           vendor: r.vendor,
           tanggalRetur: r.tanggalRetur,
@@ -806,13 +860,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const loginAsPreset = (presetUser: AuthUser) => {
+  const loginAsPreset = async (presetUser: AuthUser) => {
     setCurrentUser(presetUser);
     setUserRole(presetUser.role);
     if (presetUser.role === 'BRAND' && presetUser.brandName) {
       setActiveBrand(presetUser.brandName);
     }
     setActiveTab('dashboard');
+
+    // Also obtain JWT token from backend to ensure data saves directly to server DB
+    try {
+      const { data } = await apiLogin(presetUser.email, presetUser.password || 'admin');
+      if (data && data.token) {
+        saveToken(data.token);
+        await syncFromBackend();
+      }
+    } catch (err) {
+      console.warn('Preset login token sync failed:', err);
+    }
   };
 
   const logout = () => {
@@ -1710,7 +1775,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return {
       brand: brandName,
       invoiceNo,
-      tanggal: endDate || now.toISOString().split('T')[0],
+      tanggal: now.toISOString().split('T')[0],
       jatuhTempo: jatuhTempoDate.toISOString().split('T')[0],
       periodeAwal: startDate,
       periodeAkhir: endDate,
