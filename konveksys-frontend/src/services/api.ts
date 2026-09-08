@@ -144,6 +144,26 @@ export async function apiGetBrands() {
   return apiFetch<ApiBrand[]>('/api/brands');
 }
 
+export async function apiAddBrand(data: Omit<ApiBrand, 'id'>) {
+  return apiFetch<ApiBrand>('/api/brands', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateBrand(id: string, data: Partial<ApiBrand>) {
+  return apiFetch<ApiBrand>(`/api/brands/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteBrand(id: string) {
+  return apiFetch<{ message: string }>(`/api/brands/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // ============================================================
 // VENDORS
 // ============================================================

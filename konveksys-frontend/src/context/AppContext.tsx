@@ -5,6 +5,9 @@ import {
   clearToken,
   getToken,
   apiGetBrands,
+  apiAddBrand,
+  apiUpdateBrand,
+  apiDeleteBrand,
   apiGetVendors,
   apiGetHargaKonveksi,
   apiAddHargaKonveksi,
@@ -125,6 +128,9 @@ interface AppContextType {
 
   // Master Data
   brands: Brand[];
+  addBrand: (brand: Omit<Brand, 'id'>) => Promise<void>;
+  updateBrand: (brand: Brand) => Promise<void>;
+  deleteBrand: (id: string) => Promise<void>;
   vendors: Vendor[];
   hargaKonveksi: HargaKonveksi[];
   hargaBuyer: HargaBuyer[];
@@ -885,6 +891,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     clearToken();
     localStorage.removeItem('konvek_auth_user');
     setActiveTab('dashboard');
+  };
+
+  // Master Brand Handlers
+  const addBrand = async (brandData: Omit<Brand, 'id'>) => {
+    const tempId = `b-${Date.now()}`;
+    const newBrand: Brand = { ...brandData, id: tempId };
+    setBrands(prev => [...prev, newBrand]);
+
+    try {
+      const { data } = await apiAddBrand(brandData);
+      if (data) {
+        setBrands(prev => prev.map(b => (b.id === tempId ? { ...b, id: data.id } : b)));
+      }
+    } catch (err) {
+      console.warn('Backend sync addBrand failed:', err);
+    }
+  };
+
+  const updateBrand = async (brand: Brand) => {
+    setBrands(prev => prev.map(b => (b.id === brand.id ? brand : b)));
+    try {
+      await apiUpdateBrand(brand.id, {
+        name: brand.name,
+        code: brand.code,
+        contactPerson: brand.contactPerson,
+        phone: brand.phone,
+      });
+    } catch (err) {
+      console.warn('Backend sync updateBrand failed:', err);
+    }
+  };
+
+  const deleteBrand = async (id: string) => {
+    setBrands(prev => prev.filter(b => b.id !== id));
+    try {
+      await apiDeleteBrand(id);
+    } catch (err) {
+      console.warn('Backend sync deleteBrand failed:', err);
+    }
   };
 
   // Master Vendor Handlers
@@ -2246,6 +2291,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsMobileMenuOpen,
         toggleMobileMenu,
         brands,
+        addBrand,
+        updateBrand,
+        deleteBrand,
         vendors,
         hargaKonveksi,
         hargaBuyer,
