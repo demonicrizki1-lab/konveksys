@@ -66,11 +66,40 @@ export const InboundView: React.FC = () => {
     .reduce((a, b) => a + (b.meterLength - b.meterUsed), 0);
   const totalAssetValue = filteredRolls.reduce((a, b) => a + b.meterLength * b.hargaModalMeter, 0);
 
+  // Generate intelligent auto-increment roll barcode code per brand
+  const generateNextRollCode = (brandName: string): string => {
+    const matchedBrand = brands.find((b) => b.name.trim().toUpperCase() === brandName.trim().toUpperCase());
+    const brandCode = (matchedBrand?.code || brandName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3) || 'ROL').toUpperCase();
+    const prefix = `ROL-${brandCode}-`;
+
+    let maxSeq = 0;
+    inboundRolls.forEach((roll) => {
+      if (roll.rollCode && roll.rollCode.toUpperCase().startsWith(prefix)) {
+        const seqStr = roll.rollCode.substring(prefix.length);
+        const parsedNum = parseInt(seqStr, 10);
+        if (!isNaN(parsedNum) && parsedNum > maxSeq) {
+          maxSeq = parsedNum;
+        }
+      } else if (roll.brand?.trim().toUpperCase() === brandName.trim().toUpperCase()) {
+        const match = roll.rollCode?.match(/(\d+)$/);
+        if (match) {
+          const parsedNum = parseInt(match[1], 10);
+          if (!isNaN(parsedNum) && parsedNum > maxSeq) {
+            maxSeq = parsedNum;
+          }
+        }
+      }
+    });
+
+    const nextSeq = maxSeq + 1;
+    return `ROL-${brandCode}-${String(nextSeq).padStart(3, '0')}`;
+  };
+
   const handleOpenAdd = () => {
     const selectedBrand = userRole === 'BRAND' ? activeBrand : brands[0]?.name || 'GREYWOLF';
-    const randomCode = `ROL-${selectedBrand.substring(0, 3).toUpperCase()}-${String(inboundRolls.length + 1).padStart(3, '0')}`;
+    const autoRollCode = generateNextRollCode(selectedBrand);
     setForm({
-      rollCode: randomCode,
+      rollCode: autoRollCode,
       brand: selectedBrand,
       jenisKain: '',
       meterLength: 120,
@@ -363,12 +392,18 @@ export const InboundView: React.FC = () => {
             <form onSubmit={handleSaveRoll} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-slate-600 mb-1">Kode / Barcode Rol</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-medium text-slate-600">Kode / Barcode Rol</label>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      <Sparkles className="w-2.5 h-2.5" /> Otomatis
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={form.rollCode}
-                    onChange={(e) => setForm({ ...form, rollCode: e.target.value.toUpperCase() })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none uppercase font-mono focus:border-indigo-400 transition-base"
+                    readOnly
+                    className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg outline-none font-mono font-bold text-indigo-700 tracking-wider cursor-not-allowed select-all"
+                    title="Kode barcode rol digenerate otomatis oleh sistem"
                     required
                   />
                 </div>
@@ -380,13 +415,20 @@ export const InboundView: React.FC = () => {
                       type="text"
                       value={activeBrand}
                       disabled
-                      className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-700"
+                      className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-700 font-semibold"
                     />
                   ) : (
                     <select
                       value={form.brand}
-                      onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 transition-base"
+                      onChange={(e) => {
+                        const newBrand = e.target.value;
+                        setForm((prev) => ({
+                          ...prev,
+                          brand: newBrand,
+                          rollCode: generateNextRollCode(newBrand),
+                        }));
+                      }}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 transition-base font-semibold text-slate-800 cursor-pointer"
                     >
                       {brands.map((b) => (
                         <option key={b.id} value={b.name}>
