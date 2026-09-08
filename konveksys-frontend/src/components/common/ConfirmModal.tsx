@@ -80,9 +80,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
       {/* Backdrop overlay */}
-      <div 
-        className="fixed inset-0" 
-        onClick={isLoading ? undefined : onClose} 
+      <div
+        className="fixed inset-0"
+        onClick={isLoading ? undefined : onClose}
       />
 
       {/* Centered Modal Card */}
