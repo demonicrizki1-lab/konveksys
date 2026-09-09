@@ -13,6 +13,7 @@ import { FinanceView } from './components/finance/FinanceView';
 import { ArusKasView } from './components/arus-kas/ArusKasView';
 import { MarginAnalyticsView } from './components/finance/MarginAnalyticsView';
 import { AccessoriesView } from './components/accessories/AccessoriesView';
+import { BarangMasukView } from './components/barang-masuk/BarangMasukView';
 import { BrandApprovalModal } from './components/brands/BrandApprovalModal';
 
 const MainLayout: React.FC = () => {
@@ -39,6 +40,7 @@ const MainLayout: React.FC = () => {
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'master-harga' && userRole === 'ADMIN' && <MasterHargaView />}
           {activeTab === 'inbound' && <InboundView />}
+          {activeTab === 'barang-masuk' && <BarangMasukView />}
           {activeTab === 'accessories' && userRole === 'ADMIN' && <AccessoriesView />}
           {activeTab === 'spk' && userRole === 'ADMIN' && <SPKView />}
           {activeTab === 'outbound' && <OutboundView />}

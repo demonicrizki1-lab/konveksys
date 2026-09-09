@@ -91,7 +91,7 @@ import {
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories';
+export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk';
 
 interface AppContextType {
   // Auth & Session

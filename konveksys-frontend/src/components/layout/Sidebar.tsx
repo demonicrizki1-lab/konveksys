@@ -17,6 +17,7 @@ import {
   Building2,
   ShieldCheck,
   LogOut,
+  Inbox,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -54,6 +55,7 @@ export const Sidebar: React.FC = () => {
     return s.status === 'IN_PRODUCTION' || s.status === 'PARTIAL_DELIVERED';
   }).length;
   const recentSJ = filteredSJ.length;
+  const totalBarangMasukPcs = filteredSJ.reduce((acc, s) => acc + (s.totalPcs || 0), 0);
   const activeReturns = filteredReturns.filter(r => r.status === 'DIAJUKAN' || r.status === 'DIKIRIM_KE_VENDOR').length;
   const lowStockAccessories = filteredAccessories.filter(a => a.stock <= a.safetyStock).length;
 
@@ -102,6 +104,14 @@ export const Sidebar: React.FC = () => {
           description: userRole === 'ADMIN' ? 'Pelacakan Rol Semua Brand' : 'Tracking Rol di Gudang',
           icon: PackageCheck,
           badge: rollsInStock > 0 ? `${rollsInStock} Rol` : undefined,
+          roles: ['ADMIN', 'BRAND'],
+        },
+        {
+          id: 'barang-masuk',
+          label: userRole === 'ADMIN' ? 'Rekap Barang Masuk' : 'Barang Masuk',
+          description: userRole === 'ADMIN' ? 'Rekapan Barang Jadi Buyer' : 'Rekapan Barang Jadi Masuk',
+          icon: Inbox,
+          badge: totalBarangMasukPcs > 0 ? `${totalBarangMasukPcs} Pcs` : undefined,
           roles: ['ADMIN', 'BRAND'],
         },
         {
