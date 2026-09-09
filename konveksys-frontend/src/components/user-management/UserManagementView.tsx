@@ -471,46 +471,44 @@ export const UserManagementView: React.FC = () => {
       </div>
 
       {/* Main Navigation Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-              activeTab === 'users'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+            activeTab === 'users'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Daftar Akun Pengguna</span>
+          <span
+            className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === 'users' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            <Users className="w-4 h-4" />
-            <span>Daftar Akun Pengguna</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs ${
-                activeTab === 'users' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {(managedUsers || []).length}
-            </span>
-          </button>
+            {(managedUsers || []).length}
+          </span>
+        </button>
 
-          <button
-            onClick={() => setActiveTab('brands')}
-            className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-              activeTab === 'brands'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+        <button
+          onClick={() => setActiveTab('brands')}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+            activeTab === 'brands'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          <span>Master Brand Mitra</span>
+          <span
+            className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === 'brands' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            <Building2 className="w-4 h-4" />
-            <span>Master Brand Mitra</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs ${
-                activeTab === 'brands' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              {(brands || []).length}
-            </span>
-          </button>
-        </div>
+            {(brands || []).length}
+          </span>
+        </button>
       </div>
 
       {/* TAB 1: USERS LIST */}
