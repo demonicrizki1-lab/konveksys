@@ -25,6 +25,19 @@ export interface PendingBrandUser {
   createdAt: string;
 }
 
+export interface ManagedUser {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  status: 'ACTIVE' | 'PENDING_APPROVAL' | 'SUSPENDED' | 'REJECTED';
+  brandName?: string;
+  accessibleBrands: string[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface Brand {
   id: string;
   name: string;

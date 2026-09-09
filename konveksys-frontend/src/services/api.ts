@@ -128,6 +128,52 @@ export async function apiRejectBrand(
   });
 }
 
+// User Management (Admin Only)
+export async function apiGetUsers() {
+  return apiFetch<any[]>('/api/auth/users');
+}
+
+export async function apiCreateUser(data: {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  role?: 'ADMIN' | 'BRAND';
+  status?: string;
+  brandName?: string;
+  accessibleBrands?: string[];
+}) {
+  return apiFetch<{ success: boolean; message: string; user: any }>('/api/auth/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateUser(
+  id: string,
+  data: Partial<{
+    name: string;
+    email: string;
+    password?: string;
+    phone?: string;
+    role: 'ADMIN' | 'BRAND';
+    status: string;
+    brandName?: string;
+    accessibleBrands?: string[];
+  }>
+) {
+  return apiFetch<{ success: boolean; message: string; user: any }>(`/api/auth/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteUser(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/auth/users/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // ============================================================
 // BRANDS
 // ============================================================

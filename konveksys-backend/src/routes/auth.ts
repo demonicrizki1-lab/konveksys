@@ -106,7 +106,7 @@ authRoutes.post('/login', async (c) => {
 
     if (user.status === 'REJECTED') {
       return c.json({
-        error: 'Pengajuan akun kemitraan ditolak oleh Admin. Silakan hubungi Maison Rayyan untuk info lebih lanjut.',
+        error: 'Akun kemitraan ditolak atau dinonaktifkan oleh Admin. Silakan hubungi Maison Rayyan untuk info lebih lanjut.',
         status: 'REJECTED'
       }, 403);
     }
@@ -248,8 +248,174 @@ authRoutes.post('/reject-brand/:id', authMiddleware, adminOnly, async (c) => {
   }
 });
 
+// ============================================================
+// USER MANAGEMENT ENDPOINTS (Admin Only)
+// ============================================================
+
+// GET /api/auth/users - List all users
+authRoutes.get('/users', authMiddleware, adminOnly, async (c) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        brandName: true,
+        accessibleBrands: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return c.json(users);
+  } catch (err: any) {
+    return c.json({ error: 'Gagal mengambil data pengguna: ' + err?.message }, 500);
+  }
+});
+
+// POST /api/auth/users - Create user directly by Admin
+authRoutes.post('/users', authMiddleware, adminOnly, async (c) => {
+  try {
+    const body = await c.req.json<{
+      name: string;
+      email: string;
+      password: string;
+      phone?: string;
+      role?: 'ADMIN' | 'BRAND';
+      status?: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED' | 'SUSPENDED';
+      brandName?: string;
+      accessibleBrands?: string[];
+    }>();
+
+    if (!body.name || !body.email || !body.password) {
+      return c.json({ error: 'Nama, email, dan kata sandi wajib diisi.' }, 400);
+    }
+
+    const emailClean = body.email.toLowerCase().trim();
+    const existing = await prisma.user.findUnique({ where: { email: emailClean } });
+    if (existing) {
+      return c.json({ error: 'Alamat email sudah terdaftar.' }, 400);
+    }
+
+    const accessible = Array.isArray(body.accessibleBrands) && body.accessibleBrands.length > 0
+      ? body.accessibleBrands.map(b => b.trim().toUpperCase())
+      : body.brandName ? [body.brandName.trim().toUpperCase()] : [];
+
+    const activeBrand = body.brandName ? body.brandName.trim().toUpperCase() : accessible[0] || null;
+
+    const user = await prisma.user.create({
+      data: {
+        name: body.name.trim(),
+        email: emailClean,
+        password: body.password,
+        phone: body.phone?.trim() || null,
+        role: body.role || 'BRAND',
+        status: (body.status === 'SUSPENDED' ? 'REJECTED' : body.status || 'ACTIVE') as any,
+        brandName: activeBrand,
+        accessibleBrands: accessible,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        brandName: true,
+        accessibleBrands: true,
+        createdAt: true,
+      },
+    });
+
+    return c.json({ success: true, message: 'Pengguna berhasil dibuat.', user }, 201);
+  } catch (err: any) {
+    return c.json({ error: 'Gagal membuat pengguna: ' + err?.message }, 500);
+  }
+});
+
+// PUT /api/auth/users/:id - Update user (Ganti Brand, Status, Profil, Password)
+authRoutes.put('/users/:id', authMiddleware, adminOnly, async (c) => {
+  try {
+    const { id } = c.req.param();
+    const body = await c.req.json<{
+      name?: string;
+      email?: string;
+      phone?: string;
+      password?: string;
+      role?: 'ADMIN' | 'BRAND';
+      status?: 'ACTIVE' | 'PENDING_APPROVAL' | 'SUSPENDED' | 'REJECTED';
+      brandName?: string;
+      accessibleBrands?: string[];
+    }>();
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      return c.json({ error: 'Pengguna tidak ditemukan.' }, 404);
+    }
+
+    const updateData: any = {};
+    if (body.name !== undefined) updateData.name = body.name.trim();
+    if (body.email !== undefined) updateData.email = body.email.toLowerCase().trim();
+    if (body.phone !== undefined) updateData.phone = body.phone?.trim() || null;
+    if (body.password && body.password.trim().length > 0) updateData.password = body.password.trim();
+    if (body.role !== undefined) updateData.role = body.role;
+    if (body.status !== undefined) updateData.status = (body.status === 'SUSPENDED' ? 'REJECTED' : body.status) as any;
+
+    if (body.accessibleBrands !== undefined) {
+      updateData.accessibleBrands = body.accessibleBrands.map(b => b.trim().toUpperCase());
+    }
+    if (body.brandName !== undefined) {
+      updateData.brandName = body.brandName ? body.brandName.trim().toUpperCase() : null;
+    }
+
+    // Pastikan brandName tercakup dalam accessibleBrands jika brandName diset
+    if (updateData.brandName && updateData.accessibleBrands && !updateData.accessibleBrands.includes(updateData.brandName)) {
+      updateData.accessibleBrands.push(updateData.brandName);
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        brandName: true,
+        accessibleBrands: true,
+        updatedAt: true,
+      },
+    });
+
+    return c.json({ success: true, message: 'Data pengguna berhasil diperbarui.', user: updated });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal memperbarui data pengguna: ' + err?.message }, 500);
+  }
+});
+
+// DELETE /api/auth/users/:id - Delete user
+authRoutes.delete('/users/:id', authMiddleware, adminOnly, async (c) => {
+  try {
+    const { id } = c.req.param();
+    const tokenUser = c.get('user');
+
+    if (tokenUser.userId === id) {
+      return c.json({ error: 'Tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan.' }, 400);
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return c.json({ success: true, message: 'Pengguna berhasil dihapus dari sistem.' });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal menghapus pengguna: ' + err?.message }, 500);
+  }
+});
+
 // POST /api/auth/logout
 authRoutes.post('/logout', (c) => {
   return c.json({ message: 'Logout berhasil' });
 });
-

@@ -49,10 +49,15 @@ import {
   apiUpdateAccessory,
   apiDeleteAccessory,
   apiRecordAccessoryMutation,
+  apiGetUsers,
+  apiCreateUser,
+  apiUpdateUser,
+  apiDeleteUser,
 } from '../services/api';
 import {
   AuthUser,
   PendingBrandUser,
+  ManagedUser,
   UserRole,
   Brand,
   Vendor,
@@ -91,7 +96,7 @@ import {
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk';
+export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk' | 'manajemen-user';
 
 interface AppContextType {
   // Auth & Session
@@ -117,6 +122,34 @@ interface AppContextType {
   rejectBrandUser: (userId: string) => Promise<{ success: boolean; message: string }>;
   isApprovalModalOpen: boolean;
   setIsApprovalModalOpen: (open: boolean) => void;
+
+  // User Management (Admin Only)
+  managedUsers: ManagedUser[];
+  fetchManagedUsers: () => Promise<void>;
+  createManagedUser: (data: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    role?: UserRole;
+    status?: string;
+    brandName?: string;
+    accessibleBrands?: string[];
+  }) => Promise<{ success: boolean; message: string }>;
+  updateManagedUser: (
+    id: string,
+    data: Partial<{
+      name: string;
+      email: string;
+      password?: string;
+      phone?: string;
+      role: UserRole;
+      status: string;
+      brandName?: string;
+      accessibleBrands?: string[];
+    }>
+  ) => Promise<{ success: boolean; message: string }>;
+  deleteManagedUser: (id: string) => Promise<{ success: boolean; message: string }>;
 
   // Sidebar & Layout State
   isSidebarCollapsed: boolean;
@@ -273,6 +306,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [pendingBrands, setPendingBrands] = useState<PendingBrandUser[]>([]);
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
 
   const switchBrand = (brandName: string) => {
     setActiveBrand(brandName);
@@ -725,6 +759,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           createdAt: String(m.createdAt),
         })));
       }
+
+      // 13. Fetch Users (if Admin)
+      try {
+        const { data: userData } = await apiGetUsers();
+        if (Array.isArray(userData)) {
+          setManagedUsers(userData);
+        }
+      } catch {
+        // Not admin or unauthenticated
+      }
     } catch (err) {
       console.warn('[Sync Error] Continuing with cached data:', err);
     }
@@ -835,6 +879,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: false, message: error || 'Gagal menolak akun.' };
   };
 
+  // User Management Handlers (Admin Only)
+  const fetchManagedUsers = useCallback(async () => {
+    try {
+      const { data, error } = await apiGetUsers();
+      if (!error && Array.isArray(data)) {
+        setManagedUsers(data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch managed users:', err);
+    }
+  }, []);
+
+  const createManagedUser = async (userData: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    role?: UserRole;
+    status?: string;
+    brandName?: string;
+    accessibleBrands?: string[];
+  }): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiCreateUser(userData);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal menambahkan pengguna.' };
+      }
+      if (data.user) {
+        setManagedUsers(prev => [data.user, ...prev]);
+      }
+      return { success: true, message: data.message || 'Pengguna berhasil ditambahkan.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const updateManagedUser = async (
+    id: string,
+    userData: Partial<{
+      name: string;
+      email: string;
+      password?: string;
+      phone?: string;
+      role: UserRole;
+      status: string;
+      brandName?: string;
+      accessibleBrands?: string[];
+    }>
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiUpdateUser(id, userData);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal memperbarui pengguna.' };
+      }
+      if (data.user) {
+        setManagedUsers(prev => prev.map(u => (u.id === id ? { ...u, ...data.user } : u)));
+        if (currentUser?.id === id) {
+          const updatedAuthUser: AuthUser = {
+            ...currentUser,
+            name: data.user.name ?? currentUser.name,
+            email: data.user.email ?? currentUser.email,
+            phone: data.user.phone ?? currentUser.phone,
+            role: data.user.role ?? currentUser.role,
+            brandName: data.user.brandName ?? currentUser.brandName,
+            accessibleBrands: data.user.accessibleBrands ?? currentUser.accessibleBrands,
+          };
+          setCurrentUser(updatedAuthUser);
+          localStorage.setItem('konvek_auth_user', JSON.stringify(updatedAuthUser));
+        }
+      }
+      return { success: true, message: data.message || 'Data pengguna berhasil diperbarui.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const deleteManagedUser = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiDeleteUser(id);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal menghapus pengguna.' };
+      }
+      setManagedUsers(prev => prev.filter(u => u.id !== id));
+      return { success: true, message: data.message || 'Pengguna berhasil dihapus.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
       const { data, error } = await apiLogin(email.trim(), password);
@@ -867,6 +1000,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveTab('dashboard');
       if (apiUser.role === 'ADMIN') {
         fetchPendingBrands();
+        fetchManagedUsers();
       }
       return { success: true };
     } catch {
@@ -888,6 +1022,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data && data.token) {
         saveToken(data.token);
         await syncFromBackend();
+        if (presetUser.role === 'ADMIN') {
+          fetchManagedUsers();
+        }
       }
     } catch (err) {
       console.warn('Preset login token sync failed:', err);
@@ -2364,6 +2501,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerBrand,
         approveBrandUser,
         rejectBrandUser,
+        managedUsers,
+        fetchManagedUsers,
+        createManagedUser,
+        updateManagedUser,
+        deleteManagedUser,
         isApprovalModalOpen,
         setIsApprovalModalOpen,
         isSidebarCollapsed,

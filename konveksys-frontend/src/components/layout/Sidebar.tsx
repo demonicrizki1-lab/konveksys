@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   LogOut,
   Inbox,
+  Users,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -33,6 +34,7 @@ export const Sidebar: React.FC = () => {
     suratJalanList,
     returnList,
     accessories,
+    managedUsers,
     isSidebarCollapsed,
     toggleSidebar,
     isMobileMenuOpen,
@@ -179,13 +181,21 @@ export const Sidebar: React.FC = () => {
     },
     {
       sectionKey: 'master',
-      title: 'Data Master',
+      title: 'Data Master & Akun',
       items: [
         {
           id: 'master-harga',
           label: 'Master Harga',
           description: 'Ongkos Jahit & Rate Buyer',
           icon: Coins,
+          roles: ['ADMIN'],
+        },
+        {
+          id: 'manajemen-user',
+          label: 'Manajemen User & Brand',
+          description: 'Kelola User Aktif & Brand Mitra',
+          icon: Users,
+          badge: managedUsers && managedUsers.length > 0 ? `${managedUsers.length} User` : undefined,
           roles: ['ADMIN'],
         },
       ],

@@ -14,13 +14,14 @@ import { ArusKasView } from './components/arus-kas/ArusKasView';
 import { MarginAnalyticsView } from './components/finance/MarginAnalyticsView';
 import { AccessoriesView } from './components/accessories/AccessoriesView';
 import { BarangMasukView } from './components/barang-masuk/BarangMasukView';
+import { UserManagementView } from './components/user-management/UserManagementView';
 import { BrandApprovalModal } from './components/brands/BrandApprovalModal';
 
 const MainLayout: React.FC = () => {
   const { activeTab, setActiveTab, currentUser, userRole, isApprovalModalOpen, setIsApprovalModalOpen } = useApp();
 
   useEffect(() => {
-    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics')) {
+    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics' || activeTab === 'manajemen-user')) {
       setActiveTab('dashboard');
     }
   }, [userRole, activeTab, setActiveTab]);
@@ -48,6 +49,7 @@ const MainLayout: React.FC = () => {
           {activeTab === 'finance' && <FinanceView />}
           {activeTab === 'arus-kas' && <ArusKasView />}
           {activeTab === 'margin-analytics' && userRole === 'ADMIN' && <MarginAnalyticsView />}
+          {activeTab === 'manajemen-user' && userRole === 'ADMIN' && <UserManagementView />}
         </main>
       </div>
 
