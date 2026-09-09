@@ -243,8 +243,12 @@ export interface ApiHargaBuyer {
   id: string;
   brand: string;
   produk: string;
-  rateSML: number | string;
-  rateXL: number | string;
+  rateS?: number | string;
+  rateM?: number | string;
+  rateL?: number | string;
+  rateXL?: number | string;
+  rateXXL?: number | string;
+  rateSML?: number | string;
   rateAnak4: number | string;
   rateAnak6: number | string;
   rateAnak8: number | string;

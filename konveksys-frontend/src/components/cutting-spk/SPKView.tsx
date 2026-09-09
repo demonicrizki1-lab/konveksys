@@ -747,7 +747,7 @@ export const SPKView: React.FC = () => {
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none uppercase"
                         placeholder={
                           activeProductTab === 0
-                            ? 'Contoh: KEMEJA RAYON DEWASA'
+                            ? 'Contoh: KEMEJA RAYON ANAK'
                             : activeProductTab === 1
                             ? 'Contoh: CELANA KULOT RAYON'
                             : 'Contoh: BANDANA / POUCH KAIN'
@@ -778,10 +778,10 @@ export const SPKView: React.FC = () => {
 
                   {/* Size Breakdown per Product */}
                   <div className="space-y-3 pt-2">
-                    {/* Dewasa Sizes */}
+                    {/* Ukuran Anak Seri Huruf */}
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                        Kategori Dewasa (S - 2XL):
+                      <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block mb-1.5">
+                        Ukuran Anak - Seri Huruf (S - 2XL):
                       </span>
                       <div className="grid grid-cols-5 gap-2">
                         {(['s', 'm', 'l', 'xl', 'xxl'] as (keyof SizeBreakdown)[]).map((sz) => (
@@ -804,10 +804,10 @@ export const SPKView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Anak Sizes */}
+                    {/* Ukuran Anak Seri Angka */}
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                        Kategori Anak-Anak (Terpisah Ukuran 4 - 16):
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                        Ukuran Anak - Seri Angka (Size 4 - 16):
                       </span>
                       <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                         {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(

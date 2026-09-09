@@ -83,27 +83,22 @@ export const MarginAnalyticsView: React.FC = () => {
 
         // 1. Calculate Buyer Revenue
         const buyerRates = getBuyerRates(it.brand, it.produk);
-        const qtySML = (it.qtyDelivered.s || 0) + (it.qtyDelivered.m || 0) + (it.qtyDelivered.l || 0);
-        const qtyXL = (it.qtyDelivered.xl || 0) + (it.qtyDelivered.xxl || 0);
-        const qtyAnak4 = it.qtyDelivered.anak4 || 0;
-        const qtyAnak6 = it.qtyDelivered.anak6 || 0;
-        const qtyAnak8 = it.qtyDelivered.anak8 || 0;
-        const qtyAnak10 = it.qtyDelivered.anak10 || 0;
-        const qtyAnak12 = it.qtyDelivered.anak12 || 0;
-        const qtyAnak14 = it.qtyDelivered.anak14 || 0;
-        const qtyAnak16 = it.qtyDelivered.anak16 || 0;
+        const subHuruf =
+          (it.qtyDelivered.s || 0) * (buyerRates.rateS || buyerRates.rateSML || 0) +
+          (it.qtyDelivered.m || 0) * (buyerRates.rateM || buyerRates.rateSML || 0) +
+          (it.qtyDelivered.l || 0) * (buyerRates.rateL || buyerRates.rateSML || 0) +
+          (it.qtyDelivered.xl || 0) * (buyerRates.rateXL || 0) +
+          (it.qtyDelivered.xxl || 0) * (buyerRates.rateXXL || buyerRates.rateXL || 0);
+        const subAnak =
+          (it.qtyDelivered.anak4 || 0) * (buyerRates.rateAnak4 || 0) +
+          (it.qtyDelivered.anak6 || 0) * (buyerRates.rateAnak6 || 0) +
+          (it.qtyDelivered.anak8 || 0) * (buyerRates.rateAnak8 || 0) +
+          (it.qtyDelivered.anak10 || 0) * (buyerRates.rateAnak10 || 0) +
+          (it.qtyDelivered.anak12 || 0) * (buyerRates.rateAnak12 || 0) +
+          (it.qtyDelivered.anak14 || 0) * (buyerRates.rateAnak14 || 0) +
+          (it.qtyDelivered.anak16 || 0) * (buyerRates.rateAnak16 || 0);
 
-        const subSML = qtySML * buyerRates.rateSML;
-        const subXL = qtyXL * buyerRates.rateXL;
-        const subAnak4 = qtyAnak4 * buyerRates.rateAnak4;
-        const subAnak6 = qtyAnak6 * buyerRates.rateAnak6;
-        const subAnak8 = qtyAnak8 * buyerRates.rateAnak8;
-        const subAnak10 = qtyAnak10 * buyerRates.rateAnak10;
-        const subAnak12 = qtyAnak12 * buyerRates.rateAnak12;
-        const subAnak14 = qtyAnak14 * buyerRates.rateAnak14;
-        const subAnak16 = qtyAnak16 * buyerRates.rateAnak16;
-
-        const omzetBuyer = subSML + subXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        const omzetBuyer = subHuruf + subAnak;
 
         // 2. Calculate Vendor CMT Cost
         const vendorRate = getVendorRate(it.vendor, it.produk, it.brand);

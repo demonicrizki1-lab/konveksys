@@ -61,6 +61,21 @@ const calculateTotalPcs = (sz: SizeBreakdown): number => {
   );
 };
 
+const SIZE_DISPLAY_ORDER: { key: keyof SizeBreakdown; label: string }[] = [
+  { key: 's', label: 'S' },
+  { key: 'm', label: 'M' },
+  { key: 'l', label: 'L' },
+  { key: 'xl', label: 'XL' },
+  { key: 'xxl', label: '2XL' },
+  { key: 'anak4', label: 'Anak 4' },
+  { key: 'anak6', label: 'Anak 6' },
+  { key: 'anak8', label: 'Anak 8' },
+  { key: 'anak10', label: 'Anak 10' },
+  { key: 'anak12', label: 'Anak 12' },
+  { key: 'anak14', label: 'Anak 14' },
+  { key: 'anak16', label: 'Anak 16' },
+];
+
 export const OutboundView: React.FC = () => {
   const {
     suratJalanList,
@@ -535,6 +550,17 @@ export const OutboundView: React.FC = () => {
                                 <span className="truncate">{it.jenisKain}</span>
                               </div>
                             )}
+                            <div className="text-[10px] text-slate-500 flex flex-wrap gap-1 pt-1">
+                              {SIZE_DISPLAY_ORDER.map(({ key, label }) => {
+                                const qty = it.qtyDelivered?.[key] || 0;
+                                if (qty === 0) return null;
+                                return (
+                                  <span key={key} className="bg-white border border-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-medium text-[9px]">
+                                    {label}: <strong className="text-slate-900">{qty}</strong>
+                                  </span>
+                                );
+                              })}
+                            </div>
                           </div>
                         ))}
                       </td>
@@ -901,10 +927,10 @@ export const OutboundView: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Ukuran Dewasa */}
+                      {/* Ukuran Anak Seri Huruf */}
                       <div>
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                          Ukuran Dewasa (S - XXL)
+                        <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider mb-1.5">
+                          Ukuran Anak - Seri Huruf (S - 2XL)
                         </div>
                         <div className="grid grid-cols-5 gap-2">
                           {(['s', 'm', 'l', 'xl', 'xxl'] as (keyof SizeBreakdown)[]).map((sz) => {
@@ -946,10 +972,10 @@ export const OutboundView: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Ukuran Anak */}
+                      {/* Ukuran Anak Seri Angka */}
                       <div className="pt-2 border-t border-slate-100">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                          Ukuran Anak (Size 4 - 16)
+                          Ukuran Anak - Seri Angka (4 - 16)
                         </div>
                         <div className="grid grid-cols-7 gap-1.5">
                           {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
@@ -1160,11 +1186,12 @@ export const OutboundView: React.FC = () => {
                             <td className="p-2 font-bold text-slate-900">{item.produk}</td>
                             <td className="p-2 text-slate-600 text-[11px]">{item.jenisKain || 'Kain Standar'}</td>
                             <td className="p-2 text-[10px] text-slate-600 space-y-0.5">
-                              {Object.entries(item.qtyDelivered).map(([sz, qty]) => {
+                              {SIZE_DISPLAY_ORDER.map(({ key, label }) => {
+                                const qty = item.qtyDelivered?.[key] || 0;
                                 if (qty === 0) return null;
                                 return (
-                                  <div key={sz} className="whitespace-nowrap">
-                                    <span className="font-bold uppercase">{sz.replace('anak', 'Anak ')}:</span> {qty} pcs
+                                  <div key={key} className="whitespace-nowrap">
+                                    <span className="font-bold uppercase">{label}:</span> {qty} pcs
                                   </div>
                                 );
                               })}

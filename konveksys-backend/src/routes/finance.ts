@@ -53,11 +53,11 @@ financeRoutes.get('/invoice/:brandName', async (c) => {
   const items = suratJalanList.map((sj) => {
     const rates = hargaList.find((h) => h.produk === sj.produk);
     const totalAmount =
-      sj.qtySML * Number(rates?.rateSML || 0) +
-      sj.qtyM * Number(rates?.rateSML || 0) +
-      sj.qtyL * Number(rates?.rateSML || 0) +
+      sj.qtySML * Number(rates?.rateS || rates?.rateSML || 0) +
+      sj.qtyM * Number(rates?.rateM || rates?.rateSML || 0) +
+      sj.qtyL * Number(rates?.rateL || rates?.rateSML || 0) +
       sj.qtyXL * Number(rates?.rateXL || 0) +
-      sj.qtyXXL * Number(rates?.rateXL || 0) +
+      sj.qtyXXL * Number(rates?.rateXXL || rates?.rateXL || 0) +
       sj.qtyAnak4 * Number(rates?.rateAnak4 || 0) +
       sj.qtyAnak6 * Number(rates?.rateAnak6 || 0) +
       sj.qtyAnak8 * Number(rates?.rateAnak8 || 0) +

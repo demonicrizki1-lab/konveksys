@@ -106,11 +106,11 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'accessories',
-          label: userRole === 'ADMIN' ? 'Stok Aksesoris & Trims' : 'Aksesoris & Trims',
-          description: userRole === 'ADMIN' ? 'Kancing, Zipper, Label, Benang' : 'Ketersediaan Trims',
+          label: 'Stok Aksesoris & Trims',
+          description: 'Kancing, Zipper, Label, Benang',
           icon: Archive,
           badge: lowStockAccessories > 0 ? `${lowStockAccessories} Menipis` : undefined,
-          roles: ['ADMIN', 'BRAND'],
+          roles: ['ADMIN'],
         },
         {
           id: 'spk',

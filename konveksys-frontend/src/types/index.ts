@@ -53,15 +53,19 @@ export interface HargaBuyer {
   id: string;
   brand: string;
   produk: string;
-  rateSML: number;       // S, M, L
-  rateXL: number;        // XL, 2XL
-  rateAnak4: number;     // Size 4
-  rateAnak6: number;     // Size 6
-  rateAnak8: number;     // Size 8
-  rateAnak10: number;    // Size 10
-  rateAnak12: number;    // Size 12
-  rateAnak14: number;    // Size 14
-  rateAnak16: number;    // Size 16
+  rateS: number;         // Anak Seri Huruf: S
+  rateM: number;         // Anak Seri Huruf: M
+  rateL: number;         // Anak Seri Huruf: L
+  rateXL: number;        // Anak Seri Huruf: XL
+  rateXXL: number;       // Anak Seri Huruf: 2XL
+  rateSML?: number;      // Legacy fallback
+  rateAnak4: number;     // Anak Seri Angka: 4
+  rateAnak6: number;     // Anak Seri Angka: 6
+  rateAnak8: number;     // Anak Seri Angka: 8
+  rateAnak10: number;    // Anak Seri Angka: 10
+  rateAnak12: number;    // Anak Seri Angka: 12
+  rateAnak14: number;    // Anak Seri Angka: 14
+  rateAnak16: number;    // Anak Seri Angka: 16
 }
 
 export type RollStatus = 'MENUNGGU_FISIK' | 'DI_GUDANG' | 'DIPROSES' | 'SELESAI';
@@ -195,10 +199,18 @@ export interface BuyerInvoiceSummary {
     tanggal: string;
     produk: string;
     jenisKain?: string;
-    qtySML: number;
-    rateSML: number;
+    qtyS: number;
+    rateS: number;
+    qtyM: number;
+    rateM: number;
+    qtyL: number;
+    rateL: number;
     qtyXL: number;
     rateXL: number;
+    qtyXXL: number;
+    rateXXL: number;
+    qtySML?: number;
+    rateSML?: number;
     qtyAnak4: number;
     rateAnak4: number;
     qtyAnak6: number;

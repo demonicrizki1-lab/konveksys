@@ -155,11 +155,23 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                           )}
                         </td>
                         <td className="p-2 text-[11px] space-y-0.5 text-slate-700">
-                          {item.qtySML > 0 && (
-                            <div className="whitespace-nowrap">S/M/L ({item.qtySML} pcs x {formatRp(item.rateSML)})</div>
+                          {item.qtyS > 0 && (
+                            <div className="whitespace-nowrap">Size S ({item.qtyS} pcs x {formatRp(item.rateS)})</div>
+                          )}
+                          {item.qtyM > 0 && (
+                            <div className="whitespace-nowrap">Size M ({item.qtyM} pcs x {formatRp(item.rateM)})</div>
+                          )}
+                          {item.qtyL > 0 && (
+                            <div className="whitespace-nowrap">Size L ({item.qtyL} pcs x {formatRp(item.rateL)})</div>
                           )}
                           {item.qtyXL > 0 && (
-                            <div className="whitespace-nowrap">XL/2XL ({item.qtyXL} pcs x {formatRp(item.rateXL)})</div>
+                            <div className="whitespace-nowrap">Size XL ({item.qtyXL} pcs x {formatRp(item.rateXL)})</div>
+                          )}
+                          {item.qtyXXL > 0 && (
+                            <div className="whitespace-nowrap">Size 2XL ({item.qtyXXL} pcs x {formatRp(item.rateXXL)})</div>
+                          )}
+                          {!item.qtyS && !item.qtyM && !item.qtyL && (item.qtySML || 0) > 0 && (
+                            <div className="whitespace-nowrap">Size Huruf ({item.qtySML} pcs x {formatRp(item.rateSML || 0)})</div>
                           )}
                           {item.qtyAnak4 > 0 && (
                             <div className="whitespace-nowrap">Anak 4 ({item.qtyAnak4} pcs x {formatRp(item.rateAnak4)})</div>
@@ -184,11 +196,23 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                           )}
                         </td>
                         <td className="p-2 text-[11px] space-y-0.5 text-right font-medium text-slate-800 whitespace-nowrap" style={{ whiteSpace: 'nowrap' }}>
-                          {item.qtySML > 0 && (
-                            <div>{formatRp(item.qtySML * item.rateSML)}</div>
+                          {item.qtyS > 0 && (
+                            <div>{formatRp(item.qtyS * item.rateS)}</div>
+                          )}
+                          {item.qtyM > 0 && (
+                            <div>{formatRp(item.qtyM * item.rateM)}</div>
+                          )}
+                          {item.qtyL > 0 && (
+                            <div>{formatRp(item.qtyL * item.rateL)}</div>
                           )}
                           {item.qtyXL > 0 && (
                             <div>{formatRp(item.qtyXL * item.rateXL)}</div>
+                          )}
+                          {item.qtyXXL > 0 && (
+                            <div>{formatRp(item.qtyXXL * item.rateXXL)}</div>
+                          )}
+                          {!item.qtyS && !item.qtyM && !item.qtyL && (item.qtySML || 0) > 0 && (
+                            <div>{formatRp((item.qtySML || 0) * (item.rateSML || 0))}</div>
                           )}
                           {item.qtyAnak4 > 0 && (
                             <div>{formatRp(item.qtyAnak4 * item.rateAnak4)}</div>

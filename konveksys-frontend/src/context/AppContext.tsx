@@ -223,8 +223,12 @@ interface AppContextType {
   // Helper Lookups & Calculation Engines
   getVendorRate: (vendor: string, produk: string, brand: string) => number;
   getBuyerRates: (brand: string, produk: string) => {
-    rateSML: number;
+    rateS: number;
+    rateM: number;
+    rateL: number;
     rateXL: number;
+    rateXXL: number;
+    rateSML: number;
     rateAnak4: number;
     rateAnak6: number;
     rateAnak8: number;
@@ -495,8 +499,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: hb.id,
           brand: normalizeBrandName(hb.brand),
           produk: hb.produk,
-          rateSML: Number(hb.rateSML),
-          rateXL: Number(hb.rateXL),
+          rateS: Number(hb.rateS ?? hb.rateSML ?? 0),
+          rateM: Number(hb.rateM ?? hb.rateSML ?? 0),
+          rateL: Number(hb.rateL ?? hb.rateSML ?? 0),
+          rateXL: Number(hb.rateXL ?? 0),
+          rateXXL: Number(hb.rateXXL ?? hb.rateXL ?? 0),
+          rateSML: Number(hb.rateSML ?? hb.rateS ?? 0),
           rateAnak4: Number(hb.rateAnak4 || 0),
           rateAnak6: Number(hb.rateAnak6 || 0),
           rateAnak8: Number(hb.rateAnak8 || 0),
@@ -1020,15 +1028,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setHargaBuyer(prev => prev.map(hb => (hb.id === tempId ? {
           ...item,
           id: data.id,
-          rateSML: Number(data.rateSML),
-          rateXL: Number(data.rateXL),
-          rateAnak4: Number(data.rateAnak4 || 0),
-          rateAnak6: Number(data.rateAnak6 || 0),
-          rateAnak8: Number(data.rateAnak8 || 0),
-          rateAnak10: Number(data.rateAnak10 || 0),
-          rateAnak12: Number(data.rateAnak12 || 0),
-          rateAnak14: Number(data.rateAnak14 || 0),
-          rateAnak16: Number(data.rateAnak16 || 0),
+          rateS: Number(data.rateS ?? item.rateS),
+          rateM: Number(data.rateM ?? item.rateM),
+          rateL: Number(data.rateL ?? item.rateL),
+          rateXL: Number(data.rateXL ?? item.rateXL),
+          rateXXL: Number(data.rateXXL ?? item.rateXXL),
+          rateSML: Number(data.rateSML ?? item.rateSML ?? item.rateS),
+          rateAnak4: Number(data.rateAnak4 ?? item.rateAnak4),
+          rateAnak6: Number(data.rateAnak6 ?? item.rateAnak6),
+          rateAnak8: Number(data.rateAnak8 ?? item.rateAnak8),
+          rateAnak10: Number(data.rateAnak10 ?? item.rateAnak10),
+          rateAnak12: Number(data.rateAnak12 ?? item.rateAnak12),
+          rateAnak14: Number(data.rateAnak14 ?? item.rateAnak14),
+          rateAnak16: Number(data.rateAnak16 ?? item.rateAnak16),
         } : hb)));
       }
     } catch (err) {
@@ -1254,6 +1266,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         jenisKain = Array.from(new Set(rolls.map(r => r.jenisKain).filter(Boolean))).join(', ');
       }
     }
+
+    // Auto-split if produk has multiple articles separated by comma or plus
+    if (sj.produk && (sj.produk.includes(',') || sj.produk.includes('+'))) {
+      const parts = sj.produk.split(/[,+]/).map(p => p.trim()).filter(Boolean);
+      if (parts.length > 1) {
+        const numParts = parts.length;
+        const baseQty = sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+        return parts.map((partName, idx) => {
+          const partQty: SizeBreakdown = {
+            s: Math.floor((baseQty.s || 0) / numParts) + (idx === 0 ? (baseQty.s || 0) % numParts : 0),
+            m: Math.floor((baseQty.m || 0) / numParts) + (idx === 0 ? (baseQty.m || 0) % numParts : 0),
+            l: Math.floor((baseQty.l || 0) / numParts) + (idx === 0 ? (baseQty.l || 0) % numParts : 0),
+            xl: Math.floor((baseQty.xl || 0) / numParts) + (idx === 0 ? (baseQty.xl || 0) % numParts : 0),
+            xxl: Math.floor((baseQty.xxl || 0) / numParts) + (idx === 0 ? (baseQty.xxl || 0) % numParts : 0),
+            anak4: Math.floor((baseQty.anak4 || 0) / numParts) + (idx === 0 ? (baseQty.anak4 || 0) % numParts : 0),
+            anak6: Math.floor((baseQty.anak6 || 0) / numParts) + (idx === 0 ? (baseQty.anak6 || 0) % numParts : 0),
+            anak8: Math.floor((baseQty.anak8 || 0) / numParts) + (idx === 0 ? (baseQty.anak8 || 0) % numParts : 0),
+            anak10: Math.floor((baseQty.anak10 || 0) / numParts) + (idx === 0 ? (baseQty.anak10 || 0) % numParts : 0),
+            anak12: Math.floor((baseQty.anak12 || 0) / numParts) + (idx === 0 ? (baseQty.anak12 || 0) % numParts : 0),
+            anak14: Math.floor((baseQty.anak14 || 0) / numParts) + (idx === 0 ? (baseQty.anak14 || 0) % numParts : 0),
+            anak16: Math.floor((baseQty.anak16 || 0) / numParts) + (idx === 0 ? (baseQty.anak16 || 0) % numParts : 0),
+          };
+          const partTotal = Object.values(partQty).reduce((a, b) => a + b, 0);
+
+          return {
+            id: `item-${sj.id}-${idx + 1}`,
+            spkId: sj.spkId || '',
+            spkNumber: sj.spkId || '',
+            spkItemId: undefined,
+            brand: sj.brand,
+            produk: partName,
+            vendor: sj.vendor || '',
+            jenisKain: jenisKain || 'Kain Standar',
+            qtyDelivered: partQty,
+            totalPcs: partTotal,
+            catatan: sj.catatan,
+          };
+        });
+      }
+    }
+
     return [
       {
         id: sj.spkItemId || `item-${sj.id}`,
@@ -1608,29 +1661,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         hb.brand.trim().toLowerCase() === brand.trim().toLowerCase() &&
         hb.produk.trim().toLowerCase() === produk.trim().toLowerCase()
     );
-    return matched
-      ? {
-          rateSML: matched.rateSML,
-          rateXL: matched.rateXL,
-          rateAnak4: matched.rateAnak4,
-          rateAnak6: matched.rateAnak6,
-          rateAnak8: matched.rateAnak8,
-          rateAnak10: matched.rateAnak10,
-          rateAnak12: matched.rateAnak12,
-          rateAnak14: matched.rateAnak14,
-          rateAnak16: matched.rateAnak16,
-        }
-      : {
-          rateSML: 45000,
-          rateXL: 50000,
-          rateAnak4: 35000,
-          rateAnak6: 37000,
-          rateAnak8: 39000,
-          rateAnak10: 41000,
-          rateAnak12: 43000,
-          rateAnak14: 45000,
-          rateAnak16: 47000,
-        };
+    if (matched) {
+      const rS = matched.rateS ?? matched.rateSML ?? 45000;
+      const rM = matched.rateM ?? matched.rateSML ?? 45000;
+      const rL = matched.rateL ?? matched.rateSML ?? 45000;
+      const rXL = matched.rateXL ?? 50000;
+      const rXXL = matched.rateXXL ?? matched.rateXL ?? 52000;
+      return {
+        rateS: rS,
+        rateM: rM,
+        rateL: rL,
+        rateXL: rXL,
+        rateXXL: rXXL,
+        rateSML: matched.rateSML ?? rS,
+        rateAnak4: matched.rateAnak4 || 0,
+        rateAnak6: matched.rateAnak6 || 0,
+        rateAnak8: matched.rateAnak8 || 0,
+        rateAnak10: matched.rateAnak10 || 0,
+        rateAnak12: matched.rateAnak12 || 0,
+        rateAnak14: matched.rateAnak14 || 0,
+        rateAnak16: matched.rateAnak16 || 0,
+      };
+    }
+    return {
+      rateS: 45000,
+      rateM: 45000,
+      rateL: 45000,
+      rateXL: 50000,
+      rateXXL: 52000,
+      rateSML: 45000,
+      rateAnak4: 35000,
+      rateAnak6: 37000,
+      rateAnak8: 39000,
+      rateAnak10: 41000,
+      rateAnak12: 43000,
+      rateAnak14: 45000,
+      rateAnak16: 47000,
+    };
   };
 
   const getSPKRemainingQty = (spk: SPKCutting, spkItemId?: string): SizeBreakdown & { totalRemaining: number } => {
@@ -1748,8 +1815,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const sjItems = getSuratJalanItems(sj);
       for (const it of sjItems) {
         const rates = getBuyerRates(brandName, it.produk);
-        const qtySML = (it.qtyDelivered?.s || 0) + (it.qtyDelivered?.m || 0) + (it.qtyDelivered?.l || 0);
-        const qtyXL = (it.qtyDelivered?.xl || 0) + (it.qtyDelivered?.xxl || 0);
+        const qtyS = it.qtyDelivered?.s || 0;
+        const qtyM = it.qtyDelivered?.m || 0;
+        const qtyL = it.qtyDelivered?.l || 0;
+        const qtyXL = it.qtyDelivered?.xl || 0;
+        const qtyXXL = it.qtyDelivered?.xxl || 0;
+        const qtySML = qtyS + qtyM + qtyL;
         const qtyAnak4 = it.qtyDelivered?.anak4 || 0;
         const qtyAnak6 = it.qtyDelivered?.anak6 || 0;
         const qtyAnak8 = it.qtyDelivered?.anak8 || 0;
@@ -1758,8 +1829,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const qtyAnak14 = it.qtyDelivered?.anak14 || 0;
         const qtyAnak16 = it.qtyDelivered?.anak16 || 0;
 
-        const subSML = qtySML * rates.rateSML;
+        const subS = qtyS * rates.rateS;
+        const subM = qtyM * rates.rateM;
+        const subL = qtyL * rates.rateL;
         const subXL = qtyXL * rates.rateXL;
+        const subXXL = qtyXXL * rates.rateXXL;
         const subAnak4 = qtyAnak4 * rates.rateAnak4;
         const subAnak6 = qtyAnak6 * rates.rateAnak6;
         const subAnak8 = qtyAnak8 * rates.rateAnak8;
@@ -1768,7 +1842,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const subAnak14 = qtyAnak14 * rates.rateAnak14;
         const subAnak16 = qtyAnak16 * rates.rateAnak16;
 
-        const totalAmount = subSML + subXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
         grandTotal += totalAmount;
         totalPcs += it.totalPcs;
 
@@ -1777,10 +1851,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           tanggal: sj.tanggal,
           produk: it.produk,
           jenisKain: it.jenisKain,
-          qtySML,
-          rateSML: rates.rateSML,
+          qtyS,
+          rateS: rates.rateS,
+          qtyM,
+          rateM: rates.rateM,
+          qtyL,
+          rateL: rates.rateL,
           qtyXL,
           rateXL: rates.rateXL,
+          qtyXXL,
+          rateXXL: rates.rateXXL,
+          qtySML,
+          rateSML: rates.rateSML,
           qtyAnak4,
           rateAnak4: rates.rateAnak4,
           qtyAnak6,

@@ -1,4 +1,4 @@
-﻿import { Hono } from 'hono';
+import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
 
@@ -39,6 +39,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
       nomorKendaraan: restData.nomorKendaraan || null,
       catatan: restData.catatan || null,
       status: restData.status || 'DELIVERED',
+      items: items || null,
       qtySML: restData.qtySML || 0,
       qtyM: restData.qtyM || 0,
       qtyL: restData.qtyL || 0,
@@ -173,51 +174,86 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
   // Delete SJ
   await prisma.suratJalan.delete({ where: { id } });
 
-  // Revert delivered qty on linked SPK
-  const updatedSpk = await prisma.spkCutting.update({
-    where: { id: sj.spkId },
-    data: {
-      deliveredS: { decrement: sj.qtySML || 0 },
-      deliveredM: { decrement: sj.qtyM || 0 },
-      deliveredL: { decrement: sj.qtyL || 0 },
-      deliveredXL: { decrement: sj.qtyXL || 0 },
-      deliveredXXL: { decrement: sj.qtyXXL || 0 },
-      deliveredAnak4: { decrement: sj.qtyAnak4 || 0 },
-      deliveredAnak6: { decrement: sj.qtyAnak6 || 0 },
-      deliveredAnak8: { decrement: sj.qtyAnak8 || 0 },
-      deliveredAnak10: { decrement: sj.qtyAnak10 || 0 },
-      deliveredAnak12: { decrement: sj.qtyAnak12 || 0 },
-      deliveredAnak14: { decrement: sj.qtyAnak14 || 0 },
-      deliveredAnak16: { decrement: sj.qtyAnak16 || 0 },
-    },
-  });
+  // Revert delivered qty on linked SPK (support Multi-Item & single item)
+  const itemsToRevert = Array.isArray(sj.items) && (sj.items as any[]).length > 0
+    ? (sj.items as any[])
+    : [
+        {
+          spkId: sj.spkId,
+          qtyDelivered: {
+            s: sj.qtySML || 0,
+            m: sj.qtyM || 0,
+            l: sj.qtyL || 0,
+            xl: sj.qtyXL || 0,
+            xxl: sj.qtyXXL || 0,
+            anak4: sj.qtyAnak4 || 0,
+            anak6: sj.qtyAnak6 || 0,
+            anak8: sj.qtyAnak8 || 0,
+            anak10: sj.qtyAnak10 || 0,
+            anak12: sj.qtyAnak12 || 0,
+            anak14: sj.qtyAnak14 || 0,
+            anak16: sj.qtyAnak16 || 0,
+          },
+        },
+      ];
 
-  // Recalculate status of SPK
-  const targetTotal =
-    (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
-    (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
-    (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
-    (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
+  const affectedSpkIds = new Set<string>();
 
-  const deliveredTotal =
-    (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
-    (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
-    (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
-    (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
+  for (const it of itemsToRevert) {
+    if (!it.spkId) continue;
+    affectedSpkIds.add(it.spkId);
+    const deliv = it.qtyDelivered || {};
 
-  const newStatus =
-    deliveredTotal <= 0
-      ? 'IN_PRODUCTION'
-      : targetTotal > 0 && deliveredTotal > targetTotal
-      ? 'OVER_DELIVERY'
-      : targetTotal > 0 && deliveredTotal === targetTotal
-      ? 'COMPLETED'
-      : 'PARTIAL_DELIVERED';
+    await prisma.spkCutting.update({
+      where: { id: it.spkId },
+      data: {
+        deliveredS: { decrement: (deliv.s || 0) + (deliv.qtySML || 0) },
+        deliveredM: { decrement: deliv.m || 0 },
+        deliveredL: { decrement: deliv.l || 0 },
+        deliveredXL: { decrement: deliv.xl || 0 },
+        deliveredXXL: { decrement: deliv.xxl || 0 },
+        deliveredAnak4: { decrement: deliv.anak4 || 0 },
+        deliveredAnak6: { decrement: deliv.anak6 || 0 },
+        deliveredAnak8: { decrement: deliv.anak8 || 0 },
+        deliveredAnak10: { decrement: deliv.anak10 || 0 },
+        deliveredAnak12: { decrement: deliv.anak12 || 0 },
+        deliveredAnak14: { decrement: deliv.anak14 || 0 },
+        deliveredAnak16: { decrement: deliv.anak16 || 0 },
+      },
+    }).catch((err: any) => console.warn(`Failed reverting SPK ${it.spkId}:`, err));
+  }
 
-  await prisma.spkCutting.update({
-    where: { id: updatedSpk.id },
-    data: { status: newStatus },
-  });
+  // Recalculate status of all affected SPKs
+  for (const spkId of affectedSpkIds) {
+    const updatedSpk = await prisma.spkCutting.findUnique({ where: { id: spkId } });
+    if (!updatedSpk) continue;
+
+    const targetTotal =
+      (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
+      (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
+      (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
+      (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
+
+    const deliveredTotal =
+      (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
+      (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
+      (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
+      (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
+
+    const newStatus =
+      deliveredTotal <= 0
+        ? 'IN_PRODUCTION'
+        : targetTotal > 0 && deliveredTotal > targetTotal
+        ? 'OVER_DELIVERY'
+        : targetTotal > 0 && deliveredTotal === targetTotal
+        ? 'COMPLETED'
+        : 'PARTIAL_DELIVERED';
+
+    await prisma.spkCutting.update({
+      where: { id: updatedSpk.id },
+      data: { status: newStatus },
+    });
+  }
 
   return c.json({ success: true, message: `Surat Jalan ${sj.noSuratJalan} berhasil dihapus` });
 });

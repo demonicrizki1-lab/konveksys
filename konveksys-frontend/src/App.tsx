@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { LoginPage } from './components/auth/LoginPage';
 import { Navbar } from './components/layout/Navbar';
@@ -16,7 +16,13 @@ import { AccessoriesView } from './components/accessories/AccessoriesView';
 import { BrandApprovalModal } from './components/brands/BrandApprovalModal';
 
 const MainLayout: React.FC = () => {
-  const { activeTab, currentUser, userRole, isApprovalModalOpen, setIsApprovalModalOpen } = useApp();
+  const { activeTab, setActiveTab, currentUser, userRole, isApprovalModalOpen, setIsApprovalModalOpen } = useApp();
+
+  useEffect(() => {
+    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics')) {
+      setActiveTab('dashboard');
+    }
+  }, [userRole, activeTab, setActiveTab]);
 
   if (!currentUser) {
     return <LoginPage />;
@@ -33,7 +39,7 @@ const MainLayout: React.FC = () => {
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'master-harga' && userRole === 'ADMIN' && <MasterHargaView />}
           {activeTab === 'inbound' && <InboundView />}
-          {activeTab === 'accessories' && <AccessoriesView />}
+          {activeTab === 'accessories' && userRole === 'ADMIN' && <AccessoriesView />}
           {activeTab === 'spk' && userRole === 'ADMIN' && <SPKView />}
           {activeTab === 'outbound' && <OutboundView />}
           {activeTab === 'return' && <ReturnView />}

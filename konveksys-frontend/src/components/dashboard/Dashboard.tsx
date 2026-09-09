@@ -41,8 +41,12 @@ export const Dashboard: React.FC = () => {
     const sjItems = getSuratJalanItems(sj);
     const sjSum = sjItems.reduce((sAcc, item) => {
       const rates = getBuyerRates(item.brand, item.produk);
-      const qtySML = (item.qtyDelivered?.s || 0) + (item.qtyDelivered?.m || 0) + (item.qtyDelivered?.l || 0);
-      const qtyXL = (item.qtyDelivered?.xl || 0) + (item.qtyDelivered?.xxl || 0);
+      const subHuruf =
+        (item.qtyDelivered?.s || 0) * (rates.rateS || rates.rateSML || 0) +
+        (item.qtyDelivered?.m || 0) * (rates.rateM || rates.rateSML || 0) +
+        (item.qtyDelivered?.l || 0) * (rates.rateL || rates.rateSML || 0) +
+        (item.qtyDelivered?.xl || 0) * (rates.rateXL || 0) +
+        (item.qtyDelivered?.xxl || 0) * (rates.rateXXL || rates.rateXL || 0);
       const subAnak =
         (item.qtyDelivered?.anak4 || 0) * (rates.rateAnak4 || 0) +
         (item.qtyDelivered?.anak6 || 0) * (rates.rateAnak6 || 0) +
@@ -52,7 +56,7 @@ export const Dashboard: React.FC = () => {
         (item.qtyDelivered?.anak14 || 0) * (rates.rateAnak14 || 0) +
         (item.qtyDelivered?.anak16 || 0) * (rates.rateAnak16 || 0);
 
-      return sAcc + (qtySML * rates.rateSML + qtyXL * rates.rateXL + subAnak);
+      return sAcc + (subHuruf + subAnak);
     }, 0);
     return acc + sjSum;
   }, 0);

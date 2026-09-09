@@ -481,14 +481,34 @@ export const FinanceView: React.FC = () => {
                         <td className="p-3 font-mono font-bold text-indigo-600">{item.suratJalanNo}</td>
                         <td className="p-3 font-bold text-slate-900">{item.produk}</td>
                         <td className="p-3 text-[11px] space-y-0.5">
-                          {item.qtySML > 0 && (
+                          {item.qtyS > 0 && (
                             <div className="text-slate-600">
-                              S/M/L: <strong className="text-slate-800">{item.qtySML} pcs</strong> @ {formatRp(item.rateSML)}
+                              Size S: <strong className="text-slate-800">{item.qtyS} pcs</strong> @ {formatRp(item.rateS)}
+                            </div>
+                          )}
+                          {item.qtyM > 0 && (
+                            <div className="text-slate-600">
+                              Size M: <strong className="text-slate-800">{item.qtyM} pcs</strong> @ {formatRp(item.rateM)}
+                            </div>
+                          )}
+                          {item.qtyL > 0 && (
+                            <div className="text-slate-600">
+                              Size L: <strong className="text-slate-800">{item.qtyL} pcs</strong> @ {formatRp(item.rateL)}
                             </div>
                           )}
                           {item.qtyXL > 0 && (
                             <div className="text-slate-600">
-                              XL/2XL: <strong className="text-slate-800">{item.qtyXL} pcs</strong> @ {formatRp(item.rateXL)}
+                              Size XL: <strong className="text-slate-800">{item.qtyXL} pcs</strong> @ {formatRp(item.rateXL)}
+                            </div>
+                          )}
+                          {item.qtyXXL > 0 && (
+                            <div className="text-slate-600">
+                              Size 2XL: <strong className="text-slate-800">{item.qtyXXL} pcs</strong> @ {formatRp(item.rateXXL)}
+                            </div>
+                          )}
+                          {!item.qtyS && !item.qtyM && !item.qtyL && (item.qtySML || 0) > 0 && (
+                            <div className="text-slate-600">
+                              Size Huruf: <strong className="text-slate-800">{item.qtySML} pcs</strong> @ {formatRp(item.rateSML || 0)}
                             </div>
                           )}
                           {item.qtyAnak4 > 0 && (
