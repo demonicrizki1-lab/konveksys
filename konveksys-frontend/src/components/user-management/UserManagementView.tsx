@@ -394,39 +394,38 @@ export const UserManagementView: React.FC = () => {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-semibold tracking-wide">
+      {/* Header Banner - Clean White Aesthetic */}
+      <div className="bg-white rounded-xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>PORTAL ADMINISTRATOR UTAMA</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-              <Users className="w-8 h-8 text-indigo-400" />
-              Manajemen User & Brand
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2.5">
+              <Users className="w-6 h-6 text-indigo-600" />
+              <span>Manajemen User & Brand</span>
             </h1>
-            <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
+            <p className="text-slate-500 text-xs sm:text-sm max-w-2xl leading-relaxed">
               Pusat kendali pengguna aktif, penetapan brand mitra, pengalihan hak akses, serta pengelolaan master brand
               dalam ekosistem Konveksys.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium border border-white/10 transition backdrop-blur-sm active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition active:scale-95 disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>Sinkronkan</span>
             </button>
 
             {activeTab === 'users' ? (
               <button
                 onClick={() => setIsAddUserModalOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 transition active:scale-95"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 <span>Tambah Pengguna</span>
@@ -437,7 +436,7 @@ export const UserManagementView: React.FC = () => {
                   setBrandForm({ name: '', code: '', contactPerson: '', phone: '' });
                   setIsAddBrandModalOpen(true);
                 }}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 transition active:scale-95"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 <span>Tambah Brand Mitra</span>
@@ -446,25 +445,25 @@ export const UserManagementView: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick KPI Counters inside header */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/10">
-          <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-            <div className="text-slate-400 text-xs font-medium">Total Akun Pengguna</div>
-            <div className="text-xl font-bold text-white mt-1">{(managedUsers || []).length} Akun</div>
+        {/* Quick KPI Counters */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="text-slate-500 text-xs font-medium">Total Akun Pengguna</div>
+            <div className="text-xl font-bold text-slate-900 mt-1">{(managedUsers || []).length} Akun</div>
           </div>
-          <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-            <div className="text-slate-400 text-xs font-medium">User Brand Aktif</div>
-            <div className="text-xl font-bold text-emerald-400 mt-1">
+          <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+            <div className="text-emerald-700 text-xs font-medium">User Brand Aktif</div>
+            <div className="text-xl font-bold text-emerald-700 mt-1">
               {(managedUsers || []).filter(u => u.role === 'BRAND' && u.status === 'ACTIVE').length} User
             </div>
           </div>
-          <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-            <div className="text-slate-400 text-xs font-medium">Brand Terdaftar</div>
-            <div className="text-xl font-bold text-indigo-300 mt-1">{(brands || []).length} Brand</div>
+          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+            <div className="text-indigo-700 text-xs font-medium">Brand Terdaftar</div>
+            <div className="text-xl font-bold text-indigo-700 mt-1">{(brands || []).length} Brand</div>
           </div>
-          <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-            <div className="text-slate-400 text-xs font-medium">Administrator</div>
-            <div className="text-xl font-bold text-purple-300 mt-1">
+          <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+            <div className="text-purple-700 text-xs font-medium">Administrator</div>
+            <div className="text-xl font-bold text-purple-700 mt-1">
               {(managedUsers || []).filter(u => u.role === 'ADMIN').length} Admin
             </div>
           </div>
