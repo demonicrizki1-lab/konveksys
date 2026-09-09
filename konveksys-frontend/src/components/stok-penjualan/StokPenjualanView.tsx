@@ -705,16 +705,16 @@ export const StokPenjualanView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-900 text-white text-xs font-semibold uppercase tracking-wider">
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-3 w-12 text-center">No</th>
                     <th className="py-3 px-3">Produk</th>
                     <th className="py-3 px-3">SKU</th>
                     <th className="py-3 px-3 text-right">HPP</th>
-                    <th className="py-3 px-3 text-center bg-slate-800 text-amber-300">Sisa Qty</th>
-                    <th className="py-3 px-3 text-right bg-slate-800 text-amber-300">Nilai Inventory</th>
-                    <th className="py-3 px-3 text-center bg-yellow-600/30 text-yellow-200">Barang Masuk (SJ)</th>
-                    <th className="py-3 px-3 text-center bg-emerald-600/30 text-emerald-200">Penjualan</th>
-                    <th className="py-3 px-3 text-center bg-blue-600/30 text-blue-200">Keluar / Sample</th>
+                    <th className="py-3 px-3 text-center">Sisa Qty</th>
+                    <th className="py-3 px-3 text-right">Nilai Inventory</th>
+                    <th className="py-3 px-3 text-center">Barang Masuk (SJ)</th>
+                    <th className="py-3 px-3 text-center">Penjualan</th>
+                    <th className="py-3 px-3 text-center">Keluar / Sample</th>
                     <th className="py-3 px-3 text-center">Stok Awal</th>
                     <th className="py-3 px-3 text-right">Aksi</th>
                   </tr>
@@ -875,7 +875,7 @@ export const StokPenjualanView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-3">Tanggal</th>
                     <th className="py-3 px-3">Marketplace & Toko</th>
                     <th className="py-3 px-3">No. Pesanan & Pembeli</th>
@@ -981,7 +981,7 @@ export const StokPenjualanView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-4">Tanggal</th>
                     <th className="py-3 px-4">SKU Produk</th>
                     <th className="py-3 px-4 text-center">Jumlah (Qty)</th>
