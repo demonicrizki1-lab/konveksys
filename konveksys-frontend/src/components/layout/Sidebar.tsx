@@ -19,6 +19,7 @@ import {
   LogOut,
   Inbox,
   Users,
+  ShoppingBag,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -114,6 +115,13 @@ export const Sidebar: React.FC = () => {
           description: userRole === 'ADMIN' ? 'Rekapan Barang Jadi Buyer' : 'Rekapan Barang Jadi Masuk',
           icon: Inbox,
           badge: totalBarangMasukPcs > 0 ? `${totalBarangMasukPcs} Pcs` : undefined,
+          roles: ['ADMIN', 'BRAND'],
+        },
+        {
+          id: 'stok-penjualan',
+          label: userRole === 'ADMIN' ? 'Stok & Penjualan Brand' : 'Stok & Penjualan',
+          description: userRole === 'ADMIN' ? 'Live Inventori & Order MP' : 'Database Stok & Marketplace',
+          icon: ShoppingBag,
           roles: ['ADMIN', 'BRAND'],
         },
         {

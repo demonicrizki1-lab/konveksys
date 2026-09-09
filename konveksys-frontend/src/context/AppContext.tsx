@@ -53,6 +53,16 @@ import {
   apiCreateUser,
   apiUpdateUser,
   apiDeleteUser,
+  apiGetBrandSKUs,
+  apiCreateBrandSKU,
+  apiUpdateBrandSKU,
+  apiDeleteBrandSKU,
+  apiGetBrandSales,
+  apiCreateBrandSale,
+  apiDeleteBrandSale,
+  apiGetBrandStockExits,
+  apiCreateBrandStockExit,
+  apiDeleteBrandStockExit,
 } from '../services/api';
 import {
   AuthUser,
@@ -79,6 +89,9 @@ import {
   ReturnSource,
   AccessoryItem,
   AccessoryMutation,
+  BrandProductSKU,
+  BrandSale,
+  BrandStockExit,
 } from '../types';
 import {
   demoUsers,
@@ -96,7 +109,7 @@ import {
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk' | 'manajemen-user';
+export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk' | 'manajemen-user' | 'stok-penjualan';
 
 interface AppContextType {
   // Auth & Session
@@ -150,6 +163,62 @@ interface AppContextType {
     }>
   ) => Promise<{ success: boolean; message: string }>;
   deleteManagedUser: (id: string) => Promise<{ success: boolean; message: string }>;
+
+  // Brand Inventory & Marketplace Sales
+  brandSKUs: BrandProductSKU[];
+  brandSales: BrandSale[];
+  brandStockExits: BrandStockExit[];
+  fetchBrandInventoryData: (brand?: string) => Promise<void>;
+  createBrandSKU: (data: {
+    brand?: string;
+    produk: string;
+    sku: string;
+    warna?: string;
+    ukuran?: string;
+    hpp: number;
+    stokAwal?: number;
+    catatan?: string;
+  }) => Promise<{ success: boolean; message: string }>;
+  updateBrandSKU: (
+    id: string,
+    data: Partial<{
+      produk: string;
+      sku: string;
+      warna?: string;
+      ukuran?: string;
+      hpp: number;
+      stokAwal: number;
+      catatan?: string;
+    }>
+  ) => Promise<{ success: boolean; message: string }>;
+  deleteBrandSKU: (id: string) => Promise<{ success: boolean; message: string }>;
+  createBrandSale: (data: {
+    brand?: string;
+    tanggal: string;
+    marketplace: string;
+    toko?: string;
+    noPesanan?: string;
+    username?: string;
+    skuId?: string;
+    sku: string;
+    qty: number;
+    hpp?: number;
+    omset: number;
+    biayaIklan?: number;
+    biayaOperasional?: number;
+    catatan?: string;
+  }) => Promise<{ success: boolean; message: string }>;
+  deleteBrandSale: (id: string) => Promise<{ success: boolean; message: string }>;
+  createBrandStockExit: (data: {
+    brand?: string;
+    tanggal: string;
+    skuId?: string;
+    sku: string;
+    qty: number;
+    kategori: string;
+    keterangan?: string;
+  }) => Promise<{ success: boolean; message: string }>;
+  deleteBrandStockExit: (id: string) => Promise<{ success: boolean; message: string }>;
 
   // Sidebar & Layout State
   isSidebarCollapsed: boolean;
@@ -467,6 +536,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('konvek_accessory_mutations', JSON.stringify(accessoryMutations));
   }, [accessoryMutations]);
 
+  const [brandSKUs, setBrandSKUs] = useState<BrandProductSKU[]>(() => {
+    const saved = localStorage.getItem('konvek_brand_skus');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [brandSales, setBrandSales] = useState<BrandSale[]>(() => {
+    const saved = localStorage.getItem('konvek_brand_sales');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [brandStockExits, setBrandStockExits] = useState<BrandStockExit[]>(() => {
+    const saved = localStorage.getItem('konvek_brand_stock_exits');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('konvek_brand_skus', JSON.stringify(brandSKUs));
+  }, [brandSKUs]);
+
+  useEffect(() => {
+    localStorage.setItem('konvek_brand_sales', JSON.stringify(brandSales));
+  }, [brandSales]);
+
+  useEffect(() => {
+    localStorage.setItem('konvek_brand_stock_exits', JSON.stringify(brandStockExits));
+  }, [brandStockExits]);
+
   // Helper for brand name normalization (CREADIVE -> NAMI)
   const normalizeBrandName = (name?: string): string => {
     if (!name) return '';
@@ -769,6 +865,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch {
         // Not admin or unauthenticated
       }
+
+      // 14. Fetch Brand Inventory (SKUs, Sales, Stock Exits)
+      try {
+        const [skusRes, salesRes, exitsRes] = await Promise.all([
+          apiGetBrandSKUs(),
+          apiGetBrandSales(),
+          apiGetBrandStockExits(),
+        ]);
+        if (Array.isArray(skusRes.data)) {
+          setBrandSKUs(skusRes.data.map(s => ({
+            ...s,
+            hpp: Number(s.hpp || 0),
+            stokAwal: Number(s.stokAwal || 0),
+          })));
+        }
+        if (Array.isArray(salesRes.data)) {
+          setBrandSales(salesRes.data.map(s => ({
+            ...s,
+            qty: Number(s.qty || 1),
+            hpp: Number(s.hpp || 0),
+            omset: Number(s.omset || 0),
+            biayaIklan: Number(s.biayaIklan || 0),
+            biayaOperasional: Number(s.biayaOperasional || 0),
+            estimasiProfit: Number(s.estimasiProfit || 0),
+          })));
+        }
+        if (Array.isArray(exitsRes.data)) {
+          setBrandStockExits(exitsRes.data.map(e => ({
+            ...e,
+            qty: Number(e.qty || 1),
+          })));
+        }
+      } catch (err) {
+        console.warn('Sync brand inventory failed:', err);
+      }
     } catch (err) {
       console.warn('[Sync Error] Continuing with cached data:', err);
     }
@@ -963,6 +1094,194 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setManagedUsers(prev => prev.filter(u => u.id !== id));
       return { success: true, message: data.message || 'Pengguna berhasil dihapus.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  // Brand Inventory Handlers
+  const fetchBrandInventoryData = useCallback(async (brand?: string) => {
+    try {
+      const [skusRes, salesRes, exitsRes] = await Promise.all([
+        apiGetBrandSKUs(brand),
+        apiGetBrandSales(brand),
+        apiGetBrandStockExits(brand),
+      ]);
+      if (Array.isArray(skusRes.data)) {
+        setBrandSKUs(skusRes.data.map(s => ({
+          ...s,
+          hpp: Number(s.hpp || 0),
+          stokAwal: Number(s.stokAwal || 0),
+        })));
+      }
+      if (Array.isArray(salesRes.data)) {
+        setBrandSales(salesRes.data.map(s => ({
+          ...s,
+          qty: Number(s.qty || 1),
+          hpp: Number(s.hpp || 0),
+          omset: Number(s.omset || 0),
+          biayaIklan: Number(s.biayaIklan || 0),
+          biayaOperasional: Number(s.biayaOperasional || 0),
+          estimasiProfit: Number(s.estimasiProfit || 0),
+        })));
+      }
+      if (Array.isArray(exitsRes.data)) {
+        setBrandStockExits(exitsRes.data.map(e => ({
+          ...e,
+          qty: Number(e.qty || 1),
+        })));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch brand inventory data:', err);
+    }
+  }, []);
+
+  const createBrandSKU = async (skuData: {
+    brand?: string;
+    produk: string;
+    sku: string;
+    warna?: string;
+    ukuran?: string;
+    hpp: number;
+    stokAwal?: number;
+    catatan?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiCreateBrandSKU(skuData);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal menambahkan SKU.' };
+      }
+      if (data.data) {
+        setBrandSKUs(prev => [...prev, {
+          ...data.data,
+          hpp: Number(data.data.hpp || 0),
+          stokAwal: Number(data.data.stokAwal || 0),
+        }]);
+      }
+      return { success: true, message: data.message || 'SKU berhasil ditambahkan.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const updateBrandSKU = async (
+    id: string,
+    skuData: Partial<{
+      produk: string;
+      sku: string;
+      warna?: string;
+      ukuran?: string;
+      hpp: number;
+      stokAwal: number;
+      catatan?: string;
+    }>
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiUpdateBrandSKU(id, skuData);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal memperbarui SKU.' };
+      }
+      if (data.data) {
+        setBrandSKUs(prev => prev.map(s => s.id === id ? {
+          ...s,
+          ...data.data,
+          hpp: Number(data.data.hpp !== undefined ? data.data.hpp : s.hpp),
+          stokAwal: Number(data.data.stokAwal !== undefined ? data.data.stokAwal : s.stokAwal),
+        } : s));
+      }
+      return { success: true, message: data.message || 'SKU berhasil diperbarui.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const deleteBrandSKU = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiDeleteBrandSKU(id);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal menghapus SKU.' };
+      }
+      setBrandSKUs(prev => prev.filter(s => s.id !== id));
+      return { success: true, message: data.message || 'SKU berhasil dihapus.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const createBrandSale = async (saleData: {
+    brand?: string;
+    tanggal: string;
+    marketplace: string;
+    toko?: string;
+    noPesanan?: string;
+    username?: string;
+    skuId?: string;
+    sku: string;
+    qty: number;
+    hpp?: number;
+    omset: number;
+    biayaIklan?: number;
+    biayaOperasional?: number;
+    catatan?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiCreateBrandSale(saleData);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal mencatat penjualan.' };
+      }
+      if (data.data) {
+        setBrandSales(prev => [data.data, ...prev]);
+      }
+      return { success: true, message: data.message || 'Penjualan berhasil dicatat.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const deleteBrandSale = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiDeleteBrandSale(id);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal menghapus penjualan.' };
+      }
+      setBrandSales(prev => prev.filter(s => s.id !== id));
+      return { success: true, message: data.message || 'Penjualan berhasil dihapus.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const createBrandStockExit = async (exitData: {
+    brand?: string;
+    tanggal: string;
+    skuId?: string;
+    sku: string;
+    qty: number;
+    kategori: string;
+    keterangan?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiCreateBrandStockExit(exitData);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal mencatat barang keluar.' };
+      }
+      if (data.data) {
+        setBrandStockExits(prev => [data.data, ...prev]);
+      }
+      return { success: true, message: data.message || 'Barang keluar berhasil dicatat.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const deleteBrandStockExit = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiDeleteBrandStockExit(id);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal menghapus data barang keluar.' };
+      }
+      setBrandStockExits(prev => prev.filter(e => e.id !== id));
+      return { success: true, message: data.message || 'Data barang keluar berhasil dihapus.' };
     } catch (err: any) {
       return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
     }
@@ -2506,6 +2825,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createManagedUser,
         updateManagedUser,
         deleteManagedUser,
+        brandSKUs,
+        brandSales,
+        brandStockExits,
+        fetchBrandInventoryData,
+        createBrandSKU,
+        updateBrandSKU,
+        deleteBrandSKU,
+        createBrandSale,
+        deleteBrandSale,
+        createBrandStockExit,
+        deleteBrandStockExit,
         isApprovalModalOpen,
         setIsApprovalModalOpen,
         isSidebarCollapsed,

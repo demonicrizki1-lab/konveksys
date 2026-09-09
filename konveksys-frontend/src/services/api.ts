@@ -674,4 +674,110 @@ export async function apiRecordAccessoryMutation(data: {
   });
 }
 
+// ============================================================
+// BRAND INVENTORY & MARKETPLACE SALES
+// ============================================================
 
+export async function apiGetBrandSKUs(brand?: string) {
+  const query = brand && brand !== 'ALL' ? `?brand=${encodeURIComponent(brand)}` : '';
+  return apiFetch<any[]>(`/api/brand-inventory/skus${query}`);
+}
+
+export async function apiCreateBrandSKU(data: {
+  brand?: string;
+  produk: string;
+  sku: string;
+  warna?: string;
+  ukuran?: string;
+  hpp: number;
+  stokAwal?: number;
+  catatan?: string;
+}) {
+  return apiFetch<{ success: boolean; message: string; data: any }>('/api/brand-inventory/skus', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateBrandSKU(
+  id: string,
+  data: Partial<{
+    produk: string;
+    sku: string;
+    warna?: string;
+    ukuran?: string;
+    hpp: number;
+    stokAwal: number;
+    catatan?: string;
+  }>
+) {
+  return apiFetch<{ success: boolean; message: string; data: any }>(`/api/brand-inventory/skus/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteBrandSKU(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/brand-inventory/skus/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function apiGetBrandSales(brand?: string) {
+  const query = brand && brand !== 'ALL' ? `?brand=${encodeURIComponent(brand)}` : '';
+  return apiFetch<any[]>(`/api/brand-inventory/sales${query}`);
+}
+
+export async function apiCreateBrandSale(data: {
+  brand?: string;
+  tanggal: string;
+  marketplace: string;
+  toko?: string;
+  noPesanan?: string;
+  username?: string;
+  skuId?: string;
+  sku: string;
+  qty: number;
+  hpp?: number;
+  omset: number;
+  biayaIklan?: number;
+  biayaOperasional?: number;
+  catatan?: string;
+}) {
+  return apiFetch<{ success: boolean; message: string; data: any }>('/api/brand-inventory/sales', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteBrandSale(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/brand-inventory/sales/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function apiGetBrandStockExits(brand?: string) {
+  const query = brand && brand !== 'ALL' ? `?brand=${encodeURIComponent(brand)}` : '';
+  return apiFetch<any[]>(`/api/brand-inventory/stock-exits${query}`);
+}
+
+export async function apiCreateBrandStockExit(data: {
+  brand?: string;
+  tanggal: string;
+  skuId?: string;
+  sku: string;
+  qty: number;
+  kategori: string;
+  keterangan?: string;
+}) {
+  return apiFetch<{ success: boolean; message: string; data: any }>('/api/brand-inventory/stock-exits', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteBrandStockExit(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/brand-inventory/stock-exits/${id}`, {
+    method: 'DELETE',
+  });
+}

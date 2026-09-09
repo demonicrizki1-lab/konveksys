@@ -67,6 +67,9 @@ model Brand {
   pembayaranList PembayaranBrand[]
   hargaBuyer     HargaBuyer[]
   returnList     ReturnItem[]
+  productSKUs    BrandProductSKU[]
+  sales          BrandSale[]
+  stockExits     BrandStockExit[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -369,4 +372,63 @@ model AccessoryMutation {
   accessory           Accessory @relation(fields: [accessoryId], references: [id], onDelete: Cascade)
 
   createdAt           DateTime @default(now())
+}
+
+
+model BrandProductSKU {
+  id         String   @id @default(cuid())
+  brand      String
+  produk     String
+  sku        String
+  warna      String?
+  ukuran     String?
+  hpp        Decimal  @db.Decimal(12, 2)
+  stokAwal   Int      @default(0)
+  catatan    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  brandRef   Brand    @relation(fields: [brand], references: [name])
+  sales      BrandSale[]
+  stockExits BrandStockExit[]
+
+  @@unique([brand, sku])
+}
+
+model BrandSale {
+  id               String           @id @default(cuid())
+  brand            String
+  tanggal          DateTime
+  marketplace      String           // SHOPEE, TIKTOK, TOKOPEDIA, OFFLINE, LAINNYA
+  toko             String?
+  noPesanan        String?
+  username         String?
+  skuId            String?
+  sku              String
+  qty              Int              @default(1)
+  hpp              Decimal          @db.Decimal(12, 2)
+  omset            Decimal          @db.Decimal(14, 2)
+  biayaIklan       Decimal          @default(0) @db.Decimal(12, 2)
+  biayaOperasional Decimal          @default(0) @db.Decimal(12, 2)
+  estimasiProfit   Decimal          @db.Decimal(14, 2)
+  catatan          String?
+  createdAt        DateTime         @default(now())
+
+  brandRef         Brand            @relation(fields: [brand], references: [name])
+  skuRef           BrandProductSKU? @relation(fields: [skuId], references: [id], onDelete: SetNull)
+}
+
+model BrandStockExit {
+  id         String           @id @default(cuid())
+  brand      String
+  tanggal    DateTime
+  skuId      String?
+  sku        String
+  qty        Int              @default(1)
+  kategori   String           // SAMPLE_FOTO, ENDORSEMENT, REJECT_RUSAK, GIFT_BONUS, LAINNYA
+  keterangan String?
+  createdAt  DateTime         @default(now())
+
+  brandRef   Brand            @relation(fields: [brand], references: [name])
+  skuRef     BrandProductSKU? @relation(fields: [skuId], references: [id], onDelete: SetNull)
 }

@@ -355,5 +355,56 @@ export interface AccessoryMutation {
   createdAt: string;
 }
 
+// ============================================================
+// BRAND INVENTORY & MARKETPLACE SALES (Portal Brand)
+// ============================================================
 
+export interface BrandProductSKU {
+  id: string;
+  brand: string;
+  produk: string;
+  sku: string;
+  warna?: string;
+  ukuran?: string;
+  hpp: number;
+  stokAwal: number;
+  catatan?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
+export type MarketplaceChannel = 'SHOPEE' | 'TIKTOK' | 'TOKOPEDIA' | 'LAZADA' | 'OFFLINE' | 'LAINNYA';
+
+export interface BrandSale {
+  id: string;
+  brand: string;
+  tanggal: string;
+  marketplace: MarketplaceChannel | string;
+  toko?: string;
+  noPesanan?: string;
+  username?: string;
+  skuId?: string;
+  sku: string;
+  qty: number;
+  hpp: number;
+  omset: number;
+  biayaIklan: number;
+  biayaOperasional: number;
+  estimasiProfit: number;
+  catatan?: string;
+  createdAt?: string;
+}
+
+export type StockExitCategory = 'SAMPLE_FOTO' | 'ENDORSEMENT' | 'REJECT_RUSAK' | 'GIFT_BONUS' | 'LAINNYA';
+
+export interface BrandStockExit {
+  id: string;
+  brand: string;
+  tanggal: string;
+  skuId?: string;
+  sku: string;
+  qty: number;
+  kategori: StockExitCategory | string;
+  keterangan?: string;
+  createdAt?: string;
+}
