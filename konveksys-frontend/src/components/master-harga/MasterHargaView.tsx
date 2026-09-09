@@ -248,7 +248,7 @@ export const MasterHargaView: React.FC = () => {
               <Coins className="w-3.5 h-3.5" />
               Master Pricing Matrix Engine
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Master Database Harga Dinamis</h1>
+            <h1 className="text-xl font-bold text-slate-900">Master Database Harga Dinamis</h1>
             <p className="text-slate-500 text-xs mt-1">
               Data referensi tarif yang menjadi dasar otomatisasi perhitungan gaji penjahit dan invoice tagihan Brand.
             </p>

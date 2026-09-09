@@ -402,11 +402,11 @@ export const UserManagementView: React.FC = () => {
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>PORTAL ADMINISTRATOR UTAMA</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2.5">
-              <Users className="w-6 h-6 text-indigo-600" />
+            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
+              <Users className="w-5 h-5 text-indigo-600" />
               <span>Manajemen User & Brand</span>
             </h1>
-            <p className="text-slate-500 text-xs sm:text-sm max-w-2xl leading-relaxed">
+            <p className="text-slate-500 text-xs mt-1 max-w-2xl">
               Pusat kendali pengguna aktif, penetapan brand mitra, pengalihan hak akses, serta pengelolaan master brand
               dalam ekosistem Konveksys.
             </p>
@@ -448,22 +448,22 @@ export const UserManagementView: React.FC = () => {
         {/* Quick KPI Counters */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div className="text-slate-500 text-xs font-medium">Total Akun Pengguna</div>
-            <div className="text-xl font-bold text-slate-900 mt-1">{(managedUsers || []).length} Akun</div>
+            <span className="text-[11px] font-medium text-slate-500">Total Akun Pengguna</span>
+            <div className="text-xl font-bold text-slate-900 mt-0.5">{(managedUsers || []).length} Akun</div>
           </div>
           <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-            <div className="text-emerald-700 text-xs font-medium">User Brand Aktif</div>
-            <div className="text-xl font-bold text-emerald-700 mt-1">
+            <span className="text-[11px] font-medium text-emerald-700">User Brand Aktif</span>
+            <div className="text-xl font-bold text-emerald-700 mt-0.5">
               {(managedUsers || []).filter(u => u.role === 'BRAND' && u.status === 'ACTIVE').length} User
             </div>
           </div>
           <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-            <div className="text-indigo-700 text-xs font-medium">Brand Terdaftar</div>
-            <div className="text-xl font-bold text-indigo-700 mt-1">{(brands || []).length} Brand</div>
+            <span className="text-[11px] font-medium text-indigo-700">Brand Terdaftar</span>
+            <div className="text-xl font-bold text-indigo-700 mt-0.5">{(brands || []).length} Brand</div>
           </div>
           <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
-            <div className="text-purple-700 text-xs font-medium">Administrator</div>
-            <div className="text-xl font-bold text-purple-700 mt-1">
+            <span className="text-[11px] font-medium text-purple-700">Administrator</span>
+            <div className="text-xl font-bold text-purple-700 mt-0.5">
               {(managedUsers || []).filter(u => u.role === 'ADMIN').length} Admin
             </div>
           </div>
@@ -587,16 +587,16 @@ export const UserManagementView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Nama & Akun</th>
-                    <th className="py-3.5 px-4">Role</th>
-                    <th className="py-3.5 px-4">Brand Utama & Akses</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4">Tgl Terdaftar</th>
-                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-4">Nama & Akun</th>
+                    <th className="py-2.5 px-4">Role</th>
+                    <th className="py-2.5 px-4">Brand Utama & Akses</th>
+                    <th className="py-2.5 px-4">Status</th>
+                    <th className="py-2.5 px-4">Tgl Terdaftar</th>
+                    <th className="py-2.5 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                   {filteredUsers.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400">
@@ -807,16 +807,16 @@ export const UserManagementView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Nama Brand</th>
-                    <th className="py-3.5 px-4">Kode Singkatan</th>
-                    <th className="py-3.5 px-4">Person In Charge (PIC)</th>
-                    <th className="py-3.5 px-4">No. Telepon / WhatsApp</th>
-                    <th className="py-3.5 px-4">User Terhubung</th>
-                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-4">Nama Brand</th>
+                    <th className="py-2.5 px-4">Kode Singkatan</th>
+                    <th className="py-2.5 px-4">Person In Charge (PIC)</th>
+                    <th className="py-2.5 px-4">No. Telepon / WhatsApp</th>
+                    <th className="py-2.5 px-4">User Terhubung</th>
+                    <th className="py-2.5 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                   {(brands || []).length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400">

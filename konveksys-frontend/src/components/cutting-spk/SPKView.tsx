@@ -322,7 +322,7 @@ export const SPKView: React.FC = () => {
               <Scissors className="w-3.5 h-3.5" />
               SPK & Smart Cutting
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Surat Perintah Kerja (SPK) Potong</h1>
+            <h1 className="text-xl font-bold text-slate-900">Surat Perintah Kerja (SPK) Potong</h1>
             <p className="text-slate-500 text-xs mt-1">
               Penggabungan rol kain (*Smart Pooling*) dan alokasi potong 1 hingga maksimal 3 produk/artikel per batch kain.
             </p>

@@ -505,15 +505,15 @@ export const StokPenjualanView: React.FC = () => {
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>INVENTORI & ORDER MARKETPLACE</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
               <span>Stok & Penjualan Brand</span>
               {effectiveBrand !== 'ALL' && (
-                <span className="text-sm font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
                   {effectiveBrand}
                 </span>
               )}
             </h1>
-            <p className="text-slate-500 text-xs sm:text-sm max-w-2xl leading-relaxed">
+            <p className="text-slate-500 text-xs mt-1 max-w-2xl">
               Pusat kendali stok live per SKU, integrasi barang masuk dari Surat Jalan konveksi, pencatatan order Shopee/TikTok,
               serta pemantauan sisa inventori secara otomatis.
             </p>
@@ -583,31 +583,31 @@ export const StokPenjualanView: React.FC = () => {
         {/* Quick KPI Counters */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div className="text-slate-500 text-xs font-medium">Total Model SKU</div>
-            <div className="text-xl font-bold text-slate-900 mt-1">{summaryMetrics.totalSKU} SKU</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Terdaftar dalam database</div>
+            <span className="text-[11px] font-medium text-slate-500">Total Model SKU</span>
+            <div className="text-xl font-bold text-slate-900 mt-0.5">{summaryMetrics.totalSKU} SKU</div>
+            <span className="text-[10px] text-slate-400 mt-0.5 block">Terdaftar dalam database</span>
           </div>
 
           <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-            <div className="text-emerald-700 text-xs font-medium">Stok Fisik Ready</div>
-            <div className="text-xl font-bold text-emerald-700 mt-1">{summaryMetrics.totalQtyReady.toLocaleString('id-ID')} Pcs</div>
-            <div className="text-[10px] text-emerald-600 mt-0.5">Siap dikirim ke pembeli</div>
+            <span className="text-[11px] font-medium text-emerald-700">Stok Fisik Ready</span>
+            <div className="text-xl font-bold text-emerald-700 mt-0.5">{summaryMetrics.totalQtyReady.toLocaleString('id-ID')} Pcs</div>
+            <span className="text-[10px] text-emerald-600 mt-0.5 block">Siap dikirim ke pembeli</span>
           </div>
 
           <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-            <div className="text-indigo-700 text-xs font-medium">Nilai Aset Inventory</div>
-            <div className="text-xl font-bold text-indigo-700 mt-1">{formatRp(summaryMetrics.totalNilaiInventory)}</div>
-            <div className="text-[10px] text-indigo-600 mt-0.5">Berdasarkan HPP produk</div>
+            <span className="text-[11px] font-medium text-indigo-700">Nilai Aset Inventory</span>
+            <div className="text-xl font-bold text-indigo-700 mt-0.5">{formatRp(summaryMetrics.totalNilaiInventory)}</div>
+            <span className="text-[10px] text-indigo-600 mt-0.5 block">Berdasarkan HPP produk</span>
           </div>
 
           <div className={`p-4 rounded-xl border ${summaryMetrics.totalCriticalSKUs > 0 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`}>
-            <div className={`text-xs font-medium ${summaryMetrics.totalCriticalSKUs > 0 ? 'text-rose-700' : 'text-slate-500'}`}>
+            <span className={`text-[11px] font-medium ${summaryMetrics.totalCriticalSKUs > 0 ? 'text-rose-700' : 'text-slate-500'}`}>
               🔴 SKU Habis / Kritis
-            </div>
-            <div className={`text-xl font-bold mt-1 ${summaryMetrics.totalCriticalSKUs > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
+            </span>
+            <div className={`text-xl font-bold mt-0.5 ${summaryMetrics.totalCriticalSKUs > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
               {summaryMetrics.totalCriticalSKUs} SKU
             </div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Perlu repeat order potong baru</div>
+            <span className="text-[10px] text-slate-400 mt-0.5 block">Perlu repeat order potong baru</span>
           </div>
         </div>
       </div>
@@ -705,21 +705,21 @@ export const StokPenjualanView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-3 w-12 text-center">No</th>
-                    <th className="py-3 px-3">Produk</th>
-                    <th className="py-3 px-3">SKU</th>
-                    <th className="py-3 px-3 text-right">HPP</th>
-                    <th className="py-3 px-3 text-center">Sisa Qty</th>
-                    <th className="py-3 px-3 text-right">Nilai Inventory</th>
-                    <th className="py-3 px-3 text-center">Barang Masuk (SJ)</th>
-                    <th className="py-3 px-3 text-center">Penjualan</th>
-                    <th className="py-3 px-3 text-center">Keluar / Sample</th>
-                    <th className="py-3 px-3 text-center">Stok Awal</th>
-                    <th className="py-3 px-3 text-right">Aksi</th>
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-3 w-12 text-center">No</th>
+                    <th className="py-2.5 px-3">Produk</th>
+                    <th className="py-2.5 px-3">SKU</th>
+                    <th className="py-2.5 px-3 text-right">HPP</th>
+                    <th className="py-2.5 px-3 text-center">Sisa Qty</th>
+                    <th className="py-2.5 px-3 text-right">Nilai Inventory</th>
+                    <th className="py-2.5 px-3 text-center">Barang Masuk (SJ)</th>
+                    <th className="py-2.5 px-3 text-center">Penjualan</th>
+                    <th className="py-2.5 px-3 text-center">Keluar / Sample</th>
+                    <th className="py-2.5 px-3 text-center">Stok Awal</th>
+                    <th className="py-2.5 px-3 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
+                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                   {filteredStockItems.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="py-12 text-center text-slate-400">
@@ -738,14 +738,14 @@ export const StokPenjualanView: React.FC = () => {
                           }`}
                         >
                           <td className="py-2.5 px-3 text-center text-slate-400">{idx + 1}</td>
-                          <td className="py-2.5 px-3 font-bold text-slate-900">{item.produk}</td>
-                          <td className="py-2.5 px-3 font-mono font-semibold text-slate-700">{item.skuCode}</td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">{item.produk}</td>
+                          <td className="py-2.5 px-3 font-mono font-semibold text-indigo-600">{item.skuCode}</td>
                           <td className="py-2.5 px-3 text-right font-mono text-slate-600">{formatRp(item.hpp)}</td>
 
                           {/* SISA QTY (HIGHLIGHT WARNA PERSIS GOOGLE SHEETS) */}
                           <td className="py-2.5 px-3 text-center">
                             <span
-                              className={`inline-block px-2.5 py-1 rounded-md font-bold text-xs ${
+                              className={`inline-block px-2.5 py-1 rounded-md font-bold text-[10px] ${
                                 item.isCritical
                                   ? 'bg-rose-600 text-white shadow-sm'
                                   : item.isLow
@@ -875,7 +875,7 @@ export const StokPenjualanView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-3">Tanggal</th>
                     <th className="py-3 px-3">Marketplace & Toko</th>
                     <th className="py-3 px-3">No. Pesanan & Pembeli</th>
@@ -981,7 +981,7 @@ export const StokPenjualanView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-4">Tanggal</th>
                     <th className="py-3 px-4">SKU Produk</th>
                     <th className="py-3 px-4 text-center">Jumlah (Qty)</th>

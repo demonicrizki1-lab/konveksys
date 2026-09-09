@@ -84,12 +84,12 @@ export const Dashboard: React.FC = () => {
             <div className="inline-flex items-center gap-2 bg-indigo-500/15 border border-indigo-400/20 px-3 py-1 rounded-full text-xs font-medium text-indigo-300 mb-3">
               {userRole === 'ADMIN' ? 'Admin & Owner Console' : `Brand Portal: ${activeBrand}`}
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            <h1 className="text-xl font-bold tracking-tight">
               {userRole === 'ADMIN'
                 ? 'Ikhtisar Operasional Makloon'
                 : `Dashboard ${activeBrand}`}
             </h1>
-            <p className="text-slate-400 text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
+            <p className="text-slate-400 text-xs mt-1 max-w-xl leading-relaxed">
               {userRole === 'ADMIN'
                 ? 'Pantau stok rol, progress SPK, surat jalan harian, dan kalkulasi invoice & payroll.'
                 : `Pelacakan stok kain, pengiriman, dan estimasi tagihan makloon ${activeBrand}.`}

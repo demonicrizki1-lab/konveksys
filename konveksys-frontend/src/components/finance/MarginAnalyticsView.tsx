@@ -311,7 +311,7 @@ export const MarginAnalyticsView: React.FC = () => {
               <TrendingUp className="w-3.5 h-3.5" />
               Executive Profit & Loss Analytics
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Analisis Margin & Rekap Bulanan</h1>
+            <h1 className="text-xl font-bold text-slate-900">Analisis Margin & Rekap Bulanan</h1>
             <p className="text-slate-500 text-xs mt-1">
               Monitoring selisih riil antara Omzet Tagihan Brand dengan Beban Ongkos Jahit CMT Penjahit untuk mengukur laba bersih workshop.
             </p>

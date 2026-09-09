@@ -134,7 +134,7 @@ export const FinanceView: React.FC = () => {
               <ReceiptText className="w-3.5 h-3.5" />
               Finance & Tagihan
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Pusat Keuangan & Cetak Tagihan</h1>
+            <h1 className="text-xl font-bold text-slate-900">Pusat Keuangan & Cetak Tagihan</h1>
             <p className="text-slate-500 text-xs mt-1">
               Pencocokan otomatis (*Auto-Lookup*) data kiriman Surat Jalan dengan Master Database Harga untuk penerbitan slip gaji dan invoice.
             </p>

@@ -137,8 +137,8 @@ export const ArusKasView: React.FC = () => {
               <TrendingUp className="w-3.5 h-3.5" />
               {userRole === 'ADMIN' ? 'Manajemen Arus Kas Semua Brand' : `Arus Kas ${activeBrand}`}
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Pencatatan Pembayaran Brand</h1>
-            <p className="text-slate-400 text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
+            <h1 className="text-xl font-bold tracking-tight">Pencatatan Pembayaran Brand</h1>
+            <p className="text-slate-400 text-xs mt-1 max-w-xl leading-relaxed">
               Catat pembayaran masuk dari brand — termasuk cicilan &amp; pembayaran parsial. Lacak outstanding tagihan secara real-time.
             </p>
           </div>
