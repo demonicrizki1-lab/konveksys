@@ -380,19 +380,16 @@ export const SuratPOProduksiView: React.FC = () => {
       )}
 
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-              Portal Admin Konveksi
-            </span>
-            <span className="text-slate-400 text-xs">•</span>
-            <span className="text-xs text-slate-300 font-medium">Database PostgreSQL Terintegrasi</span>
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg mb-2 border border-indigo-100">
+            <FileText className="w-3.5 h-3.5" />
+            <span>Surat PO Produksi</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-1 text-white">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
             Surat PO Produksi Konveksi
           </h1>
-          <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
             Penerbitan Surat Perintah Kerja (PO Jahit / Restock) resmi untuk divisi cutting internal,
             tim jahit, dan mitra vendor makloon. Langsung tersimpan di database dan siap cetak/unduh PDF.
           </p>
@@ -408,17 +405,16 @@ export const SuratPOProduksiView: React.FC = () => {
             }}
             disabled={isRefreshing}
             title="Sinkronkan dengan Database"
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/10 cursor-pointer disabled:opacity-50"
+            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition border border-slate-200 cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
 
           <button
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-200 transition cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
-            <span>+ Buat Surat PO Baru</span>
+            <span>Buat Surat PO Baru</span>
           </button>
         </div>
       </div>
