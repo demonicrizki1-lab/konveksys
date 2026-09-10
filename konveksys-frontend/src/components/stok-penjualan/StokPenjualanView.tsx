@@ -177,11 +177,12 @@ export const StokPenjualanView: React.FC = () => {
         const breakdown = item.qtyDelivered || {};
 
         Object.entries(breakdown).forEach(([sizeKey, count]) => {
-          if (count > 0) {
+          const qty = Number(count) || 0;
+          if (qty > 0) {
             const sizeLabel = sizeKey.toUpperCase();
             // Map keys
             const key1 = `${prod}|${sizeLabel}`;
-            map[key1] = (map[key1] || 0) + count;
+            map[key1] = (map[key1] || 0) + qty;
           }
         });
 
