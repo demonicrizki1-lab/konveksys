@@ -76,24 +76,24 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
           style={{ boxSizing: 'border-box' }}
         >
           {/* Header Kop Surat Formal */}
-          <div className="border-b-2 border-slate-900 pb-4 mb-5">
-            <div className="flex items-start justify-between">
-              <div>
+          <div className="border-b-2 border-slate-900 pb-3 mb-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 pr-2">
                 <h1 className="text-xl font-black tracking-wider text-slate-900 uppercase">
                   MAISON RAYYAN APPAREL
                 </h1>
                 <p className="text-[11px] font-semibold text-slate-700 uppercase tracking-widest mt-0.5">
                   Garment & Konveksi Makloon Busana Terintegrasi
                 </p>
-                <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">
                   Workshop & Cutting Centre • Jl. Industri Konveksi No. 88, Bandung • Telp/WA: 0812-3456-7890
                 </p>
               </div>
-              <div className="text-right">
-                <div className="inline-block px-3 py-1 border-2 border-slate-900 font-black text-xs uppercase tracking-wider rounded bg-slate-50">
+              <div className="text-right shrink-0">
+                <div className="inline-block px-3.5 py-1.5 border-2 border-slate-900 font-black text-xs uppercase tracking-wide rounded bg-slate-50 whitespace-nowrap">
                   SURAT PO PRODUKSI
                 </div>
-                <div className="text-[11px] font-mono font-bold text-slate-800 mt-2">
+                <div className="text-[11px] font-mono font-bold text-slate-800 mt-1.5 whitespace-nowrap">
                   No: {po.noPO}
                 </div>
               </div>
@@ -101,7 +101,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
           </div>
 
           {/* PO Metadata Grid */}
-          <div className="grid grid-cols-2 gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200 mb-5">
+          <div className="grid grid-cols-2 gap-4 p-2.5 bg-slate-50 rounded-lg border border-slate-200 mb-3.5">
             <div className="space-y-1.5">
               <div className="flex">
                 <span className="w-28 text-slate-500 text-[11px] font-medium">Brand Mitra:</span>
@@ -131,8 +131,8 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
 
           {/* Instruction / Production Notes */}
           {po.catatan && (
-            <div className="mb-5 p-3 rounded-lg bg-amber-50/70 border border-amber-200">
-              <div className="text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+            <div className="mb-3.5 p-2.5 rounded-lg bg-amber-50/70 border border-amber-200">
+              <div className="text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-0.5">
                 Catatan & Spesifikasi Pengerjaan Khusus:
               </div>
               <div className="text-[11px] text-amber-900 leading-relaxed font-medium">
@@ -142,44 +142,44 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
           )}
 
           {/* Production Items Table */}
-          <div className="mb-6">
+          <div className="mb-4">
             <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-2">
               Daftar Artikel & Rincian Potong Jahit
             </div>
             <table className="w-full border-collapse text-center border border-slate-300">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 text-[10px] font-bold uppercase border-b border-slate-300">
-                  <th className="py-2.5 px-3 border-r border-slate-300 w-12 text-center">No.</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300 text-center">Model / Nama Artikel</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300 w-28 text-center">Warna</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300 w-20 text-center">Size</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300 text-center">Bahan / Kain</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300 text-center w-24">Qty (Pcs)</th>
-                  <th className="py-2.5 px-3 text-center">Keterangan</th>
+                  <th className="py-2 px-2.5 border-r border-slate-300 w-12 text-center">No.</th>
+                  <th className="py-2 px-2.5 border-r border-slate-300 text-center">Model / Nama Artikel</th>
+                  <th className="py-2 px-2.5 border-r border-slate-300 w-28 text-center">Warna</th>
+                  <th className="py-2 px-2.5 border-r border-slate-300 w-20 text-center">Size</th>
+                  <th className="py-2 px-2.5 border-r border-slate-300 text-center">Bahan / Kain</th>
+                  <th className="py-2 px-2.5 border-r border-slate-300 text-center w-24">Qty (Pcs)</th>
+                  <th className="py-2 px-2.5 text-center">Keterangan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-slate-800 text-[11px]">
                 {po.items.map((item, idx) => (
                   <tr key={item.id || idx} className="hover:bg-slate-50/60">
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-center text-slate-500 font-mono">
+                    <td className="py-2 px-2.5 border-r border-slate-300 text-center text-slate-500 font-mono">
                       {idx + 1}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 font-bold text-slate-900 text-center">
+                    <td className="py-2 px-2.5 border-r border-slate-300 font-bold text-slate-900 text-center">
                       {item.namaProduk}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-slate-700 text-center">
+                    <td className="py-2 px-2.5 border-r border-slate-300 text-slate-700 text-center">
                       {item.warna || '-'}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-center font-bold text-slate-800">
+                    <td className="py-2 px-2.5 border-r border-slate-300 text-center font-bold text-slate-800">
                       {item.ukuran || '-'}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-slate-600 text-center">
+                    <td className="py-2 px-2.5 border-r border-slate-300 text-slate-600 text-center">
                       {item.bahanKain || '-'}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-center font-mono font-bold text-indigo-700 text-xs">
+                    <td className="py-2 px-2.5 border-r border-slate-300 text-center font-mono font-bold text-indigo-700 text-xs">
                       {Number(item.qty).toLocaleString('id-ID')}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-500 text-[10px] italic text-center">
+                    <td className="py-2 px-2.5 text-slate-500 text-[10px] italic text-center">
                       {item.catatan || '-'}
                     </td>
                   </tr>
@@ -187,20 +187,20 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
               </tbody>
               <tfoot>
                 <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400 text-xs">
-                  <td colSpan={5} className="py-2.5 px-3 border-r border-slate-300 text-center uppercase tracking-wider">
+                  <td colSpan={5} className="py-2 px-2.5 border-r border-slate-300 text-center uppercase tracking-wider">
                     Total Keseluruhan Produksi
                   </td>
-                  <td className="py-2.5 px-3 border-r border-slate-300 text-center font-mono text-sm text-indigo-900">
+                  <td className="py-2 px-2.5 border-r border-slate-300 text-center font-mono text-sm text-indigo-900">
                     {po.totalPcs.toLocaleString('id-ID')} Pcs
                   </td>
-                  <td className="py-2.5 px-3 text-center"></td>
+                  <td className="py-2 px-2.5 text-center"></td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
           {/* Standard Quality & SOP Clauses */}
-          <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/50 text-[9.5px] text-slate-500 mb-8 space-y-1">
+          <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50 text-[9.5px] text-slate-500 mb-5 space-y-1">
             <div className="font-bold text-slate-700 uppercase">Ketentuan & Standar Jahit:</div>
             <ul className="list-disc list-inside space-y-0.5">
               <li>Pengerjaan wajib mengikuti sample approved dan spesifikasi ukuran standar brand pemesan.</li>
@@ -210,11 +210,11 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
           </div>
 
           {/* 3-Column Formal Signature Blocks */}
-          <div className="grid grid-cols-3 gap-6 pt-4 text-center">
+          <div className="grid grid-cols-3 gap-6 pt-2 text-center" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
             <div>
               <div className="text-[10px] text-slate-500 mb-1">Dibuat Oleh:</div>
               <div className="text-[11px] font-bold text-slate-800">Admin Produksi</div>
-              <div className="h-16 flex items-end justify-center">
+              <div className="h-12 flex items-end justify-center">
                 <div className="w-32 border-b border-slate-400"></div>
               </div>
               <div className="text-[10px] text-slate-500 mt-1 font-mono">( Maison Rayyan )</div>
@@ -223,7 +223,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             <div>
               <div className="text-[10px] text-slate-500 mb-1">Disetujui:</div>
               <div className="text-[11px] font-bold text-slate-800">Pimpinan / Kepala Workshop</div>
-              <div className="h-16 flex items-end justify-center">
+              <div className="h-12 flex items-end justify-center">
                 <div className="w-32 border-b border-slate-400"></div>
               </div>
               <div className="text-[10px] text-slate-500 mt-1 font-mono">( .............................. )</div>
@@ -232,7 +232,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             <div>
               <div className="text-[10px] text-slate-500 mb-1">Diterima & Disanggupi:</div>
               <div className="text-[11px] font-bold text-slate-800">Vendor / Penjahit Konveksi</div>
-              <div className="h-16 flex items-end justify-center">
+              <div className="h-12 flex items-end justify-center">
                 <div className="w-32 border-b border-slate-400"></div>
               </div>
               <div className="text-[10px] text-slate-500 mt-1 font-mono">

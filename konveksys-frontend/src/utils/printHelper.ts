@@ -48,7 +48,7 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
             color: #0f172a !important;
           }
           body {
-            padding: 14mm 16mm !important;
+            padding: 10mm 12mm !important;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
           }
           .print-wrapper {
@@ -58,7 +58,9 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
             background: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
             border-radius: 12px !important;
-            padding: 24px 28px !important;
+            padding: 20px 24px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           table {
             width: 100% !important;
@@ -86,6 +88,9 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
           }
           .whitespace-nowrap {
             white-space: nowrap !important;
+          }
+          .shrink-0 {
+            flex-shrink: 0 !important;
           }
           th.text-right, td.text-right {
             text-align: right !important;
