@@ -781,3 +781,83 @@ export async function apiDeleteBrandStockExit(id: string) {
     method: 'DELETE',
   });
 }
+
+// ============================================================
+// PRODUCTION PO (SURAT PO PRODUKSI KONVEKSI)
+// ============================================================
+
+export async function apiGetProductionPOs(params?: { brand?: string; status?: string; search?: string }) {
+  const queryParts: string[] = [];
+  if (params?.brand && params.brand !== 'ALL') queryParts.push(`brand=${encodeURIComponent(params.brand)}`);
+  if (params?.status && params.status !== 'ALL') queryParts.push(`status=${encodeURIComponent(params.status)}`);
+  if (params?.search && params.search.trim()) queryParts.push(`search=${encodeURIComponent(params.search.trim())}`);
+  const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return apiFetch<any[]>(`/api/production-po${query}`);
+}
+
+export async function apiGetProductionPO(id: string) {
+  return apiFetch<any>(`/api/production-po/${id}`);
+}
+
+export async function apiCreateProductionPO(data: {
+  noPO: string;
+  brand: string;
+  vendorTujuan: string;
+  tanggalPO: string;
+  targetDeadline: string;
+  catatan?: string;
+  status?: string;
+  items: {
+    namaProduk: string;
+    warna?: string;
+    ukuran?: string;
+    qty: number;
+    bahanKain?: string;
+    catatan?: string;
+  }[];
+}) {
+  return apiFetch<{ success: boolean; message: string; data: any }>('/api/production-po', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateProductionPO(
+  id: string,
+  data: Partial<{
+    noPO: string;
+    brand: string;
+    vendorTujuan: string;
+    tanggalPO: string;
+    targetDeadline: string;
+    catatan?: string;
+    status: string;
+    items: {
+      namaProduk: string;
+      warna?: string;
+      ukuran?: string;
+      qty: number;
+      bahanKain?: string;
+      catatan?: string;
+    }[];
+  }>
+) {
+  return apiFetch<{ success: boolean; message: string; data: any }>(`/api/production-po/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateProductionPOStatus(id: string, status: string) {
+  return apiFetch<{ success: boolean; message: string; data: any }>(`/api/production-po/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function apiDeleteProductionPO(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/production-po/${id}`, {
+    method: 'DELETE',
+  });
+}
+

@@ -20,6 +20,7 @@ import {
   Inbox,
   Users,
   ShoppingBag,
+  ClipboardList,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -117,13 +118,25 @@ export const Sidebar: React.FC = () => {
           badge: totalBarangMasukPcs > 0 ? `${totalBarangMasukPcs} Pcs` : undefined,
           roles: ['ADMIN', 'BRAND'],
         },
-        {
-          id: 'stok-penjualan',
-          label: userRole === 'ADMIN' ? 'Stok & Penjualan Brand' : 'Stok & Penjualan',
-          description: userRole === 'ADMIN' ? 'Live Inventori & Order MP' : 'Database Stok & Marketplace',
-          icon: ShoppingBag,
-          roles: ['ADMIN', 'BRAND'],
-        },
+        ...((userRole === 'ADMIN'
+          ? [
+              {
+                id: 'po-produksi' as const,
+                label: 'Surat PO Produksi',
+                description: 'Order Jahit & Restock Konveksi',
+                icon: ClipboardList,
+                roles: ['ADMIN'] as ('ADMIN' | 'BRAND')[],
+              },
+            ]
+          : [
+              {
+                id: 'stok-penjualan' as const,
+                label: 'Stok & Penjualan',
+                description: 'Database Stok & Marketplace',
+                icon: ShoppingBag,
+                roles: ['BRAND'] as ('ADMIN' | 'BRAND')[],
+              },
+            ]) as NavItem[]),
         {
           id: 'accessories',
           label: 'Stok Aksesoris & Trims',

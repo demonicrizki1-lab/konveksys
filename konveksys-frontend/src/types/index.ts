@@ -408,3 +408,33 @@ export interface BrandStockExit {
   keterangan?: string;
   createdAt?: string;
 }
+
+export type ProductionPOStatus = 'DRAFT' | 'DIKIRIM' | 'DALAM_PROSES' | 'SELESAI';
+
+export interface ProductionPOItem {
+  id: string;
+  poId?: string;
+  namaProduk: string;
+  warna?: string | null;
+  ukuran?: string | null;
+  qty: number;
+  bahanKain?: string | null;
+  catatan?: string | null;
+  createdAt?: string;
+}
+
+export interface ProductionPO {
+  id: string;
+  noPO: string;
+  brand: string;
+  vendorTujuan: string;
+  tanggalPO: string;
+  targetDeadline: string;
+  catatan?: string | null;
+  status: ProductionPOStatus | string;
+  totalPcs: number;
+  items: ProductionPOItem[];
+  createdAt: string;
+  updatedAt?: string;
+}
+

@@ -16,14 +16,18 @@ import { AccessoriesView } from './components/accessories/AccessoriesView';
 import { BarangMasukView } from './components/barang-masuk/BarangMasukView';
 import { UserManagementView } from './components/user-management/UserManagementView';
 import { StokPenjualanView } from './components/stok-penjualan/StokPenjualanView';
+import { SuratPOProduksiView } from './components/po-produksi/SuratPOProduksiView';
 import { BrandApprovalModal } from './components/brands/BrandApprovalModal';
 
 const MainLayout: React.FC = () => {
   const { activeTab, setActiveTab, currentUser, userRole, isApprovalModalOpen, setIsApprovalModalOpen } = useApp();
 
   useEffect(() => {
-    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics' || activeTab === 'manajemen-user')) {
+    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics' || activeTab === 'manajemen-user' || activeTab === 'po-produksi')) {
       setActiveTab('dashboard');
+    }
+    if (userRole === 'ADMIN' && activeTab === 'stok-penjualan') {
+      setActiveTab('po-produksi');
     }
   }, [userRole, activeTab, setActiveTab]);
 
@@ -43,7 +47,8 @@ const MainLayout: React.FC = () => {
           {activeTab === 'master-harga' && userRole === 'ADMIN' && <MasterHargaView />}
           {activeTab === 'inbound' && <InboundView />}
           {activeTab === 'barang-masuk' && <BarangMasukView />}
-          {activeTab === 'stok-penjualan' && <StokPenjualanView />}
+          {activeTab === 'stok-penjualan' && userRole === 'BRAND' && <StokPenjualanView />}
+          {activeTab === 'po-produksi' && userRole === 'ADMIN' && <SuratPOProduksiView />}
           {activeTab === 'accessories' && userRole === 'ADMIN' && <AccessoriesView />}
           {activeTab === 'spk' && userRole === 'ADMIN' && <SPKView />}
           {activeTab === 'outbound' && <OutboundView />}

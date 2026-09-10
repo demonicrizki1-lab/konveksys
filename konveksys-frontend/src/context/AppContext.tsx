@@ -63,6 +63,11 @@ import {
   apiGetBrandStockExits,
   apiCreateBrandStockExit,
   apiDeleteBrandStockExit,
+  apiGetProductionPOs,
+  apiCreateProductionPO,
+  apiUpdateProductionPO,
+  apiUpdateProductionPOStatus,
+  apiDeleteProductionPO,
 } from '../services/api';
 import {
   AuthUser,
@@ -92,6 +97,8 @@ import {
   BrandProductSKU,
   BrandSale,
   BrandStockExit,
+  ProductionPO,
+  ProductionPOItem,
 } from '../types';
 import {
   demoUsers,
@@ -109,7 +116,7 @@ import {
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk' | 'manajemen-user' | 'stok-penjualan';
+export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk' | 'manajemen-user' | 'stok-penjualan' | 'po-produksi';
 
 interface AppContextType {
   // Auth & Session
@@ -219,6 +226,49 @@ interface AppContextType {
     keterangan?: string;
   }) => Promise<{ success: boolean; message: string }>;
   deleteBrandStockExit: (id: string) => Promise<{ success: boolean; message: string }>;
+
+  // Production PO (Database-backed)
+  productionPOs: ProductionPO[];
+  fetchProductionPOs: (params?: { brand?: string; status?: string; search?: string }) => Promise<void>;
+  createProductionPO: (data: {
+    noPO: string;
+    brand: string;
+    vendorTujuan: string;
+    tanggalPO: string;
+    targetDeadline: string;
+    catatan?: string;
+    status?: string;
+    items: {
+      namaProduk: string;
+      warna?: string;
+      ukuran?: string;
+      qty: number;
+      bahanKain?: string;
+      catatan?: string;
+    }[];
+  }) => Promise<{ success: boolean; message: string; data?: ProductionPO }>;
+  updateProductionPO: (
+    id: string,
+    data: Partial<{
+      noPO: string;
+      brand: string;
+      vendorTujuan: string;
+      tanggalPO: string;
+      targetDeadline: string;
+      catatan?: string;
+      status: string;
+      items: {
+        namaProduk: string;
+        warna?: string;
+        ukuran?: string;
+        qty: number;
+        bahanKain?: string;
+        catatan?: string;
+      }[];
+    }>
+  ) => Promise<{ success: boolean; message: string; data?: ProductionPO }>;
+  updateProductionPOStatus: (id: string, status: string) => Promise<{ success: boolean; message: string }>;
+  deleteProductionPO: (id: string) => Promise<{ success: boolean; message: string }>;
 
   // Sidebar & Layout State
   isSidebarCollapsed: boolean;
@@ -550,6 +600,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('konvek_brand_stock_exits');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Production PO State (Direct from Database, NO localStorage)
+  const [productionPOs, setProductionPOs] = useState<ProductionPO[]>([]);
 
   useEffect(() => {
     localStorage.setItem('konvek_brand_skus', JSON.stringify(brandSKUs));
@@ -899,6 +952,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (err) {
         console.warn('Sync brand inventory failed:', err);
+      }
+
+      // 15. Fetch Production POs (Database-backed)
+      try {
+        const { data: poData } = await apiGetProductionPOs();
+        if (Array.isArray(poData)) {
+          setProductionPOs(poData);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch production POs:', err);
       }
     } catch (err) {
       console.warn('[Sync Error] Continuing with cached data:', err);
@@ -1282,6 +1345,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setBrandStockExits(prev => prev.filter(e => e.id !== id));
       return { success: true, message: data.message || 'Data barang keluar berhasil dihapus.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  // ============================================================
+  // PRODUCTION PO (SURAT PO PRODUKSI KONVEKSI - DATABASE BACKED)
+  // ============================================================
+
+  const fetchProductionPOs = useCallback(async (params?: { brand?: string; status?: string; search?: string }) => {
+    try {
+      const { data, error } = await apiGetProductionPOs(params);
+      if (error) {
+        console.error('Error fetching production POs:', error);
+        return;
+      }
+      if (Array.isArray(data)) {
+        setProductionPOs(data);
+      }
+    } catch (err) {
+      console.error('Error fetching production POs:', err);
+    }
+  }, []);
+
+  const createProductionPO = async (poData: {
+    noPO: string;
+    brand: string;
+    vendorTujuan: string;
+    tanggalPO: string;
+    targetDeadline: string;
+    catatan?: string;
+    status?: string;
+    items: {
+      namaProduk: string;
+      warna?: string;
+      ukuran?: string;
+      qty: number;
+      bahanKain?: string;
+      catatan?: string;
+    }[];
+  }): Promise<{ success: boolean; message: string; data?: ProductionPO }> => {
+    try {
+      const { data, error } = await apiCreateProductionPO(poData);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal membuat Surat PO.' };
+      }
+      if (data.data) {
+        setProductionPOs(prev => [data.data, ...prev]);
+      }
+      return { success: true, message: data.message || 'Surat PO berhasil disimpan ke database.', data: data.data };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const updateProductionPO = async (
+    id: string,
+    poData: Partial<{
+      noPO: string;
+      brand: string;
+      vendorTujuan: string;
+      tanggalPO: string;
+      targetDeadline: string;
+      catatan?: string;
+      status: string;
+      items: {
+        namaProduk: string;
+        warna?: string;
+        ukuran?: string;
+        qty: number;
+        bahanKain?: string;
+        catatan?: string;
+      }[];
+    }>
+  ): Promise<{ success: boolean; message: string; data?: ProductionPO }> => {
+    try {
+      const { data, error } = await apiUpdateProductionPO(id, poData);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal memperbarui Surat PO.' };
+      }
+      if (data.data) {
+        setProductionPOs(prev => prev.map(p => p.id === id ? data.data : p));
+      }
+      return { success: true, message: data.message || 'Surat PO berhasil diperbarui.', data: data.data };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const updateProductionPOStatus = async (id: string, status: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiUpdateProductionPOStatus(id, status);
+      if (error || !data) {
+        return { success: false, message: error || 'Gagal mengubah status PO.' };
+      }
+      if (data.data) {
+        setProductionPOs(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+      }
+      return { success: true, message: data.message || 'Status PO berhasil diubah.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  const deleteProductionPO = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const { data, error } = await apiDeleteProductionPO(id);
+      if (error) {
+        return { success: false, message: error };
+      }
+      setProductionPOs(prev => prev.filter(p => p.id !== id));
+      return { success: true, message: data?.message || 'Surat PO berhasil dihapus dari database.' };
     } catch (err: any) {
       return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
     }
@@ -2836,6 +3011,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteBrandSale,
         createBrandStockExit,
         deleteBrandStockExit,
+        productionPOs,
+        fetchProductionPOs,
+        createProductionPO,
+        updateProductionPO,
+        updateProductionPOStatus,
+        deleteProductionPO,
         isApprovalModalOpen,
         setIsApprovalModalOpen,
         isSidebarCollapsed,

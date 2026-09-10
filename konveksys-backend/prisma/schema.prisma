@@ -432,3 +432,34 @@ model BrandStockExit {
   brandRef   Brand            @relation(fields: [brand], references: [name])
   skuRef     BrandProductSKU? @relation(fields: [skuId], references: [id], onDelete: SetNull)
 }
+
+model ProductionPO {
+  id             String             @id @default(cuid())
+  noPO           String             @unique
+  brand          String
+  vendorTujuan   String
+  tanggalPO      DateTime
+  targetDeadline DateTime
+  catatan        String?
+  status         String             @default("DRAFT")
+  totalPcs       Int                @default(0)
+  items          ProductionPOItem[]
+
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model ProductionPOItem {
+  id           String       @id @default(cuid())
+  poId         String
+  namaProduk   String
+  warna        String?
+  ukuran       String?
+  qty          Int          @default(1)
+  bahanKain    String?
+  catatan      String?
+
+  po           ProductionPO @relation(fields: [poId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime     @default(now())
+}

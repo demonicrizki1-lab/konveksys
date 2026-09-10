@@ -15,6 +15,7 @@ import { arusKasRoutes } from './routes/arus-kas.js';
 import { returnRoutes } from './routes/returns.js';
 import { accessoryRoutes } from './routes/accessories.js';
 import { brandInventoryRoutes } from './routes/brand-inventory.js';
+import { productionPoRoutes } from './routes/production-po.js';
 
 const app = new Hono();
 
@@ -43,6 +44,7 @@ app.route('/api/accessories', accessoryRoutes);
 app.route('/api/finance', financeRoutes);
 app.route('/api/arus-kas', arusKasRoutes);
 app.route('/api/brand-inventory', brandInventoryRoutes);
+app.route('/api/production-po', productionPoRoutes);
 
 // 404
 app.notFound((c) => c.json({ error: 'Endpoint tidak ditemukan' }, 404));
