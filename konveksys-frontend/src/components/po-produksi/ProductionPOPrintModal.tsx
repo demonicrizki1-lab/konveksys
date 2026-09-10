@@ -187,8 +187,8 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
               </tbody>
               <tfoot>
                 <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400 text-xs">
-                  <td colSpan={5} className="py-2.5 px-3 border-r border-slate-300 text-right uppercase">
-                    Total Keseluruhan Produksi:
+                  <td colSpan={5} className="py-2.5 px-3 border-r border-slate-300 text-center uppercase tracking-wider">
+                    Total Keseluruhan Produksi
                   </td>
                   <td className="py-2.5 px-3 border-r border-slate-300 text-center font-mono text-sm text-indigo-900">
                     {po.totalPcs.toLocaleString('id-ID')} Pcs
