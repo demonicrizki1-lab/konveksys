@@ -88,12 +88,13 @@ export const SuratPOProduksiView: React.FC = () => {
   const handleOpenCreateModal = () => {
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const initialBrand = brands.length > 0 ? brands[0].name : 'Maison';
+    const initialBrand = brands.length > 0 ? brands[0].name : '';
+    const initialVendor = vendors.length > 0 ? vendors[0].name : '';
 
     setEditingPO(null);
     setFormNoPO(generatePONumber(initialBrand));
     setFormBrand(initialBrand);
-    setFormVendor('Workshop Internal (Maison Rayyan)');
+    setFormVendor(initialVendor);
     setFormTanggal(today);
     setFormDeadline(nextWeek);
     setFormCatatan('Prioritas potong dan jahit segera. Standar QC butik Maison Rayyan berlaku.');
@@ -108,6 +109,13 @@ export const SuratPOProduksiView: React.FC = () => {
       },
     ]);
     setIsFormModalOpen(true);
+  };
+
+  const handleBrandChange = (newBrand: string) => {
+    setFormBrand(newBrand);
+    if (!editingPO) {
+      setFormNoPO(generatePONumber(newBrand));
+    }
   };
 
   // Open Form for Edit
@@ -709,44 +717,37 @@ export const SuratPOProduksiView: React.FC = () => {
                   <label className="block text-slate-700 font-semibold mb-1">
                     Brand Pemesan <span className="text-rose-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      list="brand-suggestions"
-                      value={formBrand}
-                      onChange={e => setFormBrand(e.target.value)}
-                      placeholder="Pilih atau ketik Brand..."
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
-                    <datalist id="brand-suggestions">
-                      {brands.map(b => (
-                        <option key={b.id} value={b.name} />
-                      ))}
-                    </datalist>
-                  </div>
+                  <select
+                    value={formBrand}
+                    onChange={e => handleBrandChange(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="" disabled>-- Pilih Brand Mitra --</option>
+                    {brands.map(b => (
+                      <option key={b.id} value={b.name}>
+                        {b.name} {b.code ? `(${b.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Vendor Tujuan */}
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">
-                    Vendor / Divisi Jahit <span className="text-rose-500">*</span>
+                    Vendor / Penjahit Tujuan <span className="text-rose-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      list="vendor-suggestions"
-                      value={formVendor}
-                      onChange={e => setFormVendor(e.target.value)}
-                      placeholder="Pilih atau ketik Vendor..."
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    />
-                    <datalist id="vendor-suggestions">
-                      <option value="Workshop Internal (Maison Rayyan)" />
-                      {vendors.map(v => (
-                        <option key={v.id} value={v.name} />
-                      ))}
-                    </datalist>
-                  </div>
+                  <select
+                    value={formVendor}
+                    onChange={e => setFormVendor(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="" disabled>-- Pilih Vendor / Penjahit --</option>
+                    {vendors.map(v => (
+                      <option key={v.id} value={v.name}>
+                        {v.name} {v.specialty ? `• ${v.specialty}` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Tanggal PO */}
