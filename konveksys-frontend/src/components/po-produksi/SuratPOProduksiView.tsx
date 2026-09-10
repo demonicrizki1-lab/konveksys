@@ -910,32 +910,23 @@ export const SuratPOProduksiView: React.FC = () => {
                 <span className="text-[11px] text-slate-400 font-normal">({formItems.length} artikel)</span>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
                 <button
                   type="button"
                   onClick={() => setIsFormModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200/70 rounded-xl transition"
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200/70 rounded-xl transition cursor-pointer"
                 >
                   Batal
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleSubmitPO(false)}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-xl shadow-sm transition disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan ke Database'}
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => handleSubmitPO(true)}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-200 transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-200 transition disabled:opacity-50 cursor-pointer"
                 >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>{isSubmitting ? 'Menyimpan...' : 'Simpan & Cetak PDF'}</span>
+                  <Printer className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Menyimpan ke Database...' : 'Simpan & Cetak PDF'}</span>
                 </button>
               </div>
             </div>
