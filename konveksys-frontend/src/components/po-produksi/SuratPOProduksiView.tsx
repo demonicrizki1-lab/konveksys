@@ -587,7 +587,13 @@ export const SuratPOProduksiView: React.FC = () => {
 
                       {/* Status */}
                       <td className="py-3 px-3 text-center">
-                        {getStatusBadgeUI(po.status)}
+                        <button
+                          onClick={() => setStatusMenuPO(po)}
+                          title="Klik untuk ubah status pengerjaan"
+                          className="transition hover:scale-105 cursor-pointer inline-block"
+                        >
+                          {getStatusBadgeUI(po.status)}
+                        </button>
                       </td>
 
                       {/* Actions */}
@@ -609,48 +615,13 @@ export const SuratPOProduksiView: React.FC = () => {
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Quick Status Change */}
-                          <div className="relative">
-                            <button
-                              onClick={() => setStatusMenuPO(statusMenuPO?.id === po.id ? null : po)}
-                              title="Ubah Status Pengerjaan"
-                              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                            >
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </button>
-
-                            {statusMenuPO?.id === po.id && (
-                              <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 w-44 text-left animate-in fade-in zoom-in-95">
-                                <div className="text-[10px] font-bold text-slate-400 px-2 py-1 uppercase tracking-wider">
-                                  Ganti Status:
-                                </div>
-                                <button
-                                  onClick={() => handleQuickStatusChange(po.id, 'DRAFT')}
-                                  className="w-full text-left px-2 py-1.5 rounded text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
-                                >
-                                  Draft PO
-                                </button>
-                                <button
-                                  onClick={() => handleQuickStatusChange(po.id, 'DIKIRIM')}
-                                  className="w-full text-left px-2 py-1.5 rounded text-xs font-medium text-amber-700 hover:bg-amber-50 transition"
-                                >
-                                  Dikirim ke Konveksi
-                                </button>
-                                <button
-                                  onClick={() => handleQuickStatusChange(po.id, 'DALAM_PROSES')}
-                                  className="w-full text-left px-2 py-1.5 rounded text-xs font-medium text-blue-700 hover:bg-blue-50 transition"
-                                >
-                                  Proses Jahit
-                                </button>
-                                <button
-                                  onClick={() => handleQuickStatusChange(po.id, 'SELESAI')}
-                                  className="w-full text-left px-2 py-1.5 rounded text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition"
-                                >
-                                  Selesai
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          <button
+                            onClick={() => setStatusMenuPO(po)}
+                            title="Ubah Status Pengerjaan"
+                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
 
                           <button
                             onClick={() => setDeleteConfirmPO(po)}
@@ -970,6 +941,105 @@ export const SuratPOProduksiView: React.FC = () => {
                 className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow transition disabled:opacity-50"
               >
                 {isSubmitting ? 'Menghapus...' : 'Ya, Hapus dari Database'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ============================================================ */}
+      {/* DIALOG: UBAH STATUS PO CEPAT (CENTERED MODAL) */}
+      {/* ============================================================ */}
+      {statusMenuPO && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Ubah Status PO</h4>
+                <p className="text-[11px] font-mono text-slate-500 mt-0.5">
+                  {statusMenuPO.noPO} • Brand {statusMenuPO.brand}
+                </p>
+              </div>
+              <button
+                onClick={() => setStatusMenuPO(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-2">
+              {[
+                {
+                  value: 'DRAFT',
+                  label: 'Draft PO',
+                  desc: 'PO baru dibuat, belum diserahkan ke penjahit',
+                  badge: 'bg-slate-100 text-slate-700 border-slate-200',
+                  icon: FileText,
+                },
+                {
+                  value: 'DIKIRIM',
+                  label: 'Dikirim ke Konveksi',
+                  desc: 'PO & kain sudah dikirim ke vendor penjahit',
+                  badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                  icon: Truck,
+                },
+                {
+                  value: 'DALAM_PROSES',
+                  label: 'Proses Jahit',
+                  desc: 'Sedang dalam pengerjaan potong & jahit',
+                  badge: 'bg-blue-50 text-blue-700 border-blue-200',
+                  icon: Clock,
+                },
+                {
+                  value: 'SELESAI',
+                  label: 'Selesai',
+                  desc: 'Seluruh pesanan selesai dijahit & QC lolos',
+                  badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                  icon: CheckCircle2,
+                },
+              ].map(opt => {
+                const isSelected = statusMenuPO.status === opt.value;
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleQuickStatusChange(statusMenuPO.id, opt.value as ProductionPOStatus)}
+                    disabled={isSubmitting}
+                    className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between cursor-pointer ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-1 ring-indigo-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className={`p-1.5 rounded-lg border shrink-0 mt-0.5 ${opt.badge}`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <div className={`text-xs font-bold ${isSelected ? 'text-indigo-950' : 'text-slate-800'}`}>
+                          {opt.label}
+                        </div>
+                        <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                          {opt.desc}
+                        </div>
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white shrink-0">
+                        Aktif
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setStatusMenuPO(null)}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Tutup
               </button>
             </div>
           </div>
