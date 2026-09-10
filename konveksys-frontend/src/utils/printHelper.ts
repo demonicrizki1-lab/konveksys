@@ -63,8 +63,8 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
           table {
             width: 100% !important;
           }
-          /* Jangan ulangi tfoot di setiap halaman cetak, cukup tampil 1x di halaman akhir */
-          tfoot {
+          /* Jangan ulangi thead dan tfoot di setiap halaman cetak, cukup tampil 1x */
+          thead, tfoot {
             display: table-row-group !important;
           }
           tr {

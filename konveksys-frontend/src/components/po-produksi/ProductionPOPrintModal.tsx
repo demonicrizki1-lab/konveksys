@@ -147,8 +147,9 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
               Daftar Artikel & Rincian Potong Jahit
             </div>
             <table className="w-full border-collapse text-center border border-slate-300">
-              <thead>
-                <tr className="bg-slate-100 text-slate-700 text-[10px] font-bold uppercase border-b border-slate-300">
+              {/* Header Kolom: Ditempatkan dalam tbody tersendiri agar hanya tampil di halaman pertama dan tidak diulang browser di halaman berikutnya */}
+              <tbody style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                <tr className="bg-slate-100 text-slate-700 text-[10px] font-bold uppercase border-b border-slate-300" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
                   <th className="py-2 px-2.5 border-r border-slate-300 w-12 text-center">No.</th>
                   <th className="py-2 px-2.5 border-r border-slate-300 text-center">Model / Nama Artikel</th>
                   <th className="py-2 px-2.5 border-r border-slate-300 w-28 text-center">Warna</th>
@@ -157,7 +158,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                   <th className="py-2 px-2.5 border-r border-slate-300 text-center w-24">Qty (Pcs)</th>
                   <th className="py-2 px-2.5 text-center">Keterangan</th>
                 </tr>
-              </thead>
+              </tbody>
               <tbody className="divide-y divide-slate-200 text-slate-800 text-[11px]">
                 {po.items.map((item, idx) => (
                   <tr key={item.id || idx} className="hover:bg-slate-50/60">
