@@ -146,16 +146,16 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-2">
               Daftar Artikel & Rincian Potong Jahit
             </div>
-            <table className="w-full border-collapse text-left border border-slate-300">
+            <table className="w-full border-collapse text-center border border-slate-300">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 text-[10px] font-bold uppercase border-b border-slate-300">
-                  <th className="py-2.5 px-3 border-r border-slate-300 w-10 text-center">No.</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300">Model / Nama Artikel</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300 w-24">Warna</th>
+                  <th className="py-2.5 px-3 border-r border-slate-300 w-12 text-center">No.</th>
+                  <th className="py-2.5 px-3 border-r border-slate-300 text-center">Model / Nama Artikel</th>
+                  <th className="py-2.5 px-3 border-r border-slate-300 w-28 text-center">Warna</th>
                   <th className="py-2.5 px-3 border-r border-slate-300 w-20 text-center">Size</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300">Bahan / Kain</th>
-                  <th className="py-2.5 px-3 border-r border-slate-300 text-right w-24">Qty (Pcs)</th>
-                  <th className="py-2.5 px-3">Keterangan</th>
+                  <th className="py-2.5 px-3 border-r border-slate-300 text-center">Bahan / Kain</th>
+                  <th className="py-2.5 px-3 border-r border-slate-300 text-center w-24">Qty (Pcs)</th>
+                  <th className="py-2.5 px-3 text-center">Keterangan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-slate-800 text-[11px]">
@@ -164,22 +164,22 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                     <td className="py-2.5 px-3 border-r border-slate-300 text-center text-slate-500 font-mono">
                       {idx + 1}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 font-bold text-slate-900">
+                    <td className="py-2.5 px-3 border-r border-slate-300 font-bold text-slate-900 text-center">
                       {item.namaProduk}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-slate-700">
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-slate-700 text-center">
                       {item.warna || '-'}
                     </td>
                     <td className="py-2.5 px-3 border-r border-slate-300 text-center font-bold text-slate-800">
                       {item.ukuran || '-'}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-slate-600">
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-slate-600 text-center">
                       {item.bahanKain || '-'}
                     </td>
-                    <td className="py-2.5 px-3 border-r border-slate-300 text-right font-mono font-bold text-indigo-700 text-xs">
+                    <td className="py-2.5 px-3 border-r border-slate-300 text-center font-mono font-bold text-indigo-700 text-xs">
                       {Number(item.qty).toLocaleString('id-ID')}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-500 text-[10px] italic">
+                    <td className="py-2.5 px-3 text-slate-500 text-[10px] italic text-center">
                       {item.catatan || '-'}
                     </td>
                   </tr>
@@ -190,10 +190,10 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                   <td colSpan={5} className="py-2.5 px-3 border-r border-slate-300 text-right uppercase">
                     Total Keseluruhan Produksi:
                   </td>
-                  <td className="py-2.5 px-3 border-r border-slate-300 text-right font-mono text-sm text-indigo-900">
+                  <td className="py-2.5 px-3 border-r border-slate-300 text-center font-mono text-sm text-indigo-900">
                     {po.totalPcs.toLocaleString('id-ID')} Pcs
                   </td>
-                  <td className="py-2.5 px-3"></td>
+                  <td className="py-2.5 px-3 text-center"></td>
                 </tr>
               </tfoot>
             </table>
