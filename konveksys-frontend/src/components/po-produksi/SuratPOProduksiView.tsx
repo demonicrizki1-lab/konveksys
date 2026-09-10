@@ -744,7 +744,7 @@ export const SuratPOProduksiView: React.FC = () => {
                     <option value="" disabled>-- Pilih Vendor / Penjahit --</option>
                     {vendors.map(v => (
                       <option key={v.id} value={v.name}>
-                        {v.name} {v.specialty ? `• ${v.specialty}` : ''}
+                        {v.name}
                       </option>
                     ))}
                   </select>
