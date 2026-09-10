@@ -621,7 +621,7 @@ export const MarginAnalyticsView: React.FC = () => {
 
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-900 text-white font-bold uppercase text-[10px]">
+            <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
               <tr>
                 <th className="p-3 whitespace-nowrap">No SJ & SPK</th>
                 <th className="p-3">Artikel & Material Kain</th>

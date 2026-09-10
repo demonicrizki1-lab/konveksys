@@ -107,7 +107,7 @@ export const StockOpnamePrintModal: React.FC<StockOpnamePrintModalProps> = ({
             {/* Table Checklist */}
             <div className="border border-slate-200 rounded-lg overflow-hidden">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase">
+                <thead className="bg-slate-100 text-slate-700 font-bold text-[9px] uppercase border-b border-slate-300">
                   <tr>
                     <th className="p-2 w-8 text-center">No</th>
                     <th className="p-2 whitespace-nowrap">Kode SKU</th>
@@ -115,7 +115,7 @@ export const StockOpnamePrintModal: React.FC<StockOpnamePrintModalProps> = ({
                     <th className="p-2">Brand / Kategori</th>
                     <th className="p-2">Lokasi Rak</th>
                     <th className="p-2 text-center whitespace-nowrap">Stok Sistem</th>
-                    <th className="p-2 text-center w-24 bg-slate-800 text-amber-300 whitespace-nowrap">
+                    <th className="p-2 text-center w-24 bg-amber-100/70 text-amber-900 font-bold border-x border-amber-200 whitespace-nowrap">
                       Hitung Fisik
                     </th>
                     <th className="p-2 text-center w-20 whitespace-nowrap">Selisih</th>

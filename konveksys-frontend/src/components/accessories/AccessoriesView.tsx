@@ -424,7 +424,7 @@ export const AccessoriesView: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-900 text-white font-semibold text-xs">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="p-3.5 whitespace-nowrap">Kode SKU</th>
                   <th className="p-3.5">Nama Aksesoris</th>
@@ -542,7 +542,7 @@ export const AccessoriesView: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-900 text-white font-semibold text-xs">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="p-3.5 whitespace-nowrap">Tanggal</th>
                   <th className="p-3.5 whitespace-nowrap">Kode SKU</th>

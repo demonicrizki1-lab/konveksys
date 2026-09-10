@@ -157,7 +157,7 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
 
               <div className="border border-slate-200 rounded-lg overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase">
+                  <thead className="bg-slate-100 text-slate-700 font-bold text-[9px] uppercase border-b border-slate-300">
                     <tr>
                       <th className="p-2 whitespace-nowrap">No SJ / Tgl</th>
                       <th className="p-2">Artikel & Bahan</th>

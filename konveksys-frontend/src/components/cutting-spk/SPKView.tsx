@@ -963,12 +963,12 @@ export const SPKView: React.FC = () => {
                           </span>
                         </div>
                         <table className="w-full text-center text-xs">
-                          <thead className="bg-slate-900 text-white font-bold text-[10px]">
+                          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                             <tr>
                               <th className="p-2 text-left pl-3">Size</th>
                               <th className="p-2">Target Potong</th>
                               <th className="p-2">Terkirim (SJ)</th>
-                              <th className="p-2 text-indigo-300">Sisa di Vendor</th>
+                              <th className="p-2 text-indigo-600">Sisa di Vendor</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
@@ -1000,12 +1000,12 @@ export const SPKView: React.FC = () => {
               ) : (
                 <div className="border border-slate-200 rounded-xl overflow-hidden">
                   <table className="w-full text-center text-xs">
-                    <thead className="bg-slate-900 text-white font-bold text-[10px]">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                       <tr>
                         <th className="p-2 text-left pl-3">Size</th>
                         <th className="p-2">Target Potong</th>
                         <th className="p-2">Terkirim (SJ)</th>
-                        <th className="p-2 text-indigo-300">Sisa di Vendor</th>
+                        <th className="p-2 text-indigo-600">Sisa di Vendor</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">

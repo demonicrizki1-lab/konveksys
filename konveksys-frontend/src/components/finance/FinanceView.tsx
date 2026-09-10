@@ -334,7 +334,7 @@ export const FinanceView: React.FC = () => {
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-900 text-white font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="p-3">No Surat Jalan</th>
                     <th className="p-3">Produk (Brand)</th>
@@ -459,7 +459,7 @@ export const FinanceView: React.FC = () => {
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-900 text-white font-bold uppercase text-[10px]">
+                <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="p-3">No Surat Jalan</th>
                     <th className="p-3">Artikel Produk</th>
@@ -581,7 +581,7 @@ export const FinanceView: React.FC = () => {
 
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-900 text-white font-bold uppercase text-[10px]">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="p-3.5">Vendor Penjahit</th>
                   <th className="p-3.5">Tipe Transaksi</th>

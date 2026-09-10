@@ -320,7 +320,7 @@ export const ArusKasView: React.FC = () => {
         ) : (
           <div className="overflow-x-auto rounded-lg border border-slate-100">
             <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-900 text-white text-[10px] font-medium uppercase tracking-wider">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="p-3.5">Tanggal</th>
                   <th className="p-3.5 text-center whitespace-nowrap">Brand</th>

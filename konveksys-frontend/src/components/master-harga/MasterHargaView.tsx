@@ -378,7 +378,7 @@ export const MasterHargaView: React.FC = () => {
           ) : (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px]">
+                <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="p-3.5 w-1/3">Nama Vendor / Konveksi</th>
                     <th className="p-3.5 w-1/3">Kontak / No. Telepon</th>
@@ -464,7 +464,7 @@ export const MasterHargaView: React.FC = () => {
 
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px]">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="p-3.5">Vendor (Konveksi)</th>
                   <th className="p-3.5">Nama Produk</th>
@@ -541,31 +541,31 @@ export const MasterHargaView: React.FC = () => {
 
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-left text-xs text-slate-700 min-w-[1050px]">
-              <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px]">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th rowSpan={2} className="p-3 text-center whitespace-nowrap border-r border-slate-800">Brand</th>
-                  <th rowSpan={2} className="p-3 border-r border-slate-800">Nama Produk</th>
-                  <th colSpan={5} className="p-2 text-center bg-indigo-950 border-r border-slate-800 text-[9px] tracking-normal">
+                  <th rowSpan={2} className="p-3 text-center whitespace-nowrap border-r border-slate-200">Brand</th>
+                  <th rowSpan={2} className="p-3 border-r border-slate-200">Nama Produk</th>
+                  <th colSpan={5} className="p-2 text-center bg-indigo-50 border-r border-slate-200 text-indigo-700 text-[9px] tracking-normal font-bold">
                     Ukuran Anak (Seri Huruf)
                   </th>
-                  <th colSpan={7} className="p-2 text-center bg-slate-800 border-r border-slate-700 text-[9px] tracking-normal">
+                  <th colSpan={7} className="p-2 text-center bg-slate-100 border-r border-slate-200 text-slate-700 text-[9px] tracking-normal font-bold">
                     Ukuran Anak (Seri Angka)
                   </th>
                   <th rowSpan={2} className="p-3 text-right">Aksi</th>
                 </tr>
-                <tr className="border-t border-slate-800">
-                  <th className="p-2 text-center bg-indigo-900/90 border-r border-slate-800">S</th>
-                  <th className="p-2 text-center bg-indigo-900/90 border-r border-slate-800">M</th>
-                  <th className="p-2 text-center bg-indigo-900/90 border-r border-slate-800">L</th>
-                  <th className="p-2 text-center bg-indigo-900/90 border-r border-slate-800">XL</th>
-                  <th className="p-2 text-center bg-indigo-900/90 border-r border-slate-800">2XL</th>
-                  <th className="p-2 text-center bg-slate-800/90 border-r border-slate-700">4</th>
-                  <th className="p-2 text-center bg-slate-800/90 border-r border-slate-700">6</th>
-                  <th className="p-2 text-center bg-slate-800/90 border-r border-slate-700">8</th>
-                  <th className="p-2 text-center bg-slate-800/90 border-r border-slate-700">10</th>
-                  <th className="p-2 text-center bg-slate-800/90 border-r border-slate-700">12</th>
-                  <th className="p-2 text-center bg-slate-800/90 border-r border-slate-700">14</th>
-                  <th className="p-2 text-center bg-slate-800/90 border-r border-slate-700">16</th>
+                <tr className="border-t border-slate-200">
+                  <th className="p-2 text-center bg-indigo-50/70 text-indigo-700 border-r border-slate-200">S</th>
+                  <th className="p-2 text-center bg-indigo-50/70 text-indigo-700 border-r border-slate-200">M</th>
+                  <th className="p-2 text-center bg-indigo-50/70 text-indigo-700 border-r border-slate-200">L</th>
+                  <th className="p-2 text-center bg-indigo-50/70 text-indigo-700 border-r border-slate-200">XL</th>
+                  <th className="p-2 text-center bg-indigo-50/70 text-indigo-700 border-r border-slate-200">2XL</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">4</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">6</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">8</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">10</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">12</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">14</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">16</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">

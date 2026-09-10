@@ -588,7 +588,7 @@ export const BarangMasukView: React.FC = () => {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase">
+                <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold text-[9px] uppercase">
                   <tr>
                     <th className="p-3 w-10 text-center">No</th>
                     <th className="p-3 min-w-[200px]">Artikel Produk & Bahan</th>
@@ -703,7 +703,7 @@ export const BarangMasukView: React.FC = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold text-[9px] uppercase">
                 <tr>
                   <th className="p-3">No. Surat Jalan</th>
                   <th className="p-3">Tanggal Tiba</th>
@@ -954,7 +954,7 @@ export const BarangMasukView: React.FC = () => {
 
                   <div className="border border-slate-200 rounded-lg overflow-hidden">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase">
+                      <thead className="bg-slate-100 text-slate-700 font-bold text-[9px] uppercase border-b border-slate-300">
                         <tr>
                           <th className="p-2 w-[6%] text-center">No</th>
                           <th className="p-2 w-[30%]">Artikel Produk</th>
@@ -1100,7 +1100,7 @@ export const BarangMasukView: React.FC = () => {
 
                   <div className="border border-slate-200 rounded-lg overflow-hidden">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase">
+                      <thead className="bg-slate-100 text-slate-700 font-bold text-[9px] uppercase border-b border-slate-300">
                         <tr>
                           <th className="p-2 w-[6%] text-center">No</th>
                           <th className="p-2 w-[32%]">Artikel Produk</th>

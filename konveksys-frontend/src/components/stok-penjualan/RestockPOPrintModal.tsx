@@ -371,14 +371,14 @@ export const RestockPOPrintModal: React.FC<RestockPOPrintModalProps> = ({
               {/* Table of PO Items */}
               <div className="border border-slate-300 rounded-lg overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-900 text-white font-bold text-[9px] uppercase tracking-wider">
+                  <thead className="bg-slate-100 text-slate-700 font-bold text-[9px] uppercase tracking-wider border-b border-slate-300">
                     <tr>
                       <th className="p-2 w-8 text-center">No</th>
                       <th className="p-2">Kode SKU</th>
                       <th className="p-2">Model Produk & Warna</th>
                       <th className="p-2 text-center w-14">Ukuran</th>
                       <th className="p-2 text-center w-20">Sisa Stok</th>
-                      <th className="p-2 text-center w-24 bg-slate-800 text-amber-300">Target Qty (PO)</th>
+                      <th className="p-2 text-center w-24 bg-amber-100/70 text-amber-900 border-x border-amber-200">Target Qty (PO)</th>
                       <th className="p-2">Kebutuhan Kain / Catatan</th>
                     </tr>
                   </thead>

@@ -1080,7 +1080,7 @@ export const ReturnView: React.FC = () => {
               {/* Size Breakdown Table */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-center text-xs">
-                  <thead className="bg-slate-900 text-white font-bold text-[10px]">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="p-2 text-left pl-3">Ukuran (Size)</th>
                       <th className="p-2">Qty Cacat</th>
