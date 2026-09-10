@@ -59,11 +59,17 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
             border: 1px solid #cbd5e1 !important;
             border-radius: 12px !important;
             padding: 20px 24px !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
           }
           table {
             width: 100% !important;
+          }
+          /* Jangan ulangi tfoot di setiap halaman cetak, cukup tampil 1x di halaman akhir */
+          tfoot {
+            display: table-row-group !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           /* Pastikan background dan warna tetap tercetak walau user lupa centang background graphics */
           .bg-emerald-700 {

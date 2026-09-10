@@ -185,8 +185,9 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400 text-xs">
+              {/* Baris Total Keseluruhan: Diletakkan dalam tbody tersendiri (bukan tfoot browser default) agar hanya muncul SEKALI di akhir data pada halaman terakhir dan TIDAK berulang di setiap halaman */}
+              <tbody style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400 text-xs" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
                   <td colSpan={5} className="py-2 px-2.5 border-r border-slate-300 text-center uppercase tracking-wider">
                     Total Keseluruhan Produksi
                   </td>
@@ -195,7 +196,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                   </td>
                   <td className="py-2 px-2.5 text-center"></td>
                 </tr>
-              </tfoot>
+              </tbody>
             </table>
           </div>
 
