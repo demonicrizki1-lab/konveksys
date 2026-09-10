@@ -219,7 +219,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
               <div className="h-12 flex items-end justify-center">
                 <div className="w-32 border-b border-slate-400"></div>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1 font-mono">( Maison Rayyan )</div>
+              <div className="text-[10px] text-slate-700 mt-1 font-mono font-medium">( Rizki Maulana )</div>
             </div>
 
             <div>
@@ -228,7 +228,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
               <div className="h-12 flex items-end justify-center">
                 <div className="w-32 border-b border-slate-400"></div>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1 font-mono">( .............................. )</div>
+              <div className="text-[10px] text-slate-700 mt-1 font-mono font-medium">( Cecep Dayat )</div>
             </div>
 
             <div>
