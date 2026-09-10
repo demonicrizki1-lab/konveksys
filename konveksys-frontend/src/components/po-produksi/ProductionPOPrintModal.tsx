@@ -80,13 +80,13 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 pr-2">
                 <h1 className="text-xl font-black tracking-wider text-slate-900 uppercase">
-                  MAISON RAYYAN APPAREL
+                  MAISON RAYYAN MANUFACTURING
                 </h1>
-                <p className="text-[11px] font-semibold text-slate-700 uppercase tracking-widest mt-0.5">
-                  Garment & Konveksi Makloon Busana Terintegrasi
+                <p className="text-[11px] font-semibold text-slate-700 tracking-wide mt-0.5">
+                  Konveksi & Makloon Garment Terpadu
                 </p>
                 <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">
-                  Workshop & Cutting Centre • Jl. Industri Konveksi No. 88, Bandung • Telp/WA: 0812-3456-7890
+                  Jl. Industri Makloon No. 88, Bandung • Telp: 0821-2822-4328
                 </p>
               </div>
               <div className="text-right shrink-0">
@@ -154,8 +154,8 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                   <th className="py-2 px-2.5 border-r border-slate-300 text-center">Model / Nama Artikel</th>
                   <th className="py-2 px-2.5 border-r border-slate-300 w-28 text-center">Warna</th>
                   <th className="py-2 px-2.5 border-r border-slate-300 w-20 text-center">Size</th>
-                  <th className="py-2 px-2.5 border-r border-slate-300 text-center">Bahan / Kain</th>
                   <th className="py-2 px-2.5 border-r border-slate-300 text-center w-24">Qty (Pcs)</th>
+                  <th className="py-2 px-2.5 border-r border-slate-300 text-center">Bahan / Kain</th>
                   <th className="py-2 px-2.5 text-center">Keterangan</th>
                 </tr>
               </tbody>
@@ -174,11 +174,11 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                     <td className="py-2 px-2.5 border-r border-slate-300 text-center font-bold text-slate-800">
                       {item.ukuran || '-'}
                     </td>
-                    <td className="py-2 px-2.5 border-r border-slate-300 text-slate-600 text-center">
-                      {item.bahanKain || '-'}
-                    </td>
                     <td className="py-2 px-2.5 border-r border-slate-300 text-center font-mono font-bold text-indigo-700 text-xs">
                       {Number(item.qty).toLocaleString('id-ID')}
+                    </td>
+                    <td className="py-2 px-2.5 border-r border-slate-300 text-slate-600 text-center">
+                      {item.bahanKain || '-'}
                     </td>
                     <td className="py-2 px-2.5 text-slate-500 text-[10px] italic text-center">
                       {item.catatan || '-'}
@@ -189,13 +189,13 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
               {/* Baris Total Keseluruhan: Diletakkan dalam tbody tersendiri (bukan tfoot browser default) agar hanya muncul SEKALI di akhir data pada halaman terakhir dan TIDAK berulang di setiap halaman */}
               <tbody style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
                 <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400 text-xs" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-                  <td colSpan={5} className="py-2 px-2.5 border-r border-slate-300 text-center uppercase tracking-wider">
+                  <td colSpan={4} className="py-2 px-2.5 border-r border-slate-300 text-center uppercase tracking-wider">
                     Total Keseluruhan Produksi
                   </td>
                   <td className="py-2 px-2.5 border-r border-slate-300 text-center font-mono text-sm text-indigo-900">
                     {po.totalPcs.toLocaleString('id-ID')} Pcs
                   </td>
-                  <td className="py-2 px-2.5 text-center"></td>
+                  <td colSpan={2} className="py-2 px-2.5 text-center"></td>
                 </tr>
               </tbody>
             </table>
