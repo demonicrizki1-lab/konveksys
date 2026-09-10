@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Layers,
   X,
+  Save,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ProductionPO, ProductionPOItem, ProductionPOStatus } from '../../types';
@@ -654,7 +655,7 @@ export const SuratPOProduksiView: React.FC = () => {
                   {editingPO ? 'Edit Surat PO Produksi' : 'Buat Surat PO Produksi Baru'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Input manual order jahit/restock konveksi. Data tersimpan ke database dan siap cetak PDF.
+                  Input manual order jahit/restock konveksi. Data tersimpan langsung ke database.
                 </p>
               </div>
               <button
@@ -892,12 +893,12 @@ export const SuratPOProduksiView: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => handleSubmitPO(true)}
+                  onClick={() => handleSubmitPO(false)}
                   disabled={isSubmitting}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-200 transition disabled:opacity-50 cursor-pointer"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Menyimpan ke Database...' : 'Simpan & Cetak PDF'}</span>
+                  <Save className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
                 </button>
               </div>
             </div>
