@@ -103,6 +103,7 @@ export const StokPenjualanView: React.FC = () => {
 
   // SKU Form State
   const [skuForm, setSkuForm] = useState({
+    brand: '',
     produk: '',
     warna: '',
     ukuran: '',
@@ -299,6 +300,21 @@ export const StokPenjualanView: React.FC = () => {
     };
   }, [computedStockItems, brandSales, effectiveBrand]);
 
+  // Open Add SKU Modal helper
+  const handleOpenAddSKU = () => {
+    setSkuForm({
+      brand: selectedBrand !== 'ALL' ? selectedBrand : (brands[0]?.name || 'GREYWOLF'),
+      produk: '',
+      warna: '',
+      ukuran: '',
+      sku: '',
+      hpp: 0,
+      stokAwal: 0,
+      catatan: '',
+    });
+    setIsAddSKUModalOpen(true);
+  };
+
   // Form Submit: Create SKU
   const handleCreateSKUSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,7 +323,9 @@ export const StokPenjualanView: React.FC = () => {
       return;
     }
 
-    const targetBrand = effectiveBrand === 'ALL' ? (brands[0]?.name || 'GREYWOLF') : effectiveBrand;
+    const targetBrand = userRole === 'ADMIN'
+      ? (skuForm.brand || (selectedBrand !== 'ALL' ? selectedBrand : (brands[0]?.name || 'GREYWOLF')))
+      : activeBrand;
 
     setIsSubmitting(true);
     const res = await createBrandSKU({
@@ -325,7 +343,7 @@ export const StokPenjualanView: React.FC = () => {
     if (res.success) {
       showToast('success', res.message);
       setIsAddSKUModalOpen(false);
-      setSkuForm({ produk: '', warna: '', ukuran: '', sku: '', hpp: 0, stokAwal: 0, catatan: '' });
+      setSkuForm({ brand: '', produk: '', warna: '', ukuran: '', sku: '', hpp: 0, stokAwal: 0, catatan: '' });
     } else {
       showToast('error', res.message);
     }
@@ -360,6 +378,7 @@ export const StokPenjualanView: React.FC = () => {
   const handleOpenEditSKU = (item: BrandProductSKU) => {
     setSkuToEdit(item);
     setSkuForm({
+      brand: item.brand,
       produk: item.produk,
       warna: item.warna || '',
       ukuran: item.ukuran || '',
@@ -499,8 +518,8 @@ export const StokPenjualanView: React.FC = () => {
 
       {/* Header Card (Clean White Aesthetic) */}
       <div className="bg-white rounded-xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="space-y-1.5 flex-1 min-w-0">
             <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>INVENTORI & ORDER MARKETPLACE</span>
@@ -519,15 +538,15 @@ export const StokPenjualanView: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 justify-start xl:justify-end">
             {/* Admin Brand Selector */}
             {userRole === 'ADMIN' && (
-              <div className="flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-slate-400" />
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg">
+                <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
                 <select
                   value={selectedBrand}
                   onChange={e => setSelectedBrand(e.target.value)}
-                  className="text-xs font-bold py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="text-xs font-bold bg-transparent text-indigo-700 focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">Semua Brand Mitra</option>
                   {brands.map(b => (
@@ -542,7 +561,8 @@ export const StokPenjualanView: React.FC = () => {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+              title="Perbarui / Sinkronkan data inventori"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>Sinkronkan</span>
@@ -550,8 +570,8 @@ export const StokPenjualanView: React.FC = () => {
 
             {activeTab === 'database' && (
               <button
-                onClick={() => setIsAddSKUModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95"
+                onClick={handleOpenAddSKU}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95 cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
                 <span>Tambah SKU Baru</span>
@@ -561,7 +581,7 @@ export const StokPenjualanView: React.FC = () => {
             {activeTab === 'penjualan' && (
               <button
                 onClick={() => setIsAddSaleModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95 cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
                 <span>Catat Pesanan Marketplace</span>
@@ -571,7 +591,7 @@ export const StokPenjualanView: React.FC = () => {
             {activeTab === 'barang_keluar' && (
               <button
                 onClick={() => setIsAddExitModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95 cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
                 <span>Catat Barang Keluar / Sample</span>
@@ -683,20 +703,28 @@ export const StokPenjualanView: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-xs text-slate-500 font-medium">
+            <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-1 text-xs text-slate-500 font-medium shrink-0">
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span>Filter Stok:</span>
               </div>
               <select
                 value={stockStatusFilter}
                 onChange={e => setStockStatusFilter(e.target.value as any)}
-                className="text-xs py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="text-xs py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
               >
-                <option value="ALL">Semua Stok</option>
+                <option value="ALL">Semua Status Stok</option>
                 <option value="CRITICAL">🔴 Stok Habis / Kritis (≤ 5 pcs)</option>
                 <option value="READY">🟢 Stok Aman (&gt; 5 pcs)</option>
               </select>
+
+              <button
+                onClick={handleOpenAddSKU}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95 shrink-0 cursor-pointer ml-auto sm:ml-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah SKU</span>
+              </button>
             </div>
           </div>
 
@@ -726,6 +754,13 @@ export const StokPenjualanView: React.FC = () => {
                         <ShoppingBag className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                         <p className="font-semibold text-slate-600 text-sm">Belum ada data SKU produk.</p>
                         <p className="text-xs text-slate-400 mt-1">Klik "+ Tambah SKU Baru" untuk mendaftarkan master produk & stok awal.</p>
+                        <button
+                          onClick={handleOpenAddSKU}
+                          className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition active:scale-95 cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Tambah SKU Baru</span>
+                        </button>
                       </td>
                     </tr>
                   ) : (
@@ -1054,6 +1089,27 @@ export const StokPenjualanView: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateSKUSubmit} className="p-6 space-y-4">
+              {/* Brand Selector for Admin */}
+              {userRole === 'ADMIN' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Brand Mitra *</label>
+                  <div className="relative">
+                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <select
+                      value={skuForm.brand || (selectedBrand !== 'ALL' ? selectedBrand : brands[0]?.name)}
+                      onChange={e => setSkuForm({ ...skuForm, brand: e.target.value })}
+                      className="w-full pl-9 pr-3.5 py-2 text-xs font-bold border border-slate-200 rounded-lg text-indigo-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                    >
+                      {brands.map(b => (
+                        <option key={b.id} value={b.name}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Model Produk *</label>
                 <input
@@ -1176,6 +1232,15 @@ export const StokPenjualanView: React.FC = () => {
             </div>
 
             <form onSubmit={handleUpdateSKUSubmit} className="p-6 space-y-4">
+              {/* Brand Info */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Brand Mitra</label>
+                <div className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold border border-slate-200 rounded-lg text-indigo-700 bg-slate-50">
+                  <Building2 className="w-4 h-4 text-slate-400" />
+                  <span>{skuToEdit.brand}</span>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Model Produk *</label>
                 <input
