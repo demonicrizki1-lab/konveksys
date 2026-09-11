@@ -458,164 +458,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsMobileMenuOpen(prev => !prev);
   };
 
-  // Persistence State
-  const [brands, setBrands] = useState<Brand[]>(() => {
-    const saved = localStorage.getItem('konvek_brands');
-    if (!saved) return initialBrands;
-    try {
-      const parsed: Brand[] = JSON.parse(saved);
-      return parsed.map(b => b.name === 'CREADIVE' ? { ...b, name: 'NAMI', code: 'NMI' } : b);
-    } catch {
-      return initialBrands;
-    }
-  });
-
-  const [vendors, setVendors] = useState<Vendor[]>(() => {
-    const saved = localStorage.getItem('konvek_vendors');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [hargaKonveksi, setHargaKonveksi] = useState<HargaKonveksi[]>(() => {
-    const saved = localStorage.getItem('konvek_harga_konveksi');
-    if (!saved) return [];
-    try {
-      const parsed: HargaKonveksi[] = JSON.parse(saved);
-      return parsed.map(h => h.brand === 'CREADIVE' ? { ...h, brand: 'NAMI' } : h);
-    } catch {
-      return [];
-    }
-  });
-
-  const [hargaBuyer, setHargaBuyer] = useState<HargaBuyer[]>(() => {
-    const saved = localStorage.getItem('konvek_harga_buyer');
-    if (!saved) return [];
-    try {
-      const parsed: HargaBuyer[] = JSON.parse(saved);
-      return parsed.map(h => h.brand === 'CREADIVE' ? { ...h, brand: 'NAMI' } : h);
-    } catch {
-      return [];
-    }
-  });
-
-  const [inboundRolls, setInboundRolls] = useState<InboundRoll[]>(() => {
-    const saved = localStorage.getItem('konvek_inbound_rolls');
-    if (!saved) return [];
-    try {
-      const parsed: InboundRoll[] = JSON.parse(saved);
-      return parsed.map(r => r.brand === 'CREADIVE' ? { ...r, brand: 'NAMI' } : r);
-    } catch {
-      return [];
-    }
-  });
-
-  const [spkList, setSpkList] = useState<SPKCutting[]>(() => {
-    const saved = localStorage.getItem('konvek_spk_list');
-    if (!saved) return [];
-    try {
-      const parsed: SPKCutting[] = JSON.parse(saved);
-      return parsed.map(s => s.brand === 'CREADIVE' ? { ...s, brand: 'NAMI' } : s);
-    } catch {
-      return [];
-    }
-  });
-
-  const [suratJalanList, setSuratJalanList] = useState<SuratJalan[]>(() => {
-    const saved = localStorage.getItem('konvek_surat_jalan');
-    if (!saved) return [];
-    try {
-      const parsed: SuratJalan[] = JSON.parse(saved);
-      return parsed.map(sj => sj.brand === 'CREADIVE' ? { ...sj, brand: 'NAMI' } : sj);
-    } catch {
-      return [];
-    }
-  });
-
-  const [kasbonList, setKasbonList] = useState<KasbonTransaction[]>(() => {
-    const saved = localStorage.getItem('konvek_kasbon');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [pembayaranList, setPembayaranList] = useState<PembayaranBrand[]>(() => {
-    const saved = localStorage.getItem('konvek_pembayaran');
-    if (!saved) return [];
-    try {
-      const parsed: PembayaranBrand[] = JSON.parse(saved);
-      return parsed.map(p => p.brand === 'CREADIVE' ? { ...p, brand: 'NAMI' } : p);
-    } catch {
-      return [];
-    }
-  });
-
-  const [returnList, setReturnList] = useState<ReturnItem[]>(() => {
-    const saved = localStorage.getItem('konvek_returns');
-    return saved ? JSON.parse(saved) : initialReturnList;
-  });
-
-  const [accessories, setAccessories] = useState<AccessoryItem[]>(() => {
-    const saved = localStorage.getItem('konvek_accessories');
-    if (saved) {
-      try {
-        const parsed: AccessoryItem[] = JSON.parse(saved);
-        // Filter out legacy dummy sample IDs (aks-001..010)
-        return parsed.filter(item => !item.id.startsWith('aks-00') && !item.id.startsWith('aks-01'));
-      } catch {
-        return initialAccessories;
-      }
-    }
-    return initialAccessories;
-  });
-
-  const [accessoryMutations, setAccessoryMutations] = useState<AccessoryMutation[]>(() => {
-    const saved = localStorage.getItem('konvek_accessory_mutations');
-    if (saved) {
-      try {
-        const parsed: AccessoryMutation[] = JSON.parse(saved);
-        // Filter out legacy dummy sample mutation IDs (mut-001..005)
-        return parsed.filter(m => !m.id.startsWith('mut-00'));
-      } catch {
-        return initialAccessoryMutations;
-      }
-    }
-    return initialAccessoryMutations;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('konvek_accessories', JSON.stringify(accessories));
-  }, [accessories]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_accessory_mutations', JSON.stringify(accessoryMutations));
-  }, [accessoryMutations]);
-
-  const [brandSKUs, setBrandSKUs] = useState<BrandProductSKU[]>(() => {
-    const saved = localStorage.getItem('konvek_brand_skus');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [brandSales, setBrandSales] = useState<BrandSale[]>(() => {
-    const saved = localStorage.getItem('konvek_brand_sales');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [brandStockExits, setBrandStockExits] = useState<BrandStockExit[]>(() => {
-    const saved = localStorage.getItem('konvek_brand_stock_exits');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // Production PO State (Direct from Database, NO localStorage)
+  // Pure Database-backed State (NO localStorage persistence for business entities)
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [hargaKonveksi, setHargaKonveksi] = useState<HargaKonveksi[]>([]);
+  const [hargaBuyer, setHargaBuyer] = useState<HargaBuyer[]>([]);
+  const [inboundRolls, setInboundRolls] = useState<InboundRoll[]>([]);
+  const [spkList, setSpkList] = useState<SPKCutting[]>([]);
+  const [suratJalanList, setSuratJalanList] = useState<SuratJalan[]>([]);
+  const [kasbonList, setKasbonList] = useState<KasbonTransaction[]>([]);
+  const [pembayaranList, setPembayaranList] = useState<PembayaranBrand[]>([]);
+  const [returnList, setReturnList] = useState<ReturnItem[]>([]);
+  const [accessories, setAccessories] = useState<AccessoryItem[]>([]);
+  const [accessoryMutations, setAccessoryMutations] = useState<AccessoryMutation[]>([]);
+  const [brandSKUs, setBrandSKUs] = useState<BrandProductSKU[]>([]);
+  const [brandSales, setBrandSales] = useState<BrandSale[]>([]);
+  const [brandStockExits, setBrandStockExits] = useState<BrandStockExit[]>([]);
   const [productionPOs, setProductionPOs] = useState<ProductionPO[]>([]);
 
+  // Auto-purge all legacy localStorage cache to guarantee 100% database integration
   useEffect(() => {
-    localStorage.setItem('konvek_brand_skus', JSON.stringify(brandSKUs));
-  }, [brandSKUs]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_brand_sales', JSON.stringify(brandSales));
-  }, [brandSales]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_brand_stock_exits', JSON.stringify(brandStockExits));
-  }, [brandStockExits]);
+    const LEGACY_STORAGE_KEYS = [
+      'konvek_brands',
+      'konvek_returns',
+      'konvek_vendors',
+      'konvek_harga_konveksi',
+      'konvek_harga_buyer',
+      'konvek_inbound_rolls',
+      'konvek_spk_list',
+      'konvek_surat_jalan',
+      'konvek_kasbon',
+      'konvek_pembayaran',
+      'konvek_accessories',
+      'konvek_accessory_mutations',
+      'konvek_brand_skus',
+      'konvek_brand_sales',
+      'konvek_brand_stock_exits',
+    ];
+    LEGACY_STORAGE_KEYS.forEach(k => localStorage.removeItem(k));
+  }, []);
 
   // Helper for brand name normalization (CREADIVE -> NAMI)
   const normalizeBrandName = (name?: string): string => {
@@ -975,47 +856,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       syncFromBackend();
     }
   }, [currentUser, syncFromBackend]);
-
-  // Sync to localStorage
-  useEffect(() => {
-    localStorage.setItem('konvek_brands', JSON.stringify(brands));
-  }, [brands]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_returns', JSON.stringify(returnList));
-  }, [returnList]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_vendors', JSON.stringify(vendors));
-  }, [vendors]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_harga_konveksi', JSON.stringify(hargaKonveksi));
-  }, [hargaKonveksi]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_harga_buyer', JSON.stringify(hargaBuyer));
-  }, [hargaBuyer]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_inbound_rolls', JSON.stringify(inboundRolls));
-  }, [inboundRolls]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_spk_list', JSON.stringify(spkList));
-  }, [spkList]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_surat_jalan', JSON.stringify(suratJalanList));
-  }, [suratJalanList]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_kasbon', JSON.stringify(kasbonList));
-  }, [kasbonList]);
-
-  useEffect(() => {
-    localStorage.setItem('konvek_pembayaran', JSON.stringify(pembayaranList));
-  }, [pembayaranList]);
 
   useEffect(() => {
     if (currentUser) {
@@ -1538,22 +1378,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Master Brand Handlers
   const addBrand = async (brandData: Omit<Brand, 'id'>) => {
-    const tempId = `b-${Date.now()}`;
-    const newBrand: Brand = { ...brandData, id: tempId };
-    setBrands(prev => [...prev, newBrand]);
-
     try {
       const { data } = await apiAddBrand(brandData);
       if (data) {
-        setBrands(prev => prev.map(b => (b.id === tempId ? { ...b, id: data.id } : b)));
+        await syncFromBackend();
       }
     } catch (err) {
-      console.warn('Backend sync addBrand failed:', err);
+      console.error('Backend addBrand failed:', err);
     }
   };
 
   const updateBrand = async (brand: Brand) => {
-    setBrands(prev => prev.map(b => (b.id === brand.id ? brand : b)));
     try {
       await apiUpdateBrand(brand.id, {
         name: brand.name,
@@ -1561,17 +1396,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         contactPerson: brand.contactPerson,
         phone: brand.phone,
       });
+      await syncFromBackend();
     } catch (err) {
-      console.warn('Backend sync updateBrand failed:', err);
+      console.error('Backend updateBrand failed:', err);
     }
   };
 
   const deleteBrand = async (id: string) => {
-    setBrands(prev => prev.filter(b => b.id !== id));
     try {
       await apiDeleteBrand(id);
+      await syncFromBackend();
     } catch (err) {
-      console.warn('Backend sync deleteBrand failed:', err);
+      console.error('Backend deleteBrand failed:', err);
     }
   };
 
@@ -1703,12 +1539,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Inbound Handlers
   const addInboundRoll = async (roll: Omit<InboundRoll, 'id'>) => {
-    const tempId = `rol-${Date.now()}`;
-    const newRoll: InboundRoll = { ...roll, id: tempId };
-    setInboundRolls(prev => [newRoll, ...prev]);
-
     try {
-      const { data } = await apiAddInboundRoll({
+      const { data, error } = await apiAddInboundRoll({
         rollCode: roll.rollCode,
         brand: roll.brand,
         jenisKain: roll.jenisKain,
@@ -1719,17 +1551,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         keterangan: roll.keterangan,
       });
       if (data) {
-        setInboundRolls(prev => prev.map(r => (r.id === tempId ? {
-          ...r,
-          id: data.id,
-          meterLength: Number(data.meterLength),
-          meterUsed: Number(data.meterUsed || 0),
-          hargaModalMeter: Number(data.hargaModalMeter),
-        } : r)));
+        setInboundRolls(prev => [
+          {
+            ...roll,
+            id: data.id,
+            meterLength: Number(data.meterLength),
+            meterUsed: Number(data.meterUsed || 0),
+            hargaModalMeter: Number(data.hargaModalMeter),
+          },
+          ...prev,
+        ]);
         await syncFromBackend();
+      } else if (error) {
+        console.error('Gagal menambahkan rol kain ke database:', error);
       }
     } catch (err) {
-      console.warn('Backend sync failed, saved locally:', err);
+      console.error('Gagal menambahkan rol kain:', err);
     }
   };
 
@@ -1737,8 +1574,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setInboundRolls(prev => prev.map(r => (r.id === id ? { ...r, status } : r)));
     try {
       await apiUpdateInboundStatus(id, status);
+      await syncFromBackend();
     } catch (err) {
-      console.warn('Backend sync failed, updated locally:', err);
+      console.error('Update status rol gagal:', err);
+      await syncFromBackend();
     }
   };
 
