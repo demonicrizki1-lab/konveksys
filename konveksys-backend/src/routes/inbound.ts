@@ -1,3 +1,4 @@
+import { ensureBrandsExist } from './auth.js';
 import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
@@ -7,8 +8,28 @@ inboundRoutes.use('*', authMiddleware);
 
 // GET /api/inbound - List inbound rolls (filtered by brand for BRAND role)
 inboundRoutes.get('/', async (c) => {
-  const user = c.get('user');
-  const where = user.role === 'BRAND' ? { brand: user.brandName } : {};
+  const user = c.get('user') as any;
+  const queryBrand = c.req.query('brand');
+
+  let where: any = {};
+  if (user.role === 'BRAND') {
+    const allowed = [
+      ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+      ...(user.brandName ? [user.brandName] : []),
+    ]
+      .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+      .map((b: string) => b.trim().toUpperCase())
+      .filter(Boolean);
+
+    if (queryBrand && allowed.includes(queryBrand.toUpperCase())) {
+      where = { brand: queryBrand.toUpperCase() };
+    } else {
+      where = { brand: { in: allowed } };
+    }
+  } else if (queryBrand && queryBrand !== 'ALL') {
+    where = { brand: queryBrand.toUpperCase() };
+  }
+
   const rolls = await prisma.inboundRoll.findMany({
     where,
     orderBy: { tanggalMasuk: 'desc' },
@@ -18,26 +39,49 @@ inboundRoutes.get('/', async (c) => {
 
 // POST /api/inbound - Create inbound roll (allowed for both ADMIN and BRAND)
 inboundRoutes.post('/', async (c) => {
-  const user = c.get('user');
+  const user = c.get('user') as any;
   const body = await c.req.json();
 
-  // If role is BRAND, enforce brandName and default status to MENUNGGU_FISIK
-  const brand = user.role === 'BRAND' ? user.brandName : (body.brand || 'UNKNOWN');
+  const allowed = [
+    ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+    ...(user.brandName ? [user.brandName] : []),
+  ]
+    .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+    .map((b: string) => b.trim().toUpperCase())
+    .filter(Boolean);
+
+  let brand = body.brand ? String(body.brand).trim().toUpperCase() : undefined;
+  if (user.role === 'BRAND') {
+    if (brand && allowed.includes(brand)) {
+      // Brand valid dari accessibleBrands
+    } else {
+      brand = allowed[0] || user.brandName || 'UNKNOWN';
+    }
+  } else {
+    brand = brand || 'UNKNOWN';
+  }
+
+  // Jaminan relasi tabel Brand: pastikan brand terdaftar agar tidak terjadi foreign key violation
+  if (brand && brand !== 'UNKNOWN') {
+    await ensureBrandsExist([brand], user.name, user.phone);
+  }
+
   const status = user.role === 'BRAND' ? 'MENUNGGU_FISIK' : (body.status || 'DI_GUDANG');
 
   const roll = await prisma.inboundRoll.create({
     data: {
-      rollCode: body.rollCode,
-      brand,
+      rollCode: body.rollCode.trim().toUpperCase(),
+      brand: brand || 'UNKNOWN',
       jenisKain: body.jenisKain,
-      meterLength: parseFloat(body.meterLength),
-      meterUsed: parseFloat(body.meterUsed || '0'),
-      hargaModalMeter: parseFloat(body.hargaModalMeter || '0'),
+      meterLength: Number(body.meterLength),
+      meterUsed: Number(body.meterUsed || 0),
+      hargaModalMeter: Number(body.hargaModalMeter || 0),
       status,
-      tanggalMasuk: new Date(body.tanggalMasuk || new Date()),
+      tanggalMasuk: body.tanggalMasuk ? new Date(body.tanggalMasuk) : new Date(),
       keterangan: body.keterangan || null,
     },
   });
+
   return c.json(roll, 201);
 });
 
@@ -72,7 +116,7 @@ inboundRoutes.patch('/:id', adminOnly, handleRollUpdate);
 
 // DELETE /api/inbound/:id - Delete roll (Admin or Brand if pending)
 inboundRoutes.delete('/:id', async (c) => {
-  const user = c.get('user');
+  const user = c.get('user') as any;
   const { id } = c.req.param();
 
   const roll = await prisma.inboundRoll.findUnique({
@@ -86,7 +130,14 @@ inboundRoutes.delete('/:id', async (c) => {
 
   // If role is BRAND, only allowed to delete if status is MENUNGGU_FISIK and roll belongs to brand
   if (user.role === 'BRAND') {
-    if (roll.brand !== user.brandName) {
+    const allowed = [
+      ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+      ...(user.brandName ? [user.brandName] : []),
+    ]
+      .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+      .map((b: string) => b.trim().toUpperCase())
+      .filter(Boolean);
+    if (!allowed.includes(roll.brand.toUpperCase())) {
       return c.json({ error: 'Tidak memiliki hak akses untuk menghapus rol ini' }, 403);
     }
     if (roll.status !== 'MENUNGGU_FISIK') {

@@ -30,7 +30,17 @@ hargaRoutes.delete('/konveksi/:id', adminOnly, async (c) => {
 // Harga Buyer (Invoice per Brand)
 hargaRoutes.get('/buyer', async (c) => {
   const user = c.get('user');
-  const where = user.role === 'BRAND' ? { brand: user.brandName } : {};
+  let where: any = {};
+  if (user.role === 'BRAND') {
+    const allowed = [
+      ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+      ...(user.brandName ? [user.brandName] : []),
+    ]
+      .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+      .map((b: string) => b.trim().toUpperCase())
+      .filter(Boolean);
+    where = { brand: { in: allowed } };
+  }
   const data = await prisma.hargaBuyer.findMany({ where, orderBy: [{ brand: 'asc' }, { produk: 'asc' }] });
   return c.json(data);
 });

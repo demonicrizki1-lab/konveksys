@@ -19,7 +19,16 @@ import {
 } from 'lucide-react';
 
 export const InboundView: React.FC = () => {
-  const { inboundRolls, addInboundRoll, updateInboundRollStatus, deleteInboundRoll, brands, userRole, activeBrand } = useApp();
+  const {
+    inboundRolls,
+    addInboundRoll,
+    updateInboundRollStatus,
+    deleteInboundRoll,
+    brands,
+    userRole,
+    activeBrand,
+    currentUser,
+  } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState(userRole === 'BRAND' ? activeBrand : 'ALL');
@@ -97,7 +106,10 @@ export const InboundView: React.FC = () => {
   };
 
   const handleOpenAdd = () => {
-    const selectedBrand = userRole === 'BRAND' ? activeBrand : brands[0]?.name || 'GREYWOLF';
+    const userBrands = userRole === 'BRAND'
+      ? (currentUser?.accessibleBrands && currentUser.accessibleBrands.length > 0 ? currentUser.accessibleBrands : [activeBrand])
+      : brands.map(b => b.name);
+    const selectedBrand = userBrands.includes(activeBrand) ? activeBrand : (userBrands[0] || 'GREYWOLF');
     const autoRollCode = generateNextRollCode(selectedBrand);
     setForm({
       rollCode: autoRollCode,
@@ -434,12 +446,33 @@ export const InboundView: React.FC = () => {
                 <div>
                   <label className="block font-medium text-slate-600 mb-1">Pemilik (Brand)</label>
                   {userRole === 'BRAND' ? (
-                    <input
-                      type="text"
-                      value={activeBrand}
-                      disabled
-                      className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-700 font-semibold"
-                    />
+                    currentUser?.accessibleBrands && currentUser.accessibleBrands.length > 1 ? (
+                      <select
+                        value={form.brand}
+                        onChange={(e) => {
+                          const newBrand = e.target.value;
+                          setForm((prev) => ({
+                            ...prev,
+                            brand: newBrand,
+                            rollCode: generateNextRollCode(newBrand),
+                          }));
+                        }}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 transition-base font-semibold text-slate-800 cursor-pointer"
+                      >
+                        {currentUser.accessibleBrands.map((b) => (
+                          <option key={b} value={b}>
+                            {b}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={form.brand || activeBrand}
+                        disabled
+                        className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-700 font-semibold cursor-not-allowed"
+                      />
+                    )
                   ) : (
                     <select
                       value={form.brand}

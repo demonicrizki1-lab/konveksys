@@ -42,6 +42,10 @@ export const UserManagementView: React.FC = () => {
     inboundRolls,
     spkList,
     suratJalanList,
+    pendingBrands,
+    approveBrandUser,
+    setIsApprovalModalOpen,
+    syncFromBackend,
   } = useApp();
 
   // Active Main Tab
@@ -241,8 +245,41 @@ export const UserManagementView: React.FC = () => {
     }
   };
 
+  // Approve Pending Brand User directly
+  const handleApprovePendingUser = async (user: ManagedUser) => {
+    setIsSubmitting(true);
+    const rawBrands = [
+      ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+      ...(user.brandName ? [user.brandName] : []),
+    ];
+    const brandsToAssign = Array.from(new Set(
+      rawBrands
+        .flatMap(b => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+        .map(b => b.trim().toUpperCase())
+        .filter(Boolean)
+    ));
+
+    const res = await approveBrandUser(user.id, {
+      accessibleBrands: brandsToAssign,
+      brandName: brandsToAssign[0] || user.brandName || undefined,
+    });
+    setIsSubmitting(false);
+
+    if (res.success) {
+      showToast('success', `Akun kemitraan ${user.name} berhasil disetujui! Brand (${brandsToAssign.join(', ')}) telah terdaftar di Master Brand.`);
+      await syncFromBackend();
+      await fetchManagedUsers();
+    } else {
+      showToast('error', res.message);
+    }
+  };
+
   // Toggle User Status quickly (Active / Suspended)
   const handleToggleUserStatus = async (user: ManagedUser) => {
+    if (user.status === 'PENDING_APPROVAL') {
+      await handleApprovePendingUser(user);
+      return;
+    }
     const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     const label = newStatus === 'ACTIVE' ? 'diaktifkan' : 'dinonaktifkan (suspended)';
     const res = await updateManagedUser(user.id, { status: newStatus });
@@ -505,6 +542,35 @@ export const UserManagementView: React.FC = () => {
         </div>
       </div>
 
+      {/* Pending Brands Alert Banner */}
+      {pendingBrands.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-amber-50 to-amber-100/60 border border-amber-300/80 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span>{pendingBrands.length} Permohonan Kemitraan Menunggu Persetujuan</span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold animate-pulse">
+                  Baru
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Verifikasi mitra brand baru untuk mengaktifkan akun dan mendaftarkan brand ke Master Brand secara otomatis.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsApprovalModalOpen(true)}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Tinjau & Setujui Kemitraan ({pendingBrands.length})</span>
+          </button>
+        </div>
+      )}
+
       {/* Main Navigation Tabs */}
       <div className="flex items-center gap-2">
         <button
@@ -762,6 +828,19 @@ export const UserManagementView: React.FC = () => {
                           {/* Actions */}
                           <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
+                              {/* Quick Approve for PENDING_APPROVAL */}
+                              {user.status === 'PENDING_APPROVAL' && (
+                                <button
+                                  onClick={() => handleApprovePendingUser(user)}
+                                  disabled={isSubmitting}
+                                  title="Setujui permohonan kemitraan ini sekarang & daftarkan semua brand ke Master Brand"
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-sm shrink-0 cursor-pointer"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Setujui</span>
+                                </button>
+                              )}
+
                               {/* Quick Toggle Status */}
                               <button
                                 onClick={() => handleToggleUserStatus(user)}

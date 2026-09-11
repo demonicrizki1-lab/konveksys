@@ -142,6 +142,7 @@ interface AppContextType {
   rejectBrandUser: (userId: string) => Promise<{ success: boolean; message: string }>;
   isApprovalModalOpen: boolean;
   setIsApprovalModalOpen: (open: boolean) => void;
+  syncFromBackend: () => Promise<void>;
 
   // User Management (Admin Only)
   managedUsers: ManagedUser[];
@@ -1059,6 +1060,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!error) {
       setPendingBrands(prev => prev.filter(p => p.id !== userId));
       await syncFromBackend();
+      await fetchManagedUsers();
       return { success: true, message: res?.message || 'Akun berhasil disetujui!' };
     }
     return { success: false, message: error || 'Gagal menyetujui akun.' };
@@ -1102,6 +1104,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (data.user) {
         setManagedUsers(prev => [data.user, ...prev]);
+        await syncFromBackend();
       }
       return { success: true, message: data.message || 'Pengguna berhasil ditambahkan.' };
     } catch (err: any) {
@@ -1142,6 +1145,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setCurrentUser(updatedAuthUser);
           localStorage.setItem('konvek_auth_user', JSON.stringify(updatedAuthUser));
         }
+        await syncFromBackend();
       }
       return { success: true, message: data.message || 'Data pengguna berhasil diperbarui.' };
     } catch (err: any) {
@@ -1722,6 +1726,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           meterUsed: Number(data.meterUsed || 0),
           hargaModalMeter: Number(data.hargaModalMeter),
         } : r)));
+        await syncFromBackend();
       }
     } catch (err) {
       console.warn('Backend sync failed, saved locally:', err);
@@ -3019,6 +3024,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteProductionPO,
         isApprovalModalOpen,
         setIsApprovalModalOpen,
+        syncFromBackend,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
         toggleSidebar,

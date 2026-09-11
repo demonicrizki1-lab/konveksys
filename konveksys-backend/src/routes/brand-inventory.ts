@@ -9,7 +9,18 @@ brandInventoryRoutes.use('*', authMiddleware);
 function getEffectiveBrand(c: any, queryBrand?: string): string | null {
   const user = c.get('user');
   if (user.role === 'BRAND') {
-    return user.brandName || null;
+    const allowed = [
+      ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+      ...(user.brandName ? [user.brandName] : []),
+    ]
+      .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+      .map((b: string) => b.trim().toUpperCase())
+      .filter(Boolean);
+
+    if (queryBrand && allowed.includes(queryBrand.toUpperCase())) {
+      return queryBrand.toUpperCase();
+    }
+    return allowed[0] || user.brandName || null;
   }
   return queryBrand && queryBrand !== 'ALL' ? queryBrand : null;
 }
@@ -55,7 +66,21 @@ brandInventoryRoutes.post('/skus', async (c) => {
       catatan?: string;
     }>();
 
-    const targetBrand = user.role === 'BRAND' ? user.brandName : body.brand;
+    let targetBrand = body.brand ? String(body.brand).trim().toUpperCase() : undefined;
+    if (user.role === 'BRAND') {
+      const allowed = [
+        ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+        ...(user.brandName ? [user.brandName] : []),
+      ]
+        .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+        .map((b: string) => b.trim().toUpperCase())
+        .filter(Boolean);
+      if (!targetBrand || !allowed.includes(targetBrand)) {
+        targetBrand = allowed[0] || user.brandName;
+      }
+    } else {
+      targetBrand = targetBrand || body.brand;
+    }
     if (!targetBrand) {
       return c.json({ error: 'Brand wajib ditentukan.' }, 400);
     }
@@ -210,7 +235,21 @@ brandInventoryRoutes.post('/sales', async (c) => {
       catatan?: string;
     }>();
 
-    const targetBrand = user.role === 'BRAND' ? user.brandName : body.brand;
+    let targetBrand = body.brand ? String(body.brand).trim().toUpperCase() : undefined;
+    if (user.role === 'BRAND') {
+      const allowed = [
+        ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+        ...(user.brandName ? [user.brandName] : []),
+      ]
+        .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+        .map((b: string) => b.trim().toUpperCase())
+        .filter(Boolean);
+      if (!targetBrand || !allowed.includes(targetBrand)) {
+        targetBrand = allowed[0] || user.brandName;
+      }
+    } else {
+      targetBrand = targetBrand || body.brand;
+    }
     if (!targetBrand) {
       return c.json({ error: 'Brand wajib ditentukan.' }, 400);
     }
@@ -328,7 +367,21 @@ brandInventoryRoutes.post('/stock-exits', async (c) => {
       keterangan?: string;
     }>();
 
-    const targetBrand = user.role === 'BRAND' ? user.brandName : body.brand;
+    let targetBrand = body.brand ? String(body.brand).trim().toUpperCase() : undefined;
+    if (user.role === 'BRAND') {
+      const allowed = [
+        ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+        ...(user.brandName ? [user.brandName] : []),
+      ]
+        .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+        .map((b: string) => b.trim().toUpperCase())
+        .filter(Boolean);
+      if (!targetBrand || !allowed.includes(targetBrand)) {
+        targetBrand = allowed[0] || user.brandName;
+      }
+    } else {
+      targetBrand = targetBrand || body.brand;
+    }
     if (!targetBrand) {
       return c.json({ error: 'Brand wajib ditentukan.' }, 400);
     }

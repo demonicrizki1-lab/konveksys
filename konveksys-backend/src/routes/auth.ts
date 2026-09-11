@@ -10,6 +10,48 @@ const DEMO_USERS = [
   { id: 'u-admin', name: 'Admin Maison Rayyan', email: 'admin@konveksys.com', password: 'admin', role: 'ADMIN' as const, brandName: undefined, accessibleBrands: [] },
 ];
 
+
+// Helper untuk memastikan daftar brand terdaftar di tabel Brand
+export async function ensureBrandsExist(
+  brandNames: string[],
+  contactPerson?: string | null,
+  phone?: string | null
+) {
+  for (const rawName of brandNames) {
+    const bName = rawName ? rawName.trim().toUpperCase() : '';
+    if (!bName || bName === 'UNASSIGNED') continue;
+
+    try {
+      const foundBrand = await prisma.brand.findUnique({ where: { name: bName } });
+      if (!foundBrand) {
+        const cleanPrefix = bName.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase() || 'BRD';
+        let code = cleanPrefix;
+        let counter = 1;
+        while (await prisma.brand.findUnique({ where: { code } })) {
+          code = cleanPrefix + '-' + Math.floor(100 + Math.random() * 900);
+          counter++;
+          if (counter > 15) {
+            code = cleanPrefix + '-' + Date.now().toString().slice(-4);
+            break;
+          }
+        }
+
+        await prisma.brand.create({
+          data: {
+            name: bName,
+            code,
+            contactPerson: contactPerson || null,
+            phone: phone || null,
+          },
+        });
+        console.log('[Brand Auto-Create] Brand ' + bName + ' (kode: ' + code + ') berhasil didaftarkan di Master Brand.');
+      }
+    } catch (err) {
+      console.error('[Brand Auto-Create Error] Gagal mendaftarkan brand ' + bName + ':', err);
+    }
+  }
+}
+
 // POST /api/auth/register-brand (Publik)
 authRoutes.post('/register-brand', async (c) => {
   try {
@@ -34,9 +76,22 @@ authRoutes.post('/register-brand', async (c) => {
       return c.json({ error: 'Alamat email sudah terdaftar di sistem.' }, 400);
     }
 
-    const brandList = Array.isArray(body.brands) && body.brands.length > 0
-      ? body.brands.map(b => b.trim().toUpperCase()).filter(Boolean)
-      : ['UNASSIGNED'];
+    const rawBrandInputs: string[] = [];
+    if (Array.isArray(body.brands)) {
+      rawBrandInputs.push(...body.brands);
+    } else if (typeof (body as any).brandName === 'string') {
+      rawBrandInputs.push((body as any).brandName);
+    }
+    const brandList = Array.from(new Set(
+      rawBrandInputs
+        .flatMap(b => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+        .map(b => b.trim().toUpperCase())
+        .filter(b => b && b !== 'UNASSIGNED')
+    ));
+
+    if (brandList.length === 0) {
+      brandList.push('UNASSIGNED');
+    }
 
     const newUser = await prisma.user.create({
       data: {
@@ -50,6 +105,8 @@ authRoutes.post('/register-brand', async (c) => {
         brandName: brandList[0] || null,
       }
     });
+
+    await ensureBrandsExist(brandList, body.name.trim(), body.phone?.trim() || null);
 
     return c.json({
       success: true,
@@ -173,7 +230,26 @@ authRoutes.get('/pending-brands', authMiddleware, adminOnly, async (c) => {
         createdAt: true,
       }
     });
-    return c.json({ pending: pendingList });
+
+    const sanitizedPending = pendingList.map(item => {
+      const raw = [
+        ...(Array.isArray(item.accessibleBrands) ? item.accessibleBrands : []),
+        ...(item.brandName ? [item.brandName] : []),
+      ];
+      const brands = Array.from(new Set(
+        raw
+          .flatMap(b => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+          .map(b => b.trim().toUpperCase())
+          .filter(b => b && b !== 'UNASSIGNED')
+      ));
+      return {
+        ...item,
+        accessibleBrands: brands,
+        brandName: brands[0] || item.brandName,
+      };
+    });
+
+    return c.json({ pending: sanitizedPending });
   } catch (err: any) {
     return c.json({ error: 'Gagal mengambil antrean persetujuan: ' + err?.message }, 500);
   }
@@ -190,29 +266,24 @@ authRoutes.post('/approve-brand/:id', authMiddleware, adminOnly, async (c) => {
       return c.json({ error: 'Pengguna tidak ditemukan.' }, 404);
     }
 
-    const brandsToAssign = body.accessibleBrands && body.accessibleBrands.length > 0
-      ? body.accessibleBrands.map(b => b.trim().toUpperCase())
-      : existing.accessibleBrands;
+    const rawBrands = [
+      ...(Array.isArray(body.accessibleBrands) ? body.accessibleBrands : []),
+      ...(body.brandName ? [body.brandName] : []),
+      ...(Array.isArray(existing.accessibleBrands) ? existing.accessibleBrands : []),
+      ...(existing.brandName ? [existing.brandName] : []),
+    ];
+
+    const brandsToAssign = Array.from(new Set(
+      rawBrands
+        .flatMap(b => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+        .map(b => b.trim().toUpperCase())
+        .filter(b => b && b !== 'UNASSIGNED')
+    ));
 
     const activeBrandName = body.brandName || brandsToAssign[0] || existing.brandName;
 
     // Pastikan brand-brand ini ada di tabel Brand jika belum
-    for (const bName of brandsToAssign) {
-      if (bName && bName !== 'UNASSIGNED') {
-        const foundBrand = await prisma.brand.findUnique({ where: { name: bName } });
-        if (!foundBrand) {
-          const code = bName.substring(0, 3).toUpperCase();
-          await prisma.brand.create({
-            data: {
-              name: bName,
-              code: code + '-' + Math.floor(100 + Math.random() * 900),
-              contactPerson: existing.name,
-              phone: existing.phone,
-            }
-          }).catch(() => {});
-        }
-      }
-    }
+    await ensureBrandsExist(brandsToAssign, existing.name, existing.phone);
 
     const updated = await prisma.user.update({
       where: { id: userId },
@@ -270,7 +341,26 @@ authRoutes.get('/users', authMiddleware, adminOnly, async (c) => {
         updatedAt: true,
       },
     });
-    return c.json(users);
+
+    const sanitized = users.map(u => {
+      const raw = [
+        ...(Array.isArray(u.accessibleBrands) ? u.accessibleBrands : []),
+        ...(u.brandName ? [u.brandName] : []),
+      ];
+      const brands = Array.from(new Set(
+        raw
+          .flatMap(b => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+          .map(b => b.trim().toUpperCase())
+          .filter(b => b && b !== 'UNASSIGNED')
+      ));
+      return {
+        ...u,
+        accessibleBrands: brands.length > 0 ? brands : (u.accessibleBrands || []),
+        brandName: brands[0] || u.brandName,
+      };
+    });
+
+    return c.json(sanitized);
   } catch (err: any) {
     return c.json({ error: 'Gagal mengambil data pengguna: ' + err?.message }, 500);
   }
@@ -330,6 +420,10 @@ authRoutes.post('/users', authMiddleware, adminOnly, async (c) => {
       },
     });
 
+    if (accessible.length > 0) {
+      await ensureBrandsExist(accessible, body.name.trim(), body.phone?.trim() || null);
+    }
+
     return c.json({ success: true, message: 'Pengguna berhasil dibuat.', user }, 201);
   } catch (err: any) {
     return c.json({ error: 'Gagal membuat pengguna: ' + err?.message }, 500);
@@ -365,10 +459,23 @@ authRoutes.put('/users/:id', authMiddleware, adminOnly, async (c) => {
     if (body.status !== undefined) updateData.status = (body.status === 'SUSPENDED' ? 'REJECTED' : body.status) as any;
 
     if (body.accessibleBrands !== undefined) {
-      updateData.accessibleBrands = body.accessibleBrands.map(b => b.trim().toUpperCase());
+      updateData.accessibleBrands = Array.from(new Set(
+        body.accessibleBrands
+          .flatMap(b => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+          .map(b => b.trim().toUpperCase())
+          .filter(b => b && b !== 'UNASSIGNED')
+      ));
     }
     if (body.brandName !== undefined) {
-      updateData.brandName = body.brandName ? body.brandName.trim().toUpperCase() : null;
+      const parts = body.brandName ? body.brandName.split(/[,;\n]+/).map(b => b.trim().toUpperCase()).filter(Boolean) : [];
+      updateData.brandName = parts[0] || null;
+      if (parts.length > 0 && updateData.accessibleBrands) {
+        for (const p of parts) {
+          if (!updateData.accessibleBrands.includes(p)) {
+            updateData.accessibleBrands.push(p);
+          }
+        }
+      }
     }
 
     // Pastikan brandName tercakup dalam accessibleBrands jika brandName diset
@@ -391,6 +498,14 @@ authRoutes.put('/users/:id', authMiddleware, adminOnly, async (c) => {
         updatedAt: true,
       },
     });
+
+    const brandsToCheck = [
+      ...(updated.accessibleBrands || []),
+      ...(updated.brandName ? [updated.brandName] : []),
+    ];
+    if (brandsToCheck.length > 0) {
+      await ensureBrandsExist(brandsToCheck, updated.name, updated.phone);
+    }
 
     return c.json({ success: true, message: 'Data pengguna berhasil diperbarui.', user: updated });
   } catch (err: any) {

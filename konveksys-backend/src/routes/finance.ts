@@ -44,8 +44,18 @@ financeRoutes.get('/payroll/:vendorName', adminOnly, async (c) => {
 financeRoutes.get('/invoice/:brandName', async (c) => {
   const { brandName } = c.req.param();
   const user = c.get('user');
-  if (user.role === 'BRAND' && user.brandName !== brandName) {
-    return c.json({ error: 'Forbidden' }, 403);
+  if (user.role === 'BRAND') {
+    const allowed = [
+      ...(Array.isArray(user.accessibleBrands) ? user.accessibleBrands : []),
+      ...(user.brandName ? [user.brandName] : []),
+    ]
+      .flatMap((b: string) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+      .map((b: string) => b.trim().toUpperCase())
+      .filter(Boolean);
+
+    if (!allowed.includes(brandName.toUpperCase())) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
   }
   const hargaList = await prisma.hargaBuyer.findMany({ where: { brand: brandName } });
   const suratJalanList = await prisma.suratJalan.findMany({ where: { brand: brandName } });

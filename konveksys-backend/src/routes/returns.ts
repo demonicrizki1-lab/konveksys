@@ -8,7 +8,23 @@ returnRoutes.use('*', authMiddleware);
 // GET /api/returns - List all returns (filtered for BRAND)
 returnRoutes.get('/', async (c) => {
   const user = c.get('user');
-  const where = user.role === 'BRAND' ? { brand: user.brandName } : {};
+  const queryBrand = c.req.query('brand');
+
+  let where: any = {};
+  if (user.role === 'BRAND') {
+    const allowed = Array.isArray(user.accessibleBrands) && user.accessibleBrands.length > 0
+      ? user.accessibleBrands.map((b: string) => b.trim().toUpperCase())
+      : (user.brandName ? [user.brandName.trim().toUpperCase()] : []);
+
+    if (queryBrand && allowed.includes(queryBrand.toUpperCase())) {
+      where = { brand: queryBrand.toUpperCase() };
+    } else {
+      where = { brand: { in: allowed } };
+    }
+  } else if (queryBrand && queryBrand !== 'ALL') {
+    where = { brand: queryBrand.toUpperCase() };
+  }
+
   const list = await prisma.returnItem.findMany({
     where,
     include: {
@@ -26,7 +42,19 @@ returnRoutes.post('/', async (c) => {
   const body = await c.req.json();
 
   // If role is BRAND, enforce brandName
-  const brand = user.role === 'BRAND' ? user.brandName : body.brand;
+  let brand = body.brand ? String(body.brand).trim().toUpperCase() : undefined;
+  if (user.role === 'BRAND') {
+    const allowed = Array.isArray(user.accessibleBrands) && user.accessibleBrands.length > 0
+      ? user.accessibleBrands.map((b: string) => b.trim().toUpperCase())
+      : (user.brandName ? [user.brandName.trim().toUpperCase()] : []);
+    if (brand && allowed.includes(brand)) {
+      // valid
+    } else {
+      brand = user.brandName || allowed[0] || 'UNKNOWN';
+    }
+  } else {
+    brand = brand || 'UNKNOWN';
+  }
 
   const totalPcs =
     (body.qtyS || 0) +
