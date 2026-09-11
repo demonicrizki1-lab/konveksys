@@ -157,41 +157,42 @@ export const ArusKasView: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Total Tagihan</span>
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-              <Banknote className="w-4 h-4" />
+        {/* Total Tagihan */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Total Tagihan</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Banknote className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{formatRp(totalTagihanAll)}</div>
-          <div className="text-[11px] text-slate-500 mt-1">Akumulasi dari semua surat jalan</div>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">{formatRp(totalTagihanAll)}</div>
+          <p className="text-xs text-slate-400">Akumulasi dari semua surat jalan</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Sudah Terbayar</span>
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-              <CheckCircle2 className="w-4 h-4" />
+        {/* Sudah Terbayar */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Sudah Terbayar</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-600">{formatRp(totalTerbayarAll)}</div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            {filteredPembayaran.length} transaksi tercatat
-          </div>
+          <div className="text-2xl font-bold text-emerald-700 mt-0.5">{formatRp(totalTerbayarAll)}</div>
+          <p className="text-xs text-slate-400">{filteredPembayaran.length} transaksi tercatat</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-slate-500">Outstanding</span>
-            <div className={`p-2 rounded-lg ${totalOutstandingAll > 0 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-400'}`}>
-              <AlertTriangle className="w-4 h-4" />
+        {/* Outstanding */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Outstanding</span>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${totalOutstandingAll > 0 ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
+              <AlertTriangle className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className={`text-2xl font-bold ${totalOutstandingAll > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+          <div className={`text-2xl font-bold mt-0.5 ${totalOutstandingAll > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
             {formatRp(totalOutstandingAll)}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Belum dilunasi</div>
+          <p className="text-xs text-slate-400">Sisa tagihan belum dilunasi</p>
         </div>
       </div>
 

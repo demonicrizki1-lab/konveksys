@@ -446,26 +446,61 @@ export const UserManagementView: React.FC = () => {
         </div>
 
         {/* Quick KPI Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <span className="text-[11px] font-medium text-slate-500">Total Akun Pengguna</span>
-            <div className="text-xl font-bold text-slate-900 mt-0.5">{(managedUsers || []).length} Akun</div>
-          </div>
-          <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-            <span className="text-[11px] font-medium text-emerald-700">User Brand Aktif</span>
-            <div className="text-xl font-bold text-emerald-700 mt-0.5">
-              {(managedUsers || []).filter(u => u.role === 'BRAND' && u.status === 'ACTIVE').length} User
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-3 border-t border-slate-100">
+          {/* Card 1: Total Akun Pengguna */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Total Akun Pengguna</span>
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Users className="w-4.5 h-4.5" />
+              </div>
             </div>
-          </div>
-          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-            <span className="text-[11px] font-medium text-indigo-700">Brand Terdaftar</span>
-            <div className="text-xl font-bold text-indigo-700 mt-0.5">{(brands || []).length} Brand</div>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
-            <span className="text-[11px] font-medium text-purple-700">Administrator</span>
-            <div className="text-xl font-bold text-purple-700 mt-0.5">
-              {(managedUsers || []).filter(u => u.role === 'ADMIN').length} Admin
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {(managedUsers || []).length} <span className="text-sm font-semibold text-slate-500">Akun</span>
             </div>
+            <p className="text-xs text-slate-400">Total akun di sistem</p>
+          </div>
+
+          {/* Card 2: User Brand Aktif */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">User Brand Aktif</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <UserCheck className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {(managedUsers || []).filter(u => u.role === 'BRAND' && u.status === 'ACTIVE').length} <span className="text-sm font-semibold text-slate-500">User</span>
+            </div>
+            <p className="text-xs text-slate-400">Status login aktif</p>
+          </div>
+
+          {/* Card 3: Brand Terdaftar */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Brand Terdaftar</span>
+              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                <Building2 className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {(brands || []).length} <span className="text-sm font-semibold text-slate-500">Brand</span>
+            </div>
+            <p className="text-xs text-slate-400">Mitra brand konveksi</p>
+          </div>
+
+          {/* Card 4: Administrator */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Administrator</span>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <ShieldCheck className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {(managedUsers || []).filter(u => u.role === 'ADMIN').length} <span className="text-sm font-semibold text-slate-500">Admin</span>
+            </div>
+            <p className="text-xs text-slate-400">Hak akses operasional penuh</p>
           </div>
         </div>
       </div>

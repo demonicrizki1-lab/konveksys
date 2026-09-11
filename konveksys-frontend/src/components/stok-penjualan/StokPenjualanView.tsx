@@ -690,33 +690,57 @@ export const StokPenjualanView: React.FC = () => {
         </div>
 
         {/* Quick KPI Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <span className="text-[11px] font-medium text-slate-500">Total Model SKU</span>
-            <div className="text-xl font-bold text-slate-900 mt-0.5">{summaryMetrics.totalSKU} SKU</div>
-            <span className="text-[10px] text-slate-400 mt-0.5 block">Terdaftar dalam database</span>
-          </div>
-
-          <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-            <span className="text-[11px] font-medium text-emerald-700">Stok Fisik Ready</span>
-            <div className="text-xl font-bold text-emerald-700 mt-0.5">{summaryMetrics.totalQtyReady.toLocaleString('id-ID')} Pcs</div>
-            <span className="text-[10px] text-emerald-600 mt-0.5 block">Siap dikirim ke pembeli</span>
-          </div>
-
-          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-            <span className="text-[11px] font-medium text-indigo-700">Nilai Aset Inventory</span>
-            <div className="text-xl font-bold text-indigo-700 mt-0.5">{formatRp(summaryMetrics.totalNilaiInventory)}</div>
-            <span className="text-[10px] text-indigo-600 mt-0.5 block">Berdasarkan HPP produk</span>
-          </div>
-
-          <div className={`p-4 rounded-xl border ${summaryMetrics.totalCriticalSKUs > 0 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`}>
-            <span className={`text-[11px] font-medium ${summaryMetrics.totalCriticalSKUs > 0 ? 'text-rose-700' : 'text-slate-500'}`}>
-              🔴 SKU Habis / Kritis
-            </span>
-            <div className={`text-xl font-bold mt-0.5 ${summaryMetrics.totalCriticalSKUs > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
-              {summaryMetrics.totalCriticalSKUs} SKU
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-3 border-t border-slate-100">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Total Model SKU</span>
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Layers className="w-4.5 h-4.5" />
+              </div>
             </div>
-            <span className="text-[10px] text-slate-400 mt-0.5 block">Perlu repeat order potong baru</span>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {summaryMetrics.totalSKU} <span className="text-sm font-semibold text-slate-500">SKU</span>
+            </div>
+            <p className="text-xs text-slate-400">Terdaftar dalam database</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Stok Fisik Ready</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {summaryMetrics.totalQtyReady.toLocaleString('id-ID')} <span className="text-sm font-semibold text-slate-500">Pcs</span>
+            </div>
+            <p className="text-xs text-slate-400">Siap dikirim ke pembeli</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Nilai Aset Inventory</span>
+              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                <DollarSign className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {formatRp(summaryMetrics.totalNilaiInventory)}
+            </div>
+            <p className="text-xs text-slate-400">Berdasarkan HPP produk</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">SKU Habis / Kritis</span>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${summaryMetrics.totalCriticalSKUs > 0 ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
+                <AlertTriangle className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className={`text-2xl font-bold mt-0.5 ${summaryMetrics.totalCriticalSKUs > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
+              {summaryMetrics.totalCriticalSKUs} <span className="text-sm font-semibold text-slate-500">SKU</span>
+            </div>
+            <p className="text-xs text-slate-400">Perlu repeat order potong baru</p>
           </div>
         </div>
       </div>
@@ -1025,23 +1049,40 @@ export const StokPenjualanView: React.FC = () => {
       {activeTab === 'penjualan' && (
         <div className="space-y-4">
           {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <div className="text-xs text-slate-500 font-medium">Total Omset Penjualan</div>
-              <div className="text-xl font-bold text-slate-900 mt-0.5">{formatRp(summaryMetrics.totalOmset)}</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Akumulasi penjualan marketplace</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Total Omset Penjualan</span>
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <DollarSign className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">{formatRp(summaryMetrics.totalOmset)}</div>
+              <p className="text-xs text-slate-400">Akumulasi penjualan marketplace</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <div className="text-xs text-slate-500 font-medium">Total Terjual (Pcs)</div>
-              <div className="text-xl font-bold text-indigo-700 mt-0.5">{summaryMetrics.totalPcsTerjual.toLocaleString('id-ID')} Pcs</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Produk berhasil terkirim ke customer</div>
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Total Terjual</span>
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <ShoppingBag className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                {summaryMetrics.totalPcsTerjual.toLocaleString('id-ID')} <span className="text-sm font-semibold text-slate-500">Pcs</span>
+              </div>
+              <p className="text-xs text-slate-400">Produk berhasil terkirim ke customer</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <div className="text-xs text-emerald-700 font-medium">Estimasi Profit Bersih Toko</div>
-              <div className="text-xl font-bold text-emerald-700 mt-0.5">{formatRp(summaryMetrics.totalProfit)}</div>
-              <div className="text-[10px] text-emerald-600 mt-0.5">Setelah dikurangi HPP, Ads, & Packing</div>
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Estimasi Profit Bersih Toko</span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <TrendingUp className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-emerald-700 mt-0.5">{formatRp(summaryMetrics.totalProfit)}</div>
+              <p className="text-xs text-slate-400">Setelah dikurangi HPP, Ads, & Packing</p>
             </div>
           </div>
 

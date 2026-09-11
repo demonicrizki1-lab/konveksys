@@ -405,58 +405,58 @@ export const BarangMasukView: React.FC = () => {
         {/* Card 1: Total Pcs Masuk */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-slate-500">Total Barang Masuk</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Inbox className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Total Barang Masuk</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Inbox className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-xl font-bold text-slate-900 mt-0.5">
-            {grandTotalPcs} <span className="text-xs font-semibold text-slate-500">Pcs</span>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {grandTotalPcs} <span className="text-sm font-semibold text-slate-500">Pcs</span>
           </div>
-          <p className="text-[10px] text-slate-400">Akumulasi barang jadi yang diterima</p>
+          <p className="text-xs text-slate-400">Akumulasi barang jadi yang diterima</p>
         </div>
 
         {/* Card 2: Varian Model */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-slate-500">Varian Model / Artikel</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Layers className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Varian Model / Artikel</span>
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Layers className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-xl font-bold text-slate-900 mt-0.5">
-            {articleSummaries.length} <span className="text-xs font-semibold text-slate-500">Artikel</span>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {articleSummaries.length} <span className="text-sm font-semibold text-slate-500">Artikel</span>
           </div>
-          <p className="text-[10px] text-slate-400">Jenis pakaian yang telah masuk</p>
+          <p className="text-xs text-slate-400">Jenis pakaian yang telah masuk</p>
         </div>
 
         {/* Card 3: Frekuensi Pengiriman */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-slate-500">Frekuensi Pengiriman</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Truck className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Frekuensi Pengiriman</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Truck className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-xl font-bold text-slate-900 mt-0.5">
-            {filteredSJs.length} <span className="text-xs font-semibold text-slate-500">Surat Jalan</span>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {filteredSJs.length} <span className="text-sm font-semibold text-slate-500">Surat Jalan</span>
           </div>
-          <p className="text-[10px] text-slate-400">Dokumen pengiriman tercatat</p>
+          <p className="text-xs text-slate-400">Dokumen pengiriman tercatat</p>
         </div>
 
         {/* Card 4: Progress Pemenuhan */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-slate-500">Status Pemenuhan SPK</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <PackageCheck className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Status Pemenuhan SPK</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <PackageCheck className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-xl font-bold text-slate-900 mt-0.5">
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
             {linkedSPKs.filter((s) => s.progressPct >= 100).length} / {linkedSPKs.length}{' '}
-            <span className="text-xs font-semibold text-slate-500">Selesai</span>
+            <span className="text-sm font-semibold text-slate-500">Selesai</span>
           </div>
-          <p className="text-[10px] text-slate-400">
+          <p className="text-xs text-slate-400">
             {linkedSPKs.filter((s) => s.progressPct < 100).length} batch SPK sedang diproses
           </p>
         </div>

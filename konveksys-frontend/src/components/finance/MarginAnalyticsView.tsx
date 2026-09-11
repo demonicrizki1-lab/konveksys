@@ -419,63 +419,53 @@ export const MarginAnalyticsView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Total Revenue */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Omzet Buyer</span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-              <DollarSign className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Total Omzet Buyer</span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <DollarSign className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-xl font-bold text-slate-900 mt-2">{formatRp(kpi.totalRevenue)}</div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-            <Package className="w-3 h-3 text-slate-400" />
-            <span>Volume: <strong>{kpi.totalPcs} Pcs</strong> barang kirim</span>
-          </div>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-xl pointer-events-none" />
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">{formatRp(kpi.totalRevenue)}</div>
+          <p className="text-xs text-slate-400">Volume: {kpi.totalPcs.toLocaleString('id-ID')} Pcs barang kirim</p>
         </div>
 
         {/* Card 2: Total Cost */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Beban Jahit (CMT)</span>
-            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-              <Coins className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Beban Jahit (CMT)</span>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <Coins className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-xl font-bold text-rose-600 mt-2">{formatRp(kpi.totalCost)}</div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            Upah langsung ke mitra penjahit
-          </div>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-xl pointer-events-none" />
+          <div className="text-2xl font-bold text-rose-700 mt-0.5">{formatRp(kpi.totalCost)}</div>
+          <p className="text-xs text-slate-400">Upah langsung ke mitra penjahit</p>
         </div>
 
         {/* Card 3: Gross Profit */}
-        <div className="bg-white rounded-xl p-5 border border-emerald-200 bg-gradient-to-br from-white to-emerald-50/40 shadow-sm relative overflow-hidden">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Laba Bersih Workshop</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Laba Bersih Workshop</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <TrendingUp className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-xl font-bold text-emerald-700 mt-2">{formatRp(kpi.grossProfit)}</div>
-          <div className="text-[11px] text-emerald-600 font-semibold mt-1">
-            Omzet dikurangi ongkos jahit
-          </div>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
+          <div className="text-2xl font-bold text-emerald-700 mt-0.5">{formatRp(kpi.grossProfit)}</div>
+          <p className="text-xs text-slate-400">Omzet dikurangi ongkos jahit</p>
         </div>
 
         {/* Card 4: Profit Margin % */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rata-rata Margin</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Percent className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Rata-rata Margin</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Percent className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <div className="text-xl font-bold text-indigo-700">{kpi.avgMargin.toFixed(1)}%</div>
+          <div className="flex items-baseline gap-2 mt-0.5">
+            <div className="text-2xl font-bold text-indigo-700">{kpi.avgMargin.toFixed(1)}%</div>
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                 kpi.avgMargin >= 30
                   ? 'bg-emerald-100 text-emerald-800'
                   : kpi.avgMargin >= 15
@@ -488,16 +478,19 @@ export const MarginAnalyticsView: React.FC = () => {
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2.5 overflow-hidden">
+          <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                kpi.avgMargin >= 30 ? 'bg-emerald-500' : kpi.avgMargin >= 15 ? 'bg-amber-500' : 'bg-rose-500'
+                kpi.avgMargin >= 30
+                  ? 'bg-emerald-500'
+                  : kpi.avgMargin >= 15
+                  ? 'bg-amber-500'
+                  : 'bg-rose-500'
               }`}
               style={{ width: `${Math.min(100, Math.max(0, kpi.avgMargin))}%` }}
             />
           </div>
         </div>
-
       </div>
 
       {/* 3. Top Insights: Top Products & Brand Contribution (2 Column Cards) */}

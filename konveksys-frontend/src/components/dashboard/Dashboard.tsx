@@ -7,8 +7,7 @@ import {
   DollarSign,
   CheckCircle2,
   RotateCcw,
-  Wrench,
-  AlertCircle,
+  TrendingUp,
 } from 'lucide-react';
 import { formatDateIndo } from '../../utils/formatters';
 
@@ -138,35 +137,39 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
         {/* Stok Kain */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-base">
-          <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-medium text-slate-500">Stok Kain</span>
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-              <Package className="w-4 h-4" />
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Stok Kain</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Package className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{totalMetersInStock.toLocaleString('id-ID')} m</div>
-          <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {totalMetersInStock.toLocaleString('id-ID')} <span className="text-sm font-semibold text-slate-500">m</span>
+          </div>
+          <div className="text-xs text-slate-400 flex items-center justify-between">
             <span>{filteredRolls.filter(r => r.status === 'DI_GUDANG').length} Rol Ready</span>
-            <button onClick={() => setActiveTab('inbound')} className="text-indigo-600 font-medium hover:underline">
+            <button onClick={() => setActiveTab('inbound')} className="text-indigo-600 font-bold hover:underline cursor-pointer">
               Detail →
             </button>
           </div>
         </div>
 
         {/* SPK Aktif */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-base">
-          <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-medium text-slate-500">SPK Cutting Aktif</span>
-            <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
-              <Scissors className="w-4 h-4" />
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">SPK Cutting Aktif</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Scissors className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{filteredSPK.filter(s => s.status !== 'COMPLETED').length} SPK</div>
-          <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {filteredSPK.filter(s => s.status !== 'COMPLETED').length} <span className="text-sm font-semibold text-slate-500">SPK</span>
+          </div>
+          <div className="text-xs text-slate-400 flex items-center justify-between">
             <span>{filteredSPK.filter(s => s.status === 'COMPLETED').length} Selesai</span>
             {userRole === 'ADMIN' && (
-              <button onClick={() => setActiveTab('spk')} className="text-indigo-600 font-medium hover:underline">
+              <button onClick={() => setActiveTab('spk')} className="text-indigo-600 font-bold hover:underline cursor-pointer">
                 Kelola →
               </button>
             )}
@@ -174,36 +177,38 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Pcs Terkirim */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-base">
-          <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-medium text-slate-500">Pcs Terkirim</span>
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-              <Truck className="w-4 h-4" />
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Pcs Terkirim</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Truck className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{totalPcsDelivered.toLocaleString('id-ID')} Pcs</div>
-          <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {totalPcsDelivered.toLocaleString('id-ID')} <span className="text-sm font-semibold text-slate-500">Pcs</span>
+          </div>
+          <div className="text-xs text-slate-400 flex items-center justify-between">
             <span>{filteredSJ.length} Surat Jalan</span>
-            <button onClick={() => setActiveTab('outbound')} className="text-indigo-600 font-medium hover:underline">
+            <button onClick={() => setActiveTab('outbound')} className="text-indigo-600 font-bold hover:underline cursor-pointer">
               Riwayat →
             </button>
           </div>
         </div>
 
         {/* Estimasi Invoice */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-base">
-          <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-medium text-slate-500">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">
               {userRole === 'ADMIN' ? 'Estimasi Invoice' : 'Total Tagihan'}
             </span>
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-              <DollarSign className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <DollarSign className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-indigo-600">{formatRp(totalBuyerBilling)}</div>
-          <div className="text-xs text-slate-500 mt-1 flex items-center justify-between">
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">{formatRp(totalBuyerBilling)}</div>
+          <div className="text-xs text-slate-400 flex items-center justify-between">
             <span>Auto Pricing</span>
-            <button onClick={() => setActiveTab('finance')} className="text-indigo-600 font-medium hover:underline">
+            <button onClick={() => setActiveTab('finance')} className="text-indigo-600 font-bold hover:underline cursor-pointer">
               Cetak →
             </button>
           </div>
@@ -221,33 +226,48 @@ export const Dashboard: React.FC = () => {
             </div>
             <button
               onClick={() => setActiveTab('finance')}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold transition-base btn-press shrink-0"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold transition-base btn-press shrink-0 cursor-pointer"
             >
               Buka Finance →
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
-            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl">
-              <div className="text-xs font-medium text-emerald-700 mb-1">Tagihan ke Brand (Pendapatan)</div>
-              <div className="text-xl font-bold text-emerald-700">{formatRp(totalBuyerBilling)}</div>
-              <div className="text-[11px] text-emerald-600 mt-1">Tarif multi-size per surat jalan</div>
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Tagihan ke Brand (Pendapatan)</span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <DollarSign className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-emerald-700 mt-0.5">{formatRp(totalBuyerBilling)}</div>
+              <p className="text-xs text-slate-400">Tarif multi-size per surat jalan</p>
             </div>
 
-            <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl">
-              <div className="text-xs font-medium text-rose-700 mb-1">Ongkos Jahit Vendor (Beban)</div>
-              <div className="text-xl font-bold text-rose-700">{formatRp(totalVendorExpense)}</div>
-              <div className="text-[11px] text-rose-600 mt-1">Tarif vendor + produk + brand</div>
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Ongkos Jahit Vendor (Beban)</span>
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <Scissors className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-rose-700 mt-0.5">{formatRp(totalVendorExpense)}</div>
+              <p className="text-xs text-slate-400">Tarif vendor + produk + brand</p>
             </div>
 
-            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl">
-              <div className="text-xs font-medium text-indigo-700 mb-1">Estimasi Gross Margin</div>
-              <div className="text-xl font-bold text-indigo-700">
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Estimasi Gross Margin</span>
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <TrendingUp className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-indigo-700 mt-0.5">
                 {formatRp(Math.max(0, totalBuyerBilling - totalVendorExpense))}
               </div>
-              <div className="text-[11px] text-indigo-600 mt-1">
+              <p className="text-xs text-slate-400">
                 Kasbon aktif: <strong className="text-slate-700">{formatRp(totalActiveKasbon)}</strong>
-              </div>
+              </p>
             </div>
           </div>
         </div>

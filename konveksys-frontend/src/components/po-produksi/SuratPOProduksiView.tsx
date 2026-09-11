@@ -420,31 +420,61 @@ export const SuratPOProduksiView: React.FC = () => {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Surat PO</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1">{metrics.totalPO} Dokumen</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Tersimpan di database</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider">Total Target Pcs</div>
-          <div className="text-2xl font-bold text-indigo-700 mt-1">
-            {metrics.totalPcs.toLocaleString('id-ID')} Pcs
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Surat PO */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Total Surat PO</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <FileText className="w-4.5 h-4.5" />
+            </div>
           </div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Akumulasi seluruh PO produksi</div>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {metrics.totalPO} <span className="text-sm font-semibold text-slate-500">Dokumen</span>
+          </div>
+          <p className="text-xs text-slate-400">Tersimpan di database</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider">PO Dalam Proses</div>
-          <div className="text-2xl font-bold text-amber-700 mt-1">{metrics.aktifPO} PO</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Sedang dikerjakan penjahit</div>
+        {/* Card 2: Total Target Pcs */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Total Target Pcs</span>
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Layers className="w-4.5 h-4.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {metrics.totalPcs.toLocaleString('id-ID')} <span className="text-sm font-semibold text-slate-500">Pcs</span>
+          </div>
+          <p className="text-xs text-slate-400">Akumulasi seluruh PO produksi</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">PO Selesai</div>
-          <div className="text-2xl font-bold text-emerald-700 mt-1">{metrics.selesaiPO} PO</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Produksi selesai 100%</div>
+        {/* Card 3: PO Dalam Proses */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">PO Dalam Proses</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="w-4.5 h-4.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {metrics.aktifPO} <span className="text-sm font-semibold text-slate-500">PO</span>
+          </div>
+          <p className="text-xs text-slate-400">Sedang dikerjakan penjahit</p>
+        </div>
+
+        {/* Card 4: PO Selesai */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">PO Selesai</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-4.5 h-4.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {metrics.selesaiPO} <span className="text-sm font-semibold text-slate-500">PO</span>
+          </div>
+          <p className="text-xs text-slate-400">Produksi selesai 100%</p>
         </div>
       </div>
 

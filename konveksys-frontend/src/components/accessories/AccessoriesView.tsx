@@ -281,29 +281,61 @@ export const AccessoriesView: React.FC = () => {
         </div>
 
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200">
-            <span className="text-[11px] font-medium text-slate-500">Total Material</span>
-            <div className="text-xl font-bold text-slate-900 mt-0.5">{kpi.totalSku} SKU</div>
-            <span className="text-[10px] text-slate-400">Nilai: {formatRp(kpi.totalStockValue)}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+          {/* Card 1: Total Material */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Total Material</span>
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Archive className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {kpi.totalSku} <span className="text-sm font-semibold text-slate-500">SKU</span>
+            </div>
+            <p className="text-xs text-slate-400">Nilai: {formatRp(kpi.totalStockValue)}</p>
           </div>
 
-          <div className="bg-emerald-50 p-3.5 rounded-lg border border-emerald-100">
-            <span className="text-[11px] font-medium text-emerald-700">Stok Aman</span>
-            <div className="text-xl font-bold text-emerald-700 mt-0.5">{kpi.safeCount} Item</div>
-            <span className="text-[10px] text-emerald-600">Di atas safety stock</span>
+          {/* Card 2: Stok Aman */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Stok Aman</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-emerald-700 mt-0.5">
+              {kpi.safeCount} <span className="text-sm font-semibold text-slate-500">Item</span>
+            </div>
+            <p className="text-xs text-slate-400">Di atas batas safety stock</p>
           </div>
 
-          <div className="bg-amber-50 p-3.5 rounded-lg border border-amber-100">
-            <span className="text-[11px] font-medium text-amber-700">Stok Menipis</span>
-            <div className="text-xl font-bold text-amber-700 mt-0.5">{kpi.lowCount} Item</div>
-            <span className="text-[10px] text-amber-600">Perlu restock segera</span>
+          {/* Card 3: Stok Menipis */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Stok Menipis</span>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <AlertTriangle className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-amber-700 mt-0.5">
+              {kpi.lowCount} <span className="text-sm font-semibold text-slate-500">Item</span>
+            </div>
+            <p className="text-xs text-slate-400">Perlu restock segera</p>
           </div>
 
-          <div className="bg-rose-50 p-3.5 rounded-lg border border-rose-100">
-            <span className="text-[11px] font-medium text-rose-700">Stok Kosong</span>
-            <div className="text-xl font-bold text-rose-700 mt-0.5">{kpi.emptyCount} Item</div>
-            <span className="text-[10px] text-rose-600">Stok habis (0)</span>
+          {/* Card 4: Stok Kosong */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Stok Kosong</span>
+              <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <XCircle className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-rose-700 mt-0.5">
+              {kpi.emptyCount} <span className="text-sm font-semibold text-slate-500">Item</span>
+            </div>
+            <p className="text-xs text-slate-400">Stok material habis (0)</p>
           </div>
         </div>
 

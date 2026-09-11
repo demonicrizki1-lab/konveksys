@@ -340,49 +340,61 @@ export const ReturnView: React.FC = () => {
       </div>
 
       {/* 2. KPI Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Retur */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-slate-100 text-slate-700 shrink-0">
-            <ClipboardList className="w-5 h-5" />
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Total Tiket Retur</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <ClipboardList className="w-4.5 h-4.5" />
+            </div>
           </div>
-          <div className="min-w-0">
-            <span className="text-[11px] font-semibold text-slate-400 block">Total Tiket Retur</span>
-            <span className="text-lg font-bold text-slate-900">{kpiTotal} Dokumen</span>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {kpiTotal} <span className="text-sm font-semibold text-slate-500">Dokumen</span>
           </div>
+          <p className="text-xs text-slate-400">Total laporan klaim cacat produksi</p>
         </div>
 
         {/* Dalam Perbaikan di Vendor */}
-        <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs flex items-center gap-3.5 bg-amber-50/30">
-          <div className="p-3 rounded-xl bg-amber-100 text-amber-700 shrink-0">
-            <Wrench className="w-5 h-5" />
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Sedang di Vendor</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Wrench className="w-4.5 h-4.5" />
+            </div>
           </div>
-          <div className="min-w-0">
-            <span className="text-[11px] font-semibold text-amber-800/70 block">Sedang di Vendor</span>
-            <span className="text-lg font-bold text-amber-900">{kpiInVendor} Dalam Rework</span>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {kpiInVendor} <span className="text-sm font-semibold text-slate-500">Dalam Rework</span>
           </div>
+          <p className="text-xs text-slate-400">Pakaian dalam proses perbaikan penjahit</p>
         </div>
 
         {/* Selesai Diperbaiki (Lolos QC) */}
-        <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-xs flex items-center gap-3.5 bg-emerald-50/30">
-          <div className="p-3 rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Selesai Diperbaiki</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-4.5 h-4.5" />
+            </div>
           </div>
-          <div className="min-w-0">
-            <span className="text-[11px] font-semibold text-emerald-800/70 block">Selesai Diperbaiki</span>
-            <span className="text-lg font-bold text-emerald-900">{kpiReworkDone} Lolos QC</span>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {kpiReworkDone} <span className="text-sm font-semibold text-slate-500">Lolos QC</span>
           </div>
+          <p className="text-xs text-slate-400">Berhasil diperbaiki & siap dikirim kembali</p>
         </div>
 
         {/* Reject Total / BS */}
-        <div className="bg-white p-4 rounded-2xl border border-rose-200 shadow-xs flex items-center gap-3.5 bg-rose-50/30">
-          <div className="p-3 rounded-xl bg-rose-100 text-rose-700 shrink-0">
-            <XCircle className="w-5 h-5" />
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Reject Total (BS)</span>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <XCircle className="w-4.5 h-4.5" />
+            </div>
           </div>
-          <div className="min-w-0">
-            <span className="text-[11px] font-semibold text-rose-800/70 block">Reject Total (BS)</span>
-            <span className="text-lg font-bold text-rose-900">{kpiRejectTotal} Rusak Permanen</span>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {kpiRejectTotal} <span className="text-sm font-semibold text-slate-500">Rusak Permanen</span>
           </div>
+          <p className="text-xs text-slate-400">Cacat kain/potong tidak bisa diperbaiki</p>
         </div>
       </div>
 

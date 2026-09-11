@@ -15,6 +15,7 @@ import {
   Layers,
   Sparkles,
   Trash2,
+  Banknote,
 } from 'lucide-react';
 
 export const InboundView: React.FC = () => {
@@ -226,25 +227,47 @@ export const InboundView: React.FC = () => {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <span className="text-[11px] font-medium text-slate-500">Total Rol Kain</span>
-            <div className="text-xl font-bold text-slate-900 mt-0.5">{filteredRolls.length} Rol</div>
-            <span className="text-[10px] text-slate-400">Akumulasi: {totalMeters.toLocaleString('id-ID')} m</span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          {/* Card 1: Total Rol Kain */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Total Rol Kain</span>
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Layers className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {filteredRolls.length} <span className="text-sm font-semibold text-slate-500">Rol</span>
+            </div>
+            <p className="text-xs text-slate-400">Akumulasi: {totalMeters.toLocaleString('id-ID')} m</p>
           </div>
 
-          <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
-            <span className="text-[11px] font-medium text-emerald-700">Stok Siap Potong</span>
-            <div className="text-xl font-bold text-emerald-700 mt-0.5">{totalStockMeters.toLocaleString('id-ID')} m</div>
-            <span className="text-[10px] text-emerald-600">
-              {filteredRolls.filter((r) => r.status === 'DI_GUDANG').length} Rol di gudang
-            </span>
+          {/* Card 2: Stok Siap Potong */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Stok Siap Potong</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Scissors className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {totalStockMeters.toLocaleString('id-ID')} <span className="text-sm font-semibold text-slate-500">m</span>
+            </div>
+            <p className="text-xs text-slate-400">
+              {filteredRolls.filter((r) => r.status === 'DI_GUDANG').length} Rol ready di gudang
+            </p>
           </div>
 
-          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-            <span className="text-[11px] font-medium text-indigo-700">Nilai Kain</span>
-            <div className="text-xl font-bold text-indigo-700 mt-0.5">{formatRp(totalAssetValue)}</div>
-            <span className="text-[10px] text-indigo-600">Berdasarkan harga modal meter</span>
+          {/* Card 3: Nilai Kain */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">Nilai Aset Kain</span>
+              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                <Banknote className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">{formatRp(totalAssetValue)}</div>
+            <p className="text-xs text-slate-400">Berdasarkan harga modal meter</p>
           </div>
         </div>
 
