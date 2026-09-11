@@ -72,28 +72,28 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
       <div className="w-full flex justify-center pb-12">
         <div
           ref={paperRef}
-          className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-sm p-8 sm:p-12 text-slate-900 border border-slate-300 font-sans text-xs print:shadow-none print:border-none print:p-6"
+          className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-sm p-6 sm:p-10 text-slate-900 border border-slate-300 font-sans text-xs print:shadow-none print:border-none print:p-4"
           style={{ boxSizing: 'border-box' }}
         >
           {/* Header Kop Surat Formal */}
-          <div className="border-b-2 border-slate-900 pb-3 mb-4">
-            <div className="flex items-start justify-between gap-4">
+          <div className="border-b-2 border-slate-900 pb-2 mb-2.5">
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 pr-2">
-                <h1 className="text-xl font-black tracking-wider text-slate-900 uppercase">
+                <h1 className="text-lg font-black tracking-wider text-slate-900 uppercase leading-none">
                   MAISON RAYYAN MANUFACTURING
                 </h1>
-                <p className="text-[11px] font-semibold text-slate-700 tracking-wide mt-0.5">
+                <p className="text-[10.5px] font-semibold text-slate-700 tracking-wide mt-1">
                   Konveksi & Makloon Garment Terpadu
                 </p>
-                <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">
+                <p className="text-[9.5px] text-slate-500 mt-0.5 leading-tight">
                   Jl. Industri Makloon No. 88, Bandung • Telp: 0821-2822-4328
                 </p>
               </div>
               <div className="text-right shrink-0">
-                <div className="inline-block px-3.5 py-1.5 border-2 border-slate-900 font-black text-xs uppercase tracking-wide rounded bg-slate-50 whitespace-nowrap">
+                <div className="inline-block px-3 py-1 border-2 border-slate-900 font-black text-[11px] uppercase tracking-wide rounded bg-slate-50 whitespace-nowrap">
                   SURAT PO PRODUKSI
                 </div>
-                <div className="text-[11px] font-mono font-bold text-slate-800 mt-1.5 whitespace-nowrap">
+                <div className="text-[10.5px] font-mono font-bold text-slate-800 mt-1 whitespace-nowrap">
                   No: {po.noPO}
                 </div>
               </div>
@@ -101,32 +101,32 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
           </div>
 
           {/* PO Metadata Grid */}
-          <div className="grid grid-cols-2 gap-4 p-2.5 bg-slate-50 rounded-lg border border-slate-200 mb-3.5">
-            <div className="space-y-1.5">
-              <div className="flex">
-                <span className="w-28 text-slate-500 text-[11px] font-medium">Brand Mitra:</span>
-                <span className="text-slate-900 font-bold uppercase text-[11px]">{po.brand}</span>
+          <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200 mb-2 text-[10.5px]">
+            <div className="space-y-1">
+              <div className="flex items-center">
+                <span className="w-26 text-slate-500 font-medium">Brand Mitra:</span>
+                <span className="text-slate-900 font-bold uppercase">{po.brand}</span>
               </div>
               <div className="flex items-center">
-                <span className="w-28 text-slate-500 text-[11px] font-medium">Vendor / Penjahit:</span>
+                <span className="w-26 text-slate-500 font-medium">Vendor / Penjahit:</span>
                 {po.vendorTujuan ? (
-                  <span className="text-slate-900 font-bold text-[11px]">{po.vendorTujuan}</span>
+                  <span className="text-slate-900 font-bold">{po.vendorTujuan}</span>
                 ) : (
-                  <span className="inline-block border-b-2 border-slate-400 min-w-[200px] h-4"></span>
+                  <span className="inline-block border-b border-slate-400 w-36 h-3.5"></span>
                 )}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex">
-                <span className="w-32 text-slate-500 text-[11px] font-medium">Tanggal Terbit:</span>
-                <span className="text-slate-800 font-semibold text-[11px]">
+            <div className="space-y-1">
+              <div className="flex items-center">
+                <span className="w-28 text-slate-500 font-medium">Tanggal Terbit:</span>
+                <span className="text-slate-800 font-semibold">
                   {po.tanggalPO ? formatDateIndo(String(po.tanggalPO).split('T')[0]) : '-'}
                 </span>
               </div>
-              <div className="flex">
-                <span className="w-32 text-slate-500 text-[11px] font-medium">Target Deadline:</span>
-                <span className="text-rose-700 font-bold text-[11px]">
+              <div className="flex items-center">
+                <span className="w-28 text-slate-500 font-medium">Target Deadline:</span>
+                <span className="text-rose-700 font-bold">
                   {po.targetDeadline ? formatDateIndo(String(po.targetDeadline).split('T')[0]) : '-'}
                 </span>
               </div>
@@ -135,80 +135,86 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
 
           {/* Instruction / Production Notes */}
           {po.catatan && (
-            <div className="mb-3.5 p-2.5 rounded-lg bg-amber-50/70 border border-amber-200">
-              <div className="text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-0.5">
-                Catatan & Spesifikasi Pengerjaan Khusus:
-              </div>
-              <div className="text-[11px] text-amber-900 leading-relaxed font-medium">
+            <div className="mb-2 p-1.5 px-2 rounded-lg bg-amber-50/70 border border-amber-200 text-[10px] leading-tight">
+              <span className="font-bold text-amber-900 uppercase tracking-wide mr-1.5">
+                Catatan:
+              </span>
+              <span className="text-amber-950 font-medium">
                 {po.catatan}
-              </div>
+              </span>
             </div>
           )}
 
           {/* Production Items Table */}
-          <div className="mb-4">
-            <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-2">
-              Daftar Artikel & Rincian Potong Jahit
-            </div>
-            <table className="w-full border-collapse text-center border border-slate-300">
-              {/* Header Kolom: Ditempatkan dalam tbody tersendiri agar hanya tampil di halaman pertama dan tidak diulang browser di halaman berikutnya */}
-              <tbody style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-                <tr className="bg-slate-100 text-slate-700 text-[10px] font-bold uppercase border-b border-slate-300" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-                  <th className="py-2 px-2.5 border-r border-slate-300 w-12 text-center">No.</th>
-                  <th className="py-2 px-2.5 border-r border-slate-300 text-center">Model / Nama Artikel</th>
-                  <th className="py-2 px-2.5 border-r border-slate-300 w-28 text-center">Warna</th>
-                  <th className="py-2 px-2.5 border-r border-slate-300 w-20 text-center">Size</th>
-                  <th className="py-2 px-2.5 border-r border-slate-300 text-center w-24">Qty (Pcs)</th>
-                  <th className="py-2 px-2.5 border-r border-slate-300 text-center">Bahan / Kain</th>
-                  <th className="py-2 px-2.5 text-center">Keterangan</th>
-                </tr>
-              </tbody>
-              <tbody className="divide-y divide-slate-200 text-slate-800 text-[11px]">
-                {po.items.map((item, idx) => (
-                  <tr key={item.id || idx} className="hover:bg-slate-50/60">
-                    <td className="py-2 px-2.5 border-r border-slate-300 text-center text-slate-500 font-mono">
-                      {idx + 1}
-                    </td>
-                    <td className="py-2 px-2.5 border-r border-slate-300 font-bold text-slate-900 text-center">
-                      {item.namaProduk}
-                    </td>
-                    <td className="py-2 px-2.5 border-r border-slate-300 text-slate-700 text-center">
-                      {item.warna || '-'}
-                    </td>
-                    <td className="py-2 px-2.5 border-r border-slate-300 text-center font-bold text-slate-800">
-                      {item.ukuran || '-'}
-                    </td>
-                    <td className="py-2 px-2.5 border-r border-slate-300 text-center font-mono font-bold text-indigo-700 text-xs">
-                      {Number(item.qty).toLocaleString('id-ID')}
-                    </td>
-                    <td className="py-2 px-2.5 border-r border-slate-300 text-slate-600 text-center">
-                      {item.bahanKain || '-'}
-                    </td>
-                    <td className="py-2 px-2.5 text-slate-500 text-[10px] italic text-center">
-                      {item.catatan || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              {/* Baris Total Keseluruhan: Diletakkan dalam tbody tersendiri (bukan tfoot browser default) agar hanya muncul SEKALI di akhir data pada halaman terakhir dan TIDAK berulang di setiap halaman */}
-              <tbody style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-                <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400 text-xs" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-                  <td colSpan={4} className="py-2 px-2.5 border-r border-slate-300 text-center uppercase tracking-wider">
-                    Total Keseluruhan Produksi
-                  </td>
-                  <td className="py-2 px-2.5 border-r border-slate-300 text-center font-mono text-sm text-indigo-900">
-                    {po.totalPcs.toLocaleString('id-ID')} Pcs
-                  </td>
-                  <td colSpan={2} className="py-2 px-2.5 text-center"></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {(() => {
+            const isCompact = po.items.length > 6;
+            const thPad = isCompact ? 'py-1 px-1.5 text-[9px]' : 'py-1.5 px-2 text-[10px]';
+            const tdPad = isCompact ? 'py-1 px-1.5 text-[10px]' : 'py-1.5 px-2 text-[11px]';
+
+            return (
+              <div className="mb-2">
+                <div className="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                  Daftar Artikel & Rincian Potong Jahit
+                </div>
+                <table className="w-full border-collapse text-center border border-slate-300">
+                  <tbody style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                    <tr className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-300" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                      <th className={`${thPad} border-r border-slate-300 w-10 text-center`}>No.</th>
+                      <th className={`${thPad} border-r border-slate-300 text-center`}>Model / Nama Artikel</th>
+                      <th className={`${thPad} border-r border-slate-300 w-24 text-center`}>Warna</th>
+                      <th className={`${thPad} border-r border-slate-300 w-16 text-center`}>Size</th>
+                      <th className={`${thPad} border-r border-slate-300 text-center w-20`}>Qty (Pcs)</th>
+                      <th className={`${thPad} border-r border-slate-300 text-center`}>Bahan / Kain</th>
+                      <th className={`${thPad} text-center`}>Keterangan</th>
+                    </tr>
+                  </tbody>
+                  <tbody className="divide-y divide-slate-200 text-slate-800">
+                    {po.items.map((item, idx) => (
+                      <tr key={item.id || idx} className="hover:bg-slate-50/60">
+                        <td className={`${tdPad} border-r border-slate-300 text-center text-slate-500 font-mono`}>
+                          {idx + 1}
+                        </td>
+                        <td className={`${tdPad} border-r border-slate-300 font-bold text-slate-900 text-center`}>
+                          {item.namaProduk}
+                        </td>
+                        <td className={`${tdPad} border-r border-slate-300 text-slate-700 text-center`}>
+                          {item.warna || '-'}
+                        </td>
+                        <td className={`${tdPad} border-r border-slate-300 text-center font-bold text-slate-800`}>
+                          {item.ukuran || '-'}
+                        </td>
+                        <td className={`${tdPad} border-r border-slate-300 text-center font-mono font-bold text-indigo-700`}>
+                          {Number(item.qty).toLocaleString('id-ID')}
+                        </td>
+                        <td className={`${tdPad} border-r border-slate-300 text-slate-600 text-center`}>
+                          {item.bahanKain || '-'}
+                        </td>
+                        <td className={`${tdPad} text-slate-500 text-[9.5px] italic text-center`}>
+                          {item.catatan || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tbody style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                    <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-400" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                      <td colSpan={4} className={`${tdPad} border-r border-slate-300 text-center uppercase tracking-wider text-[10.5px]`}>
+                        Total Keseluruhan Produksi
+                      </td>
+                      <td className={`${tdPad} border-r border-slate-300 text-center font-mono text-xs text-indigo-900`}>
+                        {po.totalPcs.toLocaleString('id-ID')} Pcs
+                      </td>
+                      <td colSpan={2} className={`${tdPad} text-center`}></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           {/* Standard Quality & SOP Clauses */}
-          <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50 text-[9.5px] text-slate-500 mb-5 space-y-1">
-            <div className="font-bold text-slate-700 uppercase">Ketentuan & Standar Jahit:</div>
-            <ul className="list-disc list-inside space-y-0.5">
+          <div className="border border-slate-200 rounded p-1.5 px-2 bg-slate-50/50 text-[8.5px] text-slate-500 mb-2.5 space-y-0.5">
+            <div className="font-bold text-slate-700 uppercase text-[9px]">Ketentuan & Standar Jahit:</div>
+            <ul className="list-disc list-inside space-y-0 text-[8px] leading-tight text-slate-600">
               <li>Pengerjaan wajib mengikuti sample approved dan spesifikasi ukuran standar brand pemesan.</li>
               <li>Hasil jahitan wajib bebas dari cacat kritis: jahitan loncat, benang sisa belum dibersihkan, kotoran minyak mesin, atau bolong.</li>
               <li>Barang selesai dikirim ke gudang pusat Maison Rayyan beserta Surat Jalan Pengembalian resmi.</li>
@@ -216,33 +222,37 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
           </div>
 
           {/* 3-Column Formal Signature Blocks */}
-          <div className="grid grid-cols-3 gap-6 pt-2 text-center" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+          <div className="grid grid-cols-3 gap-3 pt-1 text-center" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
             <div>
-              <div className="text-[10px] text-slate-500 mb-1">Dibuat Oleh:</div>
-              <div className="text-[11px] font-bold text-slate-800">Admin Produksi</div>
-              <div className="h-12 flex items-end justify-center">
-                <div className="w-32 border-b border-slate-400"></div>
+              <div className="text-[9px] text-slate-500 mb-0.5">Dibuat Oleh:</div>
+              <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">Admin Produksi</div>
+              <div className="h-8 flex items-end justify-center">
+                <div className="w-28 border-b border-slate-400"></div>
               </div>
-              <div className="text-[10px] text-slate-700 mt-1 font-mono font-medium">( Rizki Maulana )</div>
+              <div className="text-[9px] text-slate-700 mt-0.5 font-mono font-medium whitespace-nowrap">( Rizki Maulana )</div>
             </div>
 
             <div>
-              <div className="text-[10px] text-slate-500 mb-1">Disetujui:</div>
-              <div className="text-[11px] font-bold text-slate-800">Pimpinan / Kepala Workshop</div>
-              <div className="h-12 flex items-end justify-center">
-                <div className="w-32 border-b border-slate-400"></div>
+              <div className="text-[9px] text-slate-500 mb-0.5">Disetujui:</div>
+              <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">Pimpinan / Kepala Workshop</div>
+              <div className="h-8 flex items-end justify-center">
+                <div className="w-28 border-b border-slate-400"></div>
               </div>
-              <div className="text-[10px] text-slate-700 mt-1 font-mono font-medium">( Cecep Dayat )</div>
+              <div className="text-[9px] text-slate-700 mt-0.5 font-mono font-medium whitespace-nowrap">( Cecep Dayat )</div>
             </div>
 
             <div>
-              <div className="text-[10px] text-slate-500 mb-1">Diterima & Disanggupi:</div>
-              <div className="text-[11px] font-bold text-slate-800">Vendor / Penjahit Konveksi</div>
-              <div className="h-12 flex items-end justify-center">
-                <div className="w-32 border-b border-slate-400"></div>
+              <div className="text-[9px] text-slate-500 mb-0.5">Diterima & Disanggupi:</div>
+              <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">Vendor / Penjahit Konveksi</div>
+              <div className="h-8 flex items-end justify-center">
+                <div className="w-28 border-b border-slate-400"></div>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1 font-mono">
-                {po.vendorTujuan ? `( ${(po.vendorTujuan || '').slice(0, 24)} )` : '( ................................... )'}
+              <div className="text-[9px] text-slate-600 mt-0.5 font-mono whitespace-nowrap">
+                {po.vendorTujuan ? (
+                  <span>( {po.vendorTujuan.slice(0, 22)} )</span>
+                ) : (
+                  <span className="tracking-widest">( .................... )</span>
+                )}
               </div>
             </div>
           </div>

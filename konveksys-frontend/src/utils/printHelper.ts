@@ -33,8 +33,8 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
         <style>
           @page {
             size: A4 portrait;
-            /* Margin 0 menghilangkan tulisan tanggal/jam dan nama dokumen di paling atas kertas */
-            margin: 0;
+            /* Margin minimal menghilangkan tulisan header/footer browser tanpa membuang ruang kertas */
+            margin: 4mm 6mm;
           }
           * {
             box-sizing: border-box;
@@ -48,7 +48,7 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
             color: #0f172a !important;
           }
           body {
-            padding: 10mm 12mm !important;
+            padding: 2mm 4mm !important;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
           }
           .print-wrapper {
@@ -57,8 +57,8 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
             margin: 0 auto !important;
             background: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
-            border-radius: 12px !important;
-            padding: 20px 24px !important;
+            border-radius: 8px !important;
+            padding: 10px 14px !important;
           }
           table {
             width: 100% !important;
