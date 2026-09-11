@@ -240,7 +240,7 @@ export const OutboundView: React.FC = () => {
     setIsCreateModalOpen(true);
   };
 
-  // Change Brand in Modal
+  // Change Brand in Modal (Filter SPK yang ingin dimuat)
   const handleBrandChange = (brand: string) => {
     setSelectedBrand(brand);
     const availableSpks = spkList.filter((s) => s.brand === brand && s.status !== 'COMPLETED');
@@ -253,7 +253,7 @@ export const OutboundView: React.FC = () => {
       setSelectedSpkItemId('');
       setCustomJenisKain('');
     }
-    setDraftItems([]);
+    // PERBAIKAN: Jangan hapus draftItems! Pertahankan muatan yang sudah ditambahkan dari brand lain
     setQtySend(emptySizeBreakdown());
   };
 
@@ -274,7 +274,7 @@ export const OutboundView: React.FC = () => {
       spkId: currentSPK.id,
       spkNumber: currentSPK.spkNumber,
       spkItemId: selectedSpkItemId || undefined,
-      brand: selectedBrand,
+      brand: currentSPK.brand || selectedBrand,
       produk: selectedArticleName,
       vendor: selectedArticleVendor || currentSPK.vendor,
       jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
@@ -306,12 +306,17 @@ export const OutboundView: React.FC = () => {
   // Filtered Surat Jalan list for table
   const filteredSJ = suratJalanList.filter((sj) => {
     const effectiveBrand = userRole === 'BRAND' ? activeBrand : brandFilter;
-    const matchBrand = effectiveBrand === 'ALL' || sj.brand === effectiveBrand;
     const items = getSuratJalanItems(sj);
+    const matchBrand =
+      effectiveBrand === 'ALL' ||
+      sj.brand === effectiveBrand ||
+      sj.brand.split(',').map((b) => b.trim()).includes(effectiveBrand) ||
+      items.some((it) => it.brand === effectiveBrand);
     const searchLow = searchTerm.toLowerCase();
 
     const matchSearch =
       sj.noSuratJalan.toLowerCase().includes(searchLow) ||
+      (sj.brand && sj.brand.toLowerCase().includes(searchLow)) ||
       (sj.produk && sj.produk.toLowerCase().includes(searchLow)) ||
       (sj.vendor && sj.vendor.toLowerCase().includes(searchLow)) ||
       (sj.driverName && sj.driverName.toLowerCase().includes(searchLow)) ||
@@ -320,6 +325,7 @@ export const OutboundView: React.FC = () => {
         (it) =>
           it.produk.toLowerCase().includes(searchLow) ||
           it.vendor.toLowerCase().includes(searchLow) ||
+          (it.brand && it.brand.toLowerCase().includes(searchLow)) ||
           (it.jenisKain && it.jenisKain.toLowerCase().includes(searchLow))
       );
 
@@ -339,7 +345,7 @@ export const OutboundView: React.FC = () => {
         spkId: currentSPK.id,
         spkNumber: currentSPK.spkNumber,
         spkItemId: selectedSpkItemId || undefined,
-        brand: selectedBrand,
+        brand: currentSPK.brand || selectedBrand,
         produk: selectedArticleName,
         vendor: selectedArticleVendor || currentSPK.vendor,
         jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
@@ -354,8 +360,11 @@ export const OutboundView: React.FC = () => {
     }
 
     const firstItem = finalItems[0];
+    const distinctBrands = Array.from(new Set(finalItems.map((i) => i.brand).filter(Boolean)));
+    const sjBrand = distinctBrands.length === 1 ? distinctBrands[0] : distinctBrands.join(', ');
+
     const payload = {
-      brand: selectedBrand,
+      brand: sjBrand,
       produk: finalItems.map((i) => i.produk).join(', '),
       vendor: Array.from(new Set(finalItems.map((i) => i.vendor))).join(', '),
       tanggal: tanggalKirim,
@@ -532,10 +541,14 @@ export const OutboundView: React.FC = () => {
                       <td className="p-3.5 font-mono font-bold text-indigo-600 align-top">
                         {sj.noSuratJalan}
                       </td>
-                      <td className="p-3.5 align-top text-center whitespace-nowrap">
-                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-slate-100 text-slate-800 font-bold rounded-md text-[10px] whitespace-nowrap">
-                          {sj.brand}
-                        </span>
+                      <td className="p-3.5 align-top text-center">
+                        <div className="flex flex-wrap gap-1 justify-center max-w-[140px]">
+                          {sj.brand.split(',').map((b, bIdx) => (
+                            <span key={bIdx} className="inline-flex items-center justify-center px-2 py-0.5 bg-slate-100 text-slate-800 font-bold rounded text-[10px] uppercase border border-slate-200 whitespace-nowrap">
+                              {b.trim()}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="p-3.5 align-top space-y-1.5 min-w-[240px]">
                         {items.map((it, idx) => (
@@ -641,7 +654,7 @@ export const OutboundView: React.FC = () => {
               {/* Header Info: Brand, Driver, Plat, Tanggal */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Brand Penerima:</label>
+                  <label className="block font-bold text-slate-700 mb-1">Brand Penerima (Pilih SPK):</label>
                   <select
                     value={selectedBrand}
                     onChange={(e) => handleBrandChange(e.target.value)}
@@ -713,6 +726,9 @@ export const OutboundView: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <span className="font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] border border-indigo-100">
                               Artikel {idx + 1}
+                            </span>
+                            <span className="font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-[10px] border border-slate-200 uppercase">
+                              {item.brand}
                             </span>
                             <span className="font-mono text-[10px] text-slate-400 font-bold">
                               [{item.spkNumber}]
@@ -1183,7 +1199,14 @@ export const OutboundView: React.FC = () => {
                         {getSuratJalanItems(selectedSJDetail).map((item, idx) => (
                           <tr key={idx} className="align-top">
                             <td className="p-2 text-center font-bold text-slate-400">{idx + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">{item.produk}</td>
+                            <td className="p-2 font-bold text-slate-900">
+                              <div>{item.produk}</div>
+                              {item.brand && (
+                                <span className="inline-block mt-0.5 px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded text-[9px] font-bold uppercase border border-slate-200">
+                                  {item.brand}
+                                </span>
+                              )}
+                            </td>
                             <td className="p-2 text-slate-600 text-[11px]">{item.jenisKain || 'Kain Standar'}</td>
                             <td className="p-2 text-[10px] text-slate-600 space-y-0.5">
                               {SIZE_DISPLAY_ORDER.map(({ key, label }) => {

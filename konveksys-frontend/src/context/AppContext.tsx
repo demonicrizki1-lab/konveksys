@@ -2274,7 +2274,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     endDate?: string
   ): BuyerInvoiceSummary => {
     const brandSJs = suratJalanList.filter(sj => {
-      const matchBrand = sj.brand === brandName;
+      const sjItems = getSuratJalanItems(sj);
+      const matchBrand =
+        sj.brand === brandName ||
+        sj.brand.split(',').map(b => b.trim()).includes(brandName) ||
+        sjItems.some(it => it.brand === brandName);
       if (!matchBrand) return false;
       const sjDate = sj.tanggal.split('T')[0];
       if (startDate && sjDate < startDate) return false;
@@ -2289,6 +2293,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     for (const sj of brandSJs) {
       const sjItems = getSuratJalanItems(sj);
       for (const it of sjItems) {
+        const itBrand = it.brand || sj.brand;
+        if (itBrand !== brandName && !itBrand.split(',').map(b => b.trim()).includes(brandName)) {
+          continue;
+        }
         const rates = getBuyerRates(brandName, it.produk);
         const qtyS = it.qtyDelivered?.s || 0;
         const qtyM = it.qtyDelivered?.m || 0;
