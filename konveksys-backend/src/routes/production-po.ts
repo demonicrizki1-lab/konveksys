@@ -97,8 +97,8 @@ productionPoRoutes.post('/', async (c) => {
       }[];
     }>();
 
-    if (!body.noPO || !body.brand || !body.vendorTujuan) {
-      return c.json({ error: 'Nomor PO, Brand, dan Vendor Tujuan wajib diisi.' }, 400);
+    if (!body.noPO || !body.brand) {
+      return c.json({ error: 'Nomor PO dan Brand pemesan wajib diisi.' }, 400);
     }
 
     if (!body.items || body.items.length === 0) {
@@ -119,7 +119,7 @@ productionPoRoutes.post('/', async (c) => {
       data: {
         noPO: body.noPO.trim(),
         brand: body.brand.trim(),
-        vendorTujuan: body.vendorTujuan.trim(),
+        vendorTujuan: body.vendorTujuan ? body.vendorTujuan.trim() : '',
         tanggalPO: new Date(body.tanggalPO || new Date().toISOString()),
         targetDeadline: new Date(body.targetDeadline || new Date().toISOString()),
         catatan: body.catatan || null,
@@ -216,7 +216,7 @@ productionPoRoutes.put('/:id', async (c) => {
         data: {
           noPO: body.noPO ? body.noPO.trim() : undefined,
           brand: body.brand ? body.brand.trim() : undefined,
-          vendorTujuan: body.vendorTujuan ? body.vendorTujuan.trim() : undefined,
+          vendorTujuan: body.vendorTujuan !== undefined ? body.vendorTujuan.trim() : undefined,
           tanggalPO: body.tanggalPO ? new Date(body.tanggalPO) : undefined,
           targetDeadline: body.targetDeadline ? new Date(body.targetDeadline) : undefined,
           catatan: body.catatan !== undefined ? body.catatan : undefined,

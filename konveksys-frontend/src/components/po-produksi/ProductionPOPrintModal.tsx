@@ -107,9 +107,13 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                 <span className="w-28 text-slate-500 text-[11px] font-medium">Brand Mitra:</span>
                 <span className="text-slate-900 font-bold uppercase text-[11px]">{po.brand}</span>
               </div>
-              <div className="flex">
+              <div className="flex items-center">
                 <span className="w-28 text-slate-500 text-[11px] font-medium">Vendor / Penjahit:</span>
-                <span className="text-slate-900 font-bold text-[11px]">{po.vendorTujuan}</span>
+                {po.vendorTujuan ? (
+                  <span className="text-slate-900 font-bold text-[11px]">{po.vendorTujuan}</span>
+                ) : (
+                  <span className="inline-block border-b-2 border-slate-400 min-w-[200px] h-4"></span>
+                )}
               </div>
             </div>
 
@@ -238,7 +242,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                 <div className="w-32 border-b border-slate-400"></div>
               </div>
               <div className="text-[10px] text-slate-500 mt-1 font-mono">
-                ( {po.vendorTujuan.slice(0, 24)} )
+                {po.vendorTujuan ? `( ${(po.vendorTujuan || '').slice(0, 24)} )` : '( ................................... )'}
               </div>
             </div>
           </div>

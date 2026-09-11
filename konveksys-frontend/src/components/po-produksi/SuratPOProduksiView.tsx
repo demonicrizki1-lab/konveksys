@@ -62,7 +62,7 @@ export const SuratPOProduksiView: React.FC = () => {
   // Form State
   const [formNoPO, setFormNoPO] = useState('');
   const [formBrand, setFormBrand] = useState('');
-  const [formVendor, setFormVendor] = useState('Workshop Internal (Maison Rayyan)');
+  const [formVendor, setFormVendor] = useState('');
   const [formTanggal, setFormTanggal] = useState('');
   const [formDeadline, setFormDeadline] = useState('');
   const [formCatatan, setFormCatatan] = useState('');
@@ -90,12 +90,11 @@ export const SuratPOProduksiView: React.FC = () => {
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const initialBrand = brands.length > 0 ? brands[0].name : '';
-    const initialVendor = vendors.length > 0 ? vendors[0].name : '';
 
     setEditingPO(null);
     setFormNoPO(generatePONumber(initialBrand));
     setFormBrand(initialBrand);
-    setFormVendor(initialVendor);
+    setFormVendor('');
     setFormTanggal(today);
     setFormDeadline(nextWeek);
     setFormCatatan('Prioritas potong dan jahit segera. Standar QC butik Maison Rayyan berlaku.');
@@ -184,10 +183,6 @@ export const SuratPOProduksiView: React.FC = () => {
     }
     if (!formBrand.trim()) {
       showToast('error', 'Brand pemesan wajib ditentukan.');
-      return;
-    }
-    if (!formVendor.trim()) {
-      showToast('error', 'Vendor/Penjahit tujuan wajib ditentukan.');
       return;
     }
 
@@ -302,7 +297,7 @@ export const SuratPOProduksiView: React.FC = () => {
         !q ||
         po.noPO.toLowerCase().includes(q) ||
         po.brand.toLowerCase().includes(q) ||
-        po.vendorTujuan.toLowerCase().includes(q) ||
+        (po.vendorTujuan || '').toLowerCase().includes(q) ||
         po.items.some(
           i =>
             i.namaProduk.toLowerCase().includes(q) ||
@@ -586,7 +581,13 @@ export const SuratPOProduksiView: React.FC = () => {
 
                       {/* Vendor */}
                       <td className="py-3 px-3">
-                        <div className="text-slate-800 font-medium text-xs">{po.vendorTujuan}</div>
+                        {po.vendorTujuan ? (
+                          <div className="text-slate-800 font-medium text-xs">{po.vendorTujuan}</div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+                            ✍️ Ditulis Manual
+                          </span>
+                        )}
                       </td>
 
                       {/* Item Preview */}
@@ -731,15 +732,16 @@ export const SuratPOProduksiView: React.FC = () => {
 
                 {/* Vendor Tujuan */}
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">
-                    Vendor / Penjahit Tujuan <span className="text-rose-500">*</span>
+                  <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
+                    <span>Vendor / Penjahit Tujuan</span>
+                    <span className="text-[11px] font-normal text-slate-400 italic">(Bisa dikosongkan / tulis pulpen)</span>
                   </label>
                   <select
                     value={formVendor}
                     onChange={e => setFormVendor(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
                   >
-                    <option value="" disabled>-- Pilih Vendor / Penjahit --</option>
+                    <option value="">-- Kosongkan (Ditulis Manual dengan Pulpen) --</option>
                     {vendors.map(v => (
                       <option key={v.id} value={v.name}>
                         {v.name}
