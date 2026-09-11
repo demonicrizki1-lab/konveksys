@@ -408,6 +408,13 @@ export async function apiCreateSuratJalan(data: unknown) {
   });
 }
 
+export async function apiUpdateSuratJalan(id: string, data: unknown) {
+  return apiFetch<unknown>(`/api/outbound/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function apiDeleteSuratJalan(id: string) {
   return apiFetch<{ success: boolean; message?: string }>(`/api/outbound/${id}`, {
     method: 'DELETE',

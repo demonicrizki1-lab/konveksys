@@ -594,9 +594,26 @@ export const OutboundView: React.FC = () => {
                         {formatDateIndo(sj.tanggal)}
                       </td>
                       <td className="p-3.5 align-top">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[10px] border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" /> {sj.status}
-                        </span>
+                        {sj.status === 'VERIFIED' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[10px] border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" /> Fisik Sesuai
+                          </span>
+                        ) : sj.status === 'DISCREPANCY' ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 font-bold rounded-lg text-[10px] border border-amber-200" title={sj.verificationNote || undefined}>
+                              <AlertTriangle className="w-3 h-3" /> Selisih {sj.discrepancyPcs ?? (sj.realTotalPcs ? sj.realTotalPcs - (sj.originalTotalPcs || sj.totalPcs) : 0)} Pcs
+                            </span>
+                            {sj.verificationNote && (
+                              <p className="text-[10px] text-slate-500 italic max-w-[150px] truncate" title={sj.verificationNote}>
+                                "{sj.verificationNote}"
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-200">
+                            <Truck className="w-3 h-3" /> {sj.status || 'DELIVERED'}
+                          </span>
+                        )}
                       </td>
                       <td className="p-3.5 text-right space-x-1 whitespace-nowrap align-top">
                         <button
@@ -1173,7 +1190,26 @@ export const OutboundView: React.FC = () => {
                   </div>
                   {selectedSJDetail.catatan && (
                     <div className="pt-2 mt-2 border-t border-slate-200/60 text-[11px] text-slate-600">
-                      <span className="font-bold">Catatan:</span> {selectedSJDetail.catatan}
+                      <span className="font-bold">Catatan Pengiriman:</span> {selectedSJDetail.catatan}
+                    </div>
+                  )}
+                  {selectedSJDetail.status === 'VERIFIED' && (
+                    <div className="pt-2 mt-2 border-t border-slate-200/60 text-[11px] text-emerald-700 flex items-center gap-1.5 font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Verifikasi Brand: Fisik Diterima Lengkap & Sesuai {selectedSJDetail.verifiedBy ? `(${selectedSJDetail.verifiedBy})` : ''}</span>
+                    </div>
+                  )}
+                  {selectedSJDetail.status === 'DISCREPANCY' && (
+                    <div className="pt-2 mt-2 border-t border-slate-200/60 text-[11px] text-amber-800 space-y-0.5 bg-amber-50/60 p-2 rounded-lg border border-amber-200">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                        <span>Verifikasi Brand: Terdapat Selisih Fisik Diterima ({selectedSJDetail.discrepancyPcs ?? 0} Pcs)</span>
+                      </div>
+                      {selectedSJDetail.verificationNote && (
+                        <div className="text-slate-600 font-normal italic">
+                          Keterangan Brand: "{selectedSJDetail.verificationNote}"
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

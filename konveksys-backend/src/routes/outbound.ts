@@ -155,6 +155,156 @@ outboundRoutes.post('/', adminOnly, async (c) => {
   return c.json({ ...sj, items }, 201);
 });
 
+
+// PUT /api/outbound/:id - Update / Verify Surat Jalan Receipt (Admin or Brand)
+outboundRoutes.put('/:id', async (c) => {
+  const { id } = c.req.param();
+  const user = c.get('user');
+  const body = await c.req.json();
+
+  const sj = await prisma.suratJalan.findUnique({
+    where: { id },
+  });
+
+  if (!sj) return c.json({ error: 'Surat Jalan tidak ditemukan' }, 404);
+
+  // If user is BRAND, ensure they own this Surat Jalan
+  if (user.role === 'BRAND') {
+    const allowed = Array.isArray(user.accessibleBrands) && user.accessibleBrands.length > 0
+      ? user.accessibleBrands.map((b: string) => b.trim().toUpperCase())
+      : (user.brandName ? [user.brandName.trim().toUpperCase()] : []);
+    const match = allowed.some((b: string) => sj.brand.toUpperCase().includes(b));
+    if (!match) {
+      return c.json({ error: 'Akses ditolak: Anda tidak memiliki akses ke Surat Jalan brand ini' }, 403);
+    }
+  }
+
+  const newItems = body.items || [];
+  const oldItems = (Array.isArray(sj.items) ? sj.items : []) as any[];
+
+  // 1. Calculate SPK deltas (newQty - oldQty per size)
+  const affectedSpkIds = new Set<string>();
+
+  for (let idx = 0; idx < newItems.length; idx++) {
+    const newItem = newItems[idx];
+    const spkId = newItem.spkId || sj.spkId;
+    if (!spkId) continue;
+    affectedSpkIds.add(spkId);
+
+    const oldItem = oldItems.find((o) => (newItem.id && o.id === newItem.id) || (newItem.spkId && o.spkId === newItem.spkId && o.produk === newItem.produk)) || oldItems[idx] || {};
+
+    const newDeliv = newItem.qtyDelivered || {};
+    const oldDeliv = oldItem.qtyDelivered || {
+      s: (oldItem.qtySML || sj.qtySML || 0),
+      m: oldItem.qtyM || sj.qtyM || 0,
+      l: oldItem.qtyL || sj.qtyL || 0,
+      xl: oldItem.qtyXL || sj.qtyXL || 0,
+      xxl: oldItem.qtyXXL || sj.qtyXXL || 0,
+      anak4: oldItem.qtyAnak4 || sj.qtyAnak4 || 0,
+      anak6: oldItem.qtyAnak6 || sj.qtyAnak6 || 0,
+      anak8: oldItem.qtyAnak8 || sj.qtyAnak8 || 0,
+      anak10: oldItem.qtyAnak10 || sj.qtyAnak10 || 0,
+      anak12: oldItem.qtyAnak12 || sj.qtyAnak12 || 0,
+      anak14: oldItem.qtyAnak14 || sj.qtyAnak14 || 0,
+      anak16: oldItem.qtyAnak16 || sj.qtyAnak16 || 0,
+    };
+
+    const deltaS = (newDeliv.s || 0) - (oldDeliv.s || 0);
+    const deltaM = (newDeliv.m || 0) - (oldDeliv.m || 0);
+    const deltaL = (newDeliv.l || 0) - (oldDeliv.l || 0);
+    const deltaXL = (newDeliv.xl || 0) - (oldDeliv.xl || 0);
+    const deltaXXL = (newDeliv.xxl || 0) - (oldDeliv.xxl || 0);
+    const deltaAnak4 = (newDeliv.anak4 || 0) - (oldDeliv.anak4 || 0);
+    const deltaAnak6 = (newDeliv.anak6 || 0) - (oldDeliv.anak6 || 0);
+    const deltaAnak8 = (newDeliv.anak8 || 0) - (oldDeliv.anak8 || 0);
+    const deltaAnak10 = (newDeliv.anak10 || 0) - (oldDeliv.anak10 || 0);
+    const deltaAnak12 = (newDeliv.anak12 || 0) - (oldDeliv.anak12 || 0);
+    const deltaAnak14 = (newDeliv.anak14 || 0) - (oldDeliv.anak14 || 0);
+    const deltaAnak16 = (newDeliv.anak16 || 0) - (oldDeliv.anak16 || 0);
+
+    await prisma.spkCutting.update({
+      where: { id: spkId },
+      data: {
+        deliveredS: { increment: deltaS },
+        deliveredM: { increment: deltaM },
+        deliveredL: { increment: deltaL },
+        deliveredXL: { increment: deltaXL },
+        deliveredXXL: { increment: deltaXXL },
+        deliveredAnak4: { increment: deltaAnak4 },
+        deliveredAnak6: { increment: deltaAnak6 },
+        deliveredAnak8: { increment: deltaAnak8 },
+        deliveredAnak10: { increment: deltaAnak10 },
+        deliveredAnak12: { increment: deltaAnak12 },
+        deliveredAnak14: { increment: deltaAnak14 },
+        deliveredAnak16: { increment: deltaAnak16 },
+      },
+    }).catch((err: any) => console.warn(`Failed adjusting SPK ${spkId}:`, err));
+  }
+
+  // Recalculate status of affected SPKs
+  for (const spkId of affectedSpkIds) {
+    const updatedSpk = await prisma.spkCutting.findUnique({ where: { id: spkId } });
+    if (!updatedSpk) continue;
+
+    const targetTotal =
+      (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
+      (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
+      (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
+      (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
+
+    const deliveredTotal =
+      (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
+      (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
+      (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
+      (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
+
+    const newStatus =
+      deliveredTotal <= 0
+        ? 'IN_PRODUCTION'
+        : targetTotal > 0 && deliveredTotal > targetTotal
+        ? 'OVER_DELIVERY'
+        : targetTotal > 0 && deliveredTotal === targetTotal
+        ? 'COMPLETED'
+        : 'PARTIAL_DELIVERED';
+
+    await prisma.spkCutting.update({
+      where: { id: updatedSpk.id },
+      data: { status: newStatus },
+    });
+  }
+
+  // 2. Compute totalPcs & size breakdowns from newItems
+  const firstItem = newItems[0] || {};
+  const firstDeliv = firstItem.qtyDelivered || {};
+  const totalPcs = newItems.reduce((acc: number, it: any) => acc + (Number(it.totalPcs) || 0), 0);
+
+  const updatedSJ = await prisma.suratJalan.update({
+    where: { id },
+    data: {
+      items: newItems,
+      totalPcs,
+      status: body.status || 'VERIFIED',
+      catatan: body.catatan !== undefined ? body.catatan : sj.catatan,
+      driverName: body.driverName !== undefined ? body.driverName : sj.driverName,
+      nomorKendaraan: body.nomorKendaraan !== undefined ? body.nomorKendaraan : sj.nomorKendaraan,
+      qtySML: (firstDeliv.s || 0) + (firstDeliv.m || 0) + (firstDeliv.l || 0),
+      qtyM: firstDeliv.m || 0,
+      qtyL: firstDeliv.l || 0,
+      qtyXL: firstDeliv.xl || 0,
+      qtyXXL: firstDeliv.xxl || 0,
+      qtyAnak4: firstDeliv.anak4 || 0,
+      qtyAnak6: firstDeliv.anak6 || 0,
+      qtyAnak8: firstDeliv.anak8 || 0,
+      qtyAnak10: firstDeliv.anak10 || 0,
+      qtyAnak12: firstDeliv.anak12 || 0,
+      qtyAnak14: firstDeliv.anak14 || 0,
+      qtyAnak16: firstDeliv.anak16 || 0,
+    },
+  });
+
+  return c.json({ ...updatedSJ, items: newItems });
+});
+
 outboundRoutes.get('/:id', async (c) => {
   const { id } = c.req.param();
   const sj = await prisma.suratJalan.findUnique({

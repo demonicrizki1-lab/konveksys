@@ -31,6 +31,7 @@ import {
   apiDeleteSpk,
   apiGetSuratJalan,
   apiCreateSuratJalan,
+  apiUpdateSuratJalan,
   apiDeleteSuratJalan,
   apiAddVendor,
   apiUpdateVendor,
@@ -309,6 +310,7 @@ interface AppContextType {
 
   suratJalanList: SuratJalan[];
   createSuratJalan: (sj: Omit<SuratJalan, 'id' | 'noSuratJalan' | 'status'>) => Promise<{ success: boolean; message?: string }> | { success: boolean; message?: string };
+  updateSuratJalanReceipt: (id: string, verifiedItems: SuratJalanItem[], verificationNote?: string) => Promise<{ success: boolean; message?: string }>;
   deleteSuratJalan: (id: string) => Promise<{ success: boolean; message?: string }>;
   getSuratJalanItems: (sj: SuratJalan) => SuratJalanItem[];
 
@@ -1983,6 +1985,174 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
+  const updateSuratJalanReceipt = async (
+    id: string,
+    verifiedItems: SuratJalanItem[],
+    verificationNote?: string
+  ): Promise<{ success: boolean; message?: string }> => {
+    const targetSJ = suratJalanList.find(sj => sj.id === id);
+    if (!targetSJ) {
+      return { success: false, message: 'Surat Jalan tidak ditemukan.' };
+    }
+
+    const oldItems = getSuratJalanItems(targetSJ);
+    const newTotalPcs = verifiedItems.reduce((acc, it) => acc + (Number(it.totalPcs) || 0), 0);
+    const originalTotal = targetSJ.originalTotalPcs || targetSJ.totalPcs;
+    const hasDiscrepancy = newTotalPcs !== originalTotal;
+    const discrepancyPcs = newTotalPcs - originalTotal;
+    const newStatus = hasDiscrepancy ? 'DISCREPANCY' : 'VERIFIED';
+    const verifier = userRole === 'BRAND' ? `Brand ${activeBrand}` : 'Admin';
+    const verifiedAt = new Date().toISOString();
+
+    const itemsWithAudit: SuratJalanItem[] = verifiedItems.map((vIt, idx) => {
+      const origItem = oldItems[idx] || {};
+      const origQty = vIt.originalQtyDelivered || origItem.qtyDelivered || vIt.qtyDelivered;
+      const origTotal = vIt.originalTotalPcs || origItem.totalPcs || vIt.totalPcs;
+      const itemDisc = vIt.totalPcs - origTotal;
+
+      return {
+        ...vIt,
+        originalQtyDelivered: origQty,
+        originalTotalPcs: origTotal,
+        itemDiscrepancyPcs: itemDisc,
+      };
+    });
+
+    const updatedSJ: SuratJalan = {
+      ...targetSJ,
+      items: itemsWithAudit,
+      totalPcs: newTotalPcs,
+      originalTotalPcs: originalTotal,
+      realTotalPcs: newTotalPcs,
+      discrepancyPcs,
+      status: newStatus,
+      verifiedBy: verifier,
+      verifiedAt,
+      verificationNote: verificationNote || targetSJ.verificationNote,
+      qtyDelivered: itemsWithAudit[0]?.qtyDelivered || targetSJ.qtyDelivered,
+    };
+
+    setSuratJalanList(prev => prev.map(sj => (sj.id === id ? updatedSJ : sj)));
+
+    // Update delta on linked SPKs
+    setSpkList(prev => {
+      let updatedList = [...prev];
+
+      for (let idx = 0; idx < itemsWithAudit.length; idx++) {
+        const newItem = itemsWithAudit[idx];
+        const oldItem = oldItems[idx] || {};
+        const spkId = newItem.spkId || targetSJ.spkId;
+        if (!spkId) continue;
+
+        const spkIdx = updatedList.findIndex(s => s.id === spkId || s.spkNumber === spkId);
+        if (spkIdx === -1) continue;
+
+        const spk = updatedList[spkIdx];
+        const newDeliv = newItem.qtyDelivered || {};
+        const oldDeliv = oldItem.qtyDelivered || {};
+
+        const deltaS = (newDeliv.s || 0) - (oldDeliv.s || 0);
+        const deltaM = (newDeliv.m || 0) - (oldDeliv.m || 0);
+        const deltaL = (newDeliv.l || 0) - (oldDeliv.l || 0);
+        const deltaXL = (newDeliv.xl || 0) - (oldDeliv.xl || 0);
+        const deltaXXL = (newDeliv.xxl || 0) - (oldDeliv.xxl || 0);
+        const deltaAnak4 = (newDeliv.anak4 || 0) - (oldDeliv.anak4 || 0);
+        const deltaAnak6 = (newDeliv.anak6 || 0) - (oldDeliv.anak6 || 0);
+        const deltaAnak8 = (newDeliv.anak8 || 0) - (oldDeliv.anak8 || 0);
+        const deltaAnak10 = (newDeliv.anak10 || 0) - (oldDeliv.anak10 || 0);
+        const deltaAnak12 = (newDeliv.anak12 || 0) - (oldDeliv.anak12 || 0);
+        const deltaAnak14 = (newDeliv.anak14 || 0) - (oldDeliv.anak14 || 0);
+        const deltaAnak16 = (newDeliv.anak16 || 0) - (oldDeliv.anak16 || 0);
+
+        let updatedItems = spk.items;
+        if (updatedItems && updatedItems.length > 0) {
+          updatedItems = updatedItems.map(it => {
+            const isTarget = newItem.spkItemId
+              ? it.id === newItem.spkItemId
+              : it.produk.trim().toUpperCase() === newItem.produk.trim().toUpperCase();
+
+            if (isTarget && it.deliveredQty) {
+              return {
+                ...it,
+                deliveredQty: {
+                  s: Math.max(0, it.deliveredQty.s + deltaS),
+                  m: Math.max(0, it.deliveredQty.m + deltaM),
+                  l: Math.max(0, it.deliveredQty.l + deltaL),
+                  xl: Math.max(0, it.deliveredQty.xl + deltaXL),
+                  xxl: Math.max(0, it.deliveredQty.xxl + deltaXXL),
+                  anak4: Math.max(0, it.deliveredQty.anak4 + deltaAnak4),
+                  anak6: Math.max(0, it.deliveredQty.anak6 + deltaAnak6),
+                  anak8: Math.max(0, it.deliveredQty.anak8 + deltaAnak8),
+                  anak10: Math.max(0, it.deliveredQty.anak10 + deltaAnak10),
+                  anak12: Math.max(0, it.deliveredQty.anak12 + deltaAnak12),
+                  anak14: Math.max(0, it.deliveredQty.anak14 + deltaAnak14),
+                  anak16: Math.max(0, it.deliveredQty.anak16 + deltaAnak16),
+                },
+              };
+            }
+            return it;
+          });
+        }
+
+        const newDelivered: SizeBreakdown = {
+          s: Math.max(0, (spk.deliveredQty?.s || 0) + deltaS),
+          m: Math.max(0, (spk.deliveredQty?.m || 0) + deltaM),
+          l: Math.max(0, (spk.deliveredQty?.l || 0) + deltaL),
+          xl: Math.max(0, (spk.deliveredQty?.xl || 0) + deltaXL),
+          xxl: Math.max(0, (spk.deliveredQty?.xxl || 0) + deltaXXL),
+          anak4: Math.max(0, (spk.deliveredQty?.anak4 || 0) + deltaAnak4),
+          anak6: Math.max(0, (spk.deliveredQty?.anak6 || 0) + deltaAnak6),
+          anak8: Math.max(0, (spk.deliveredQty?.anak8 || 0) + deltaAnak8),
+          anak10: Math.max(0, (spk.deliveredQty?.anak10 || 0) + deltaAnak10),
+          anak12: Math.max(0, (spk.deliveredQty?.anak12 || 0) + deltaAnak12),
+          anak14: Math.max(0, (spk.deliveredQty?.anak14 || 0) + deltaAnak14),
+          anak16: Math.max(0, (spk.deliveredQty?.anak16 || 0) + deltaAnak16),
+        };
+
+        const targetTotal = Object.values(spk.targetCutQty || {}).reduce((a, b) => a + b, 0);
+        const totalDelivered = Object.values(newDelivered).reduce((a, b) => a + b, 0);
+
+        const newStatus: SPKCutting['status'] =
+          totalDelivered <= 0
+            ? 'IN_PRODUCTION'
+            : targetTotal > 0 && totalDelivered > targetTotal
+            ? 'OVER_DELIVERY'
+            : targetTotal > 0 && totalDelivered === targetTotal
+            ? 'COMPLETED'
+            : 'PARTIAL_DELIVERED';
+
+        updatedList[spkIdx] = {
+          ...spk,
+          items: updatedItems,
+          deliveredQty: newDelivered,
+          status: newStatus,
+        };
+      }
+
+      return updatedList;
+    });
+
+    try {
+      await apiUpdateSuratJalan(id, {
+        items: itemsWithAudit,
+        totalPcs: newTotalPcs,
+        status: newStatus,
+        catatan: targetSJ.catatan,
+        driverName: targetSJ.driverName,
+        nomorKendaraan: targetSJ.nomorKendaraan,
+      });
+    } catch (err) {
+      console.warn('Backend sync update Surat Jalan failed, saved locally:', err);
+    }
+
+    return {
+      success: true,
+      message: hasDiscrepancy
+        ? `Verifikasi penerimaan tersimpan. Tercatat selisih ${discrepancyPcs > 0 ? '+' : ''}${discrepancyPcs} Pcs.`
+        : 'Verifikasi penerimaan tersimpan. Barang diterima lengkap sesuai surat jalan.',
+    };
+  };
+
   const deleteSuratJalan = async (id: string): Promise<{ success: boolean; message?: string }> => {
     const targetSJ = suratJalanList.find(sj => sj.id === id);
     if (!targetSJ) {
@@ -2903,6 +3073,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteSPK,
         suratJalanList,
         createSuratJalan,
+        updateSuratJalanReceipt,
         deleteSuratJalan,
         getSuratJalanItems,
         returnList,

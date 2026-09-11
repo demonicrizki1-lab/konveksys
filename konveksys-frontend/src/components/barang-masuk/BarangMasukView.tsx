@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { SuratJalan, SizeBreakdown } from '../../types';
+import { SuratJalan, SuratJalanItem, SizeBreakdown } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import {
@@ -13,6 +13,9 @@ import {
   Truck,
   RotateCcw,
   CheckCircle2,
+  AlertTriangle,
+  Check,
+  Info,
   X,
   Layers,
   Building2,
@@ -21,6 +24,39 @@ import {
   TrendingUp,
   Clock,
 } from 'lucide-react';
+
+const emptySizeBreakdown = (): SizeBreakdown => ({
+  s: 0,
+  m: 0,
+  l: 0,
+  xl: 0,
+  xxl: 0,
+  anak4: 0,
+  anak6: 0,
+  anak8: 0,
+  anak10: 0,
+  anak12: 0,
+  anak14: 0,
+  anak16: 0,
+});
+
+const calculateTotalPcs = (sz?: SizeBreakdown): number => {
+  if (!sz) return 0;
+  return (
+    (sz.s || 0) +
+    (sz.m || 0) +
+    (sz.l || 0) +
+    (sz.xl || 0) +
+    (sz.xxl || 0) +
+    (sz.anak4 || 0) +
+    (sz.anak6 || 0) +
+    (sz.anak8 || 0) +
+    (sz.anak10 || 0) +
+    (sz.anak12 || 0) +
+    (sz.anak14 || 0) +
+    (sz.anak16 || 0)
+  );
+};
 
 const SIZE_DISPLAY_ORDER: { key: keyof SizeBreakdown; label: string }[] = [
   { key: 's', label: 'S' },
@@ -53,6 +89,7 @@ export const BarangMasukView: React.FC = () => {
   const {
     suratJalanList,
     getSuratJalanItems,
+    updateSuratJalanReceipt,
     spkList,
     userRole,
     activeBrand,
@@ -77,8 +114,114 @@ export const BarangMasukView: React.FC = () => {
   const [selectedSJDetail, setSelectedSJDetail] = useState<SuratJalan | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
+  // Verification Modal States
+  const [verifyingSJ, setVerifyingSJ] = useState<SuratJalan | null>(null);
+  const [verificationItems, setVerificationItems] = useState<SuratJalanItem[]>([]);
+  const [verificationNote, setVerificationNote] = useState('');
+  const [isSavingVerification, setIsSavingVerification] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
   const printPaperRef = useRef<HTMLDivElement>(null);
   const printSJRef = useRef<HTMLDivElement>(null);
+
+  // Open physical verification modal
+  const handleStartVerification = (sj: SuratJalan) => {
+    const items = getSuratJalanItems(sj);
+    const preparedItems: SuratJalanItem[] = items.map((it) => {
+      const originalQty = it.originalQtyDelivered
+        ? { ...it.originalQtyDelivered }
+        : { ...(it.qtyDelivered || emptySizeBreakdown()) };
+      const originalTotal = it.originalTotalPcs ?? it.totalPcs;
+      const currentQty = { ...(it.qtyDelivered || emptySizeBreakdown()) };
+      const currentTotal = it.totalPcs ?? calculateTotalPcs(currentQty);
+      return {
+        ...it,
+        originalQtyDelivered: originalQty,
+        originalTotalPcs: originalTotal,
+        qtyDelivered: currentQty,
+        totalPcs: currentTotal,
+        itemDiscrepancyPcs: it.itemDiscrepancyPcs ?? (currentTotal - originalTotal),
+      };
+    });
+
+    setVerifyingSJ(sj);
+    setVerificationItems(preparedItems);
+    setVerificationNote(sj.verificationNote || '');
+    setVerificationError(null);
+  };
+
+  const handleVerificationQtyChange = (itemIdx: number, sizeKey: keyof SizeBreakdown, rawVal: string) => {
+    const val = parseInt(rawVal, 10);
+    const safeVal = isNaN(val) || val < 0 ? 0 : val;
+
+    setVerificationItems((prev) => {
+      const next = prev.map((item, idx) => {
+        if (idx !== itemIdx) return item;
+        const updatedQty: SizeBreakdown = {
+          ...item.qtyDelivered,
+          [sizeKey]: safeVal,
+        };
+        const newTotal = calculateTotalPcs(updatedQty);
+        const origTotal = item.originalTotalPcs ?? item.totalPcs;
+        return {
+          ...item,
+          qtyDelivered: updatedQty,
+          totalPcs: newTotal,
+          itemDiscrepancyPcs: newTotal - origTotal,
+        };
+      });
+      return next;
+    });
+  };
+
+  const handleResetItemQty = (itemIdx: number) => {
+    setVerificationItems((prev) => {
+      return prev.map((item, idx) => {
+        if (idx !== itemIdx) return item;
+        const originalQty = item.originalQtyDelivered
+          ? { ...item.originalQtyDelivered }
+          : emptySizeBreakdown();
+        const origTotal = item.originalTotalPcs ?? calculateTotalPcs(originalQty);
+        return {
+          ...item,
+          qtyDelivered: { ...originalQty },
+          totalPcs: origTotal,
+          itemDiscrepancyPcs: 0,
+        };
+      });
+    });
+  };
+
+  const verificationSummary = useMemo(() => {
+    if (!verificationItems.length) {
+      return { originalTotal: 0, realTotal: 0, discrepancy: 0 };
+    }
+    const originalTotal = verificationItems.reduce(
+      (sum, it) => sum + (it.originalTotalPcs ?? it.totalPcs),
+      0
+    );
+    const realTotal = verificationItems.reduce((sum, it) => sum + it.totalPcs, 0);
+    const discrepancy = realTotal - originalTotal;
+    return { originalTotal, realTotal, discrepancy };
+  }, [verificationItems]);
+
+  const handleSaveVerification = async () => {
+    if (!verifyingSJ) return;
+    setIsSavingVerification(true);
+    setVerificationError(null);
+    try {
+      const res = await updateSuratJalanReceipt(verifyingSJ.id, verificationItems, verificationNote);
+      if (!res.success) {
+        setVerificationError(res.message || 'Gagal menyimpan verifikasi fisik.');
+        return;
+      }
+      setVerifyingSJ(null);
+    } catch (err: any) {
+      setVerificationError(err?.message || 'Terjadi kesalahan sistem saat menyimpan.');
+    } finally {
+      setIsSavingVerification(false);
+    }
+  };
 
   // Effective brand for queries
   const currentBrand = userRole === 'BRAND' ? activeBrand : selectedBrand;
@@ -775,11 +918,36 @@ export const BarangMasukView: React.FC = () => {
                           {sj.totalPcs} Pcs
                         </td>
                         <td className="p-3 text-center whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[10px] border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3" /> Diterima
-                          </span>
+                          {sj.status === 'VERIFIED' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[10px] border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" /> Fisik Sesuai
+                            </span>
+                          ) : sj.status === 'DISCREPANCY' ? (
+                            <div className="flex flex-col items-center">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 font-bold rounded-lg text-[10px] border border-amber-200" title={sj.verificationNote || undefined}>
+                                <AlertTriangle className="w-3 h-3" /> Selisih {sj.discrepancyPcs ?? (sj.realTotalPcs ? sj.realTotalPcs - (sj.originalTotalPcs || sj.totalPcs) : 0)} Pcs
+                              </span>
+                              {sj.verificationNote && (
+                                <span className="text-[9px] text-slate-400 italic max-w-[120px] truncate mt-0.5" title={sj.verificationNote}>
+                                  {sj.verificationNote}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-lg text-[10px] border border-blue-200">
+                              <Clock className="w-3 h-3" /> Menunggu Cek
+                            </span>
+                          )}
                         </td>
-                        <td className="p-3 text-right space-x-1 whitespace-nowrap">
+                        <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
+                          <button
+                            onClick={() => handleStartVerification(sj)}
+                            className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 cursor-pointer border border-indigo-200 shadow-2xs"
+                            title="Verifikasi atau sesuaikan fisik barang riil yang diterima"
+                          >
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                            <span>{sj.status === 'VERIFIED' || sj.status === 'DISCREPANCY' ? 'Ubah Fisik' : 'Cek Fisik'}</span>
+                          </button>
                           <button
                             onClick={() => setSelectedSJDetail(sj)}
                             className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition inline-flex items-center align-middle cursor-pointer"
@@ -1090,6 +1258,25 @@ export const BarangMasukView: React.FC = () => {
                       <span className="font-bold">Catatan:</span> {selectedSJDetail.catatan}
                     </div>
                   )}
+                  {selectedSJDetail.status === 'VERIFIED' && (
+                    <div className="pt-2 mt-2 border-t border-slate-200/60 text-[11px] text-emerald-700 flex items-center gap-1.5 font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Verifikasi Fisik: Diterima Lengkap & Sesuai oleh Brand {selectedSJDetail.verifiedBy ? `(${selectedSJDetail.verifiedBy})` : ''}</span>
+                    </div>
+                  )}
+                  {selectedSJDetail.status === 'DISCREPANCY' && (
+                    <div className="pt-2 mt-2 border-t border-slate-200/60 text-[11px] text-amber-800 space-y-0.5 bg-amber-50/60 p-2 rounded-lg border border-amber-200">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                        <span>Verifikasi Fisik: Terdapat Selisih Penerimaan ({selectedSJDetail.discrepancyPcs ?? 0} Pcs)</span>
+                      </div>
+                      {selectedSJDetail.verificationNote && (
+                        <div className="text-slate-600 font-normal italic">
+                          Keterangan Brand: "{selectedSJDetail.verificationNote}"
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Table of Shipped Items */}
@@ -1164,6 +1351,263 @@ export const BarangMasukView: React.FC = () => {
                     <span className="text-[10px] text-slate-400">(Nama & Cap Penerima)</span>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. MODAL: Verifikasi & Penyesuaian Fisik Real Diterima Brand */}
+      {verifyingSJ && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-slideUp">
+            {/* Header */}
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
+                  <SlidersHorizontal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                    <span>Penyesuaian Fisik Real Diterima</span>
+                    <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-400/30">
+                      {verifyingSJ.noSuratJalan}
+                    </span>
+                  </h3>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    Brand: <span className="text-white font-bold">{verifyingSJ.brand}</span> • Dikirim: {formatDateIndo(verifyingSJ.tanggal)} • Armada: {verifyingSJ.driverName || 'Kurir Konveksi'} ({verifyingSJ.nomorKendaraan || '-'})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setVerifyingSJ(null)}
+                disabled={isSavingVerification}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Instruction Callout */}
+            <div className="bg-amber-50/80 border-b border-amber-200/80 px-6 py-3 flex items-start gap-2.5 text-xs text-amber-900">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5 leading-relaxed">
+                <span className="font-bold">Pemeriksaan Barang Masuk:</span> Sesuaikan jumlah kuantiti riil per ukuran yang diterima di gudang Anda. Jika terdapat selisih (kurang/lebih), sistem akan otomatis menyesuaikan target sisa SPK di konveksi, tagihan invoice brand, serta penggajian vendor penjahit.
+              </div>
+            </div>
+
+            {/* Body: Items List */}
+            <div className="overflow-y-auto p-6 space-y-5 flex-1 bg-slate-50/50">
+              {verificationError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>{verificationError}</span>
+                </div>
+              )}
+
+              {verificationItems.map((item, itemIdx) => {
+                const origTotal = item.originalTotalPcs ?? item.totalPcs;
+                const currTotal = item.totalPcs;
+                const diff = currTotal - origTotal;
+                const origQty: SizeBreakdown = item.originalQtyDelivered || emptySizeBreakdown();
+
+                return (
+                  <div
+                    key={item.id || itemIdx}
+                    className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-2xs space-y-4 transition"
+                  >
+                    {/* Item Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
+                            {itemIdx + 1}
+                          </span>
+                          <h4 className="font-bold text-slate-900 text-sm">{item.produk}</h4>
+                          {item.jenisKain && (
+                            <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-medium">
+                              🧵 {item.jenisKain}
+                            </span>
+                          )}
+                        </div>
+                        {item.vendor && (
+                          <div className="text-[11px] text-slate-400 ml-8 mt-0.5">
+                            Penjahit: {item.vendor} {item.spkNumber && `(SPK: ${item.spkNumber})`}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Status & Diff Pill */}
+                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                        <div className="text-right">
+                          <div className="text-xs text-slate-500">
+                            Kirim: <span className="font-bold text-slate-700">{origTotal} Pcs</span> • Fisik:{' '}
+                            <span className="font-bold text-indigo-700">{currTotal} Pcs</span>
+                          </div>
+                          <div className="mt-0.5">
+                            {diff === 0 ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3" /> Sesuai (0 Pcs)
+                              </span>
+                            ) : diff < 0 ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                                <AlertTriangle className="w-3 h-3" /> Kurang {Math.abs(diff)} Pcs
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                                +{diff} Pcs Lebih
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {diff !== 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleResetItemQty(itemIdx)}
+                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                            title="Reset ke kuantiti awal pengiriman"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Size Inputs Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                      {SIZE_DISPLAY_ORDER.map(({ key, label }) => {
+                        const originalSizeQty = origQty[key] || 0;
+                        const currentSizeQty = item.qtyDelivered?.[key] || 0;
+                        const sizeDiff = currentSizeQty - originalSizeQty;
+                        const isChanged = sizeDiff !== 0;
+
+                        return (
+                          <div
+                            key={key}
+                            className={`p-2.5 rounded-xl border transition ${
+                              isChanged
+                                ? sizeDiff < 0
+                                  ? 'bg-rose-50/70 border-rose-200 ring-1 ring-rose-300'
+                                  : 'bg-blue-50/70 border-blue-200 ring-1 ring-blue-300'
+                                : originalSizeQty > 0
+                                ? 'bg-white border-slate-200 hover:border-slate-300'
+                                : 'bg-slate-50/50 border-slate-100 opacity-75'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-[11px] mb-1">
+                              <span className="font-bold text-slate-700 uppercase">{label}</span>
+                              <span className="text-[10px] text-slate-400">
+                                Awal: {originalSizeQty}
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              value={currentSizeQty === 0 && originalSizeQty === 0 && !isChanged ? '' : currentSizeQty}
+                              placeholder="0"
+                              onChange={(e) => handleVerificationQtyChange(itemIdx, key, e.target.value)}
+                              className={`w-full text-center font-bold text-sm py-1 rounded-lg border outline-none transition ${
+                                isChanged
+                                  ? sizeDiff < 0
+                                    ? 'bg-white border-rose-300 text-rose-700 focus:ring-2 focus:ring-rose-400'
+                                    : 'bg-white border-blue-300 text-blue-700 focus:ring-2 focus:ring-blue-400'
+                                  : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-400 focus:bg-white'
+                              }`}
+                            />
+                            {isChanged && (
+                              <div className="text-center mt-1 text-[10px] font-bold">
+                                {sizeDiff < 0 ? (
+                                  <span className="text-rose-600">{sizeDiff} Pcs</span>
+                                ) : (
+                                  <span className="text-blue-600">+{sizeDiff} Pcs</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Catatan / Keterangan Selisih */}
+              <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs space-y-2">
+                <label className="block text-xs font-bold text-slate-800">
+                  Catatan Verifikasi / Alasan Selisih Fisik (Opsional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={verificationNote}
+                  onChange={(e) => setVerificationNote(e.target.value)}
+                  placeholder="Contoh: Artikel Polo L kurang 2 pcs karena cacat kain di konveksi. Sisanya diterima lengkap sesuai standar."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-400 focus:bg-white transition"
+                />
+                <p className="text-[11px] text-slate-400">
+                  Catatan ini akan tercatat dalam riwayat audit dan dapat dilihat oleh pihak Konveksi & Admin.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer Summary & Actions */}
+            <div className="bg-white px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-4 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Dikirim</span>
+                  <span className="font-bold text-slate-800 text-sm">{verificationSummary.originalTotal} Pcs</span>
+                </div>
+                <div className="h-7 w-px bg-slate-200"></div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Fisik Diterima</span>
+                  <span className="font-bold text-indigo-700 text-sm">{verificationSummary.realTotal} Pcs</span>
+                </div>
+                <div className="h-7 w-px bg-slate-200"></div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Status Selisih</span>
+                  {verificationSummary.discrepancy === 0 ? (
+                    <span className="font-bold text-emerald-600 text-sm flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Sesuai
+                    </span>
+                  ) : verificationSummary.discrepancy < 0 ? (
+                    <span className="font-bold text-rose-600 text-sm flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Kurang {Math.abs(verificationSummary.discrepancy)} Pcs
+                    </span>
+                  ) : (
+                    <span className="font-bold text-blue-600 text-sm flex items-center gap-1">
+                      +{verificationSummary.discrepancy} Pcs Lebih
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setVerifyingSJ(null)}
+                  disabled={isSavingVerification}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveVerification}
+                  disabled={isSavingVerification}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition btn-press flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSavingVerification ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Simpan Verifikasi Fisik</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>

@@ -147,6 +147,10 @@ export interface SuratJalanItem {
   qtyDelivered: SizeBreakdown;
   totalPcs: number;
   catatan?: string;
+  // Audit verifikasi fisik penerimaan
+  originalQtyDelivered?: SizeBreakdown;
+  originalTotalPcs?: number;
+  itemDiscrepancyPcs?: number;
 }
 
 export interface SuratJalan {
@@ -158,8 +162,15 @@ export interface SuratJalan {
   totalPcs: number;
   driverName: string;
   nomorKendaraan: string;
-  status: 'DELIVERED' | 'RECEIVED' | 'INVOICED';
+  status: 'DELIVERED' | 'RECEIVED' | 'INVOICED' | 'VERIFIED' | 'DISCREPANCY' | string;
   catatan?: string;
+  // Audit verifikasi penerimaan barang masuk
+  verifiedBy?: string;
+  verifiedAt?: string;
+  verificationNote?: string;
+  originalTotalPcs?: number;
+  realTotalPcs?: number;
+  discrepancyPcs?: number;
   // Legacy single-item & summary fields
   spkId?: string;
   spkItemId?: string;
