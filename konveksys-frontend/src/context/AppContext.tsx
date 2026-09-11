@@ -2005,9 +2005,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const verifiedAt = new Date().toISOString();
 
     const itemsWithAudit: SuratJalanItem[] = verifiedItems.map((vIt, idx) => {
-      const origItem = oldItems[idx] || {};
-      const origQty = vIt.originalQtyDelivered || origItem.qtyDelivered || vIt.qtyDelivered;
-      const origTotal = vIt.originalTotalPcs || origItem.totalPcs || vIt.totalPcs;
+      const origItem = oldItems[idx];
+      const origQty = vIt.originalQtyDelivered || origItem?.qtyDelivered || vIt.qtyDelivered;
+      const origTotal = vIt.originalTotalPcs || origItem?.totalPcs || vIt.totalPcs;
       const itemDisc = vIt.totalPcs - origTotal;
 
       return {
@@ -2040,7 +2040,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       for (let idx = 0; idx < itemsWithAudit.length; idx++) {
         const newItem = itemsWithAudit[idx];
-        const oldItem = oldItems[idx] || {};
+        const oldItem = oldItems[idx];
         const spkId = newItem.spkId || targetSJ.spkId;
         if (!spkId) continue;
 
@@ -2048,21 +2048,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (spkIdx === -1) continue;
 
         const spk = updatedList[spkIdx];
-        const newDeliv = newItem.qtyDelivered || {};
-        const oldDeliv = oldItem.qtyDelivered || {};
+        const newDeliv = newItem.qtyDelivered;
+        const oldDeliv = oldItem?.qtyDelivered;
 
-        const deltaS = (newDeliv.s || 0) - (oldDeliv.s || 0);
-        const deltaM = (newDeliv.m || 0) - (oldDeliv.m || 0);
-        const deltaL = (newDeliv.l || 0) - (oldDeliv.l || 0);
-        const deltaXL = (newDeliv.xl || 0) - (oldDeliv.xl || 0);
-        const deltaXXL = (newDeliv.xxl || 0) - (oldDeliv.xxl || 0);
-        const deltaAnak4 = (newDeliv.anak4 || 0) - (oldDeliv.anak4 || 0);
-        const deltaAnak6 = (newDeliv.anak6 || 0) - (oldDeliv.anak6 || 0);
-        const deltaAnak8 = (newDeliv.anak8 || 0) - (oldDeliv.anak8 || 0);
-        const deltaAnak10 = (newDeliv.anak10 || 0) - (oldDeliv.anak10 || 0);
-        const deltaAnak12 = (newDeliv.anak12 || 0) - (oldDeliv.anak12 || 0);
-        const deltaAnak14 = (newDeliv.anak14 || 0) - (oldDeliv.anak14 || 0);
-        const deltaAnak16 = (newDeliv.anak16 || 0) - (oldDeliv.anak16 || 0);
+        const deltaS = (newDeliv?.s || 0) - (oldDeliv?.s || 0);
+        const deltaM = (newDeliv?.m || 0) - (oldDeliv?.m || 0);
+        const deltaL = (newDeliv?.l || 0) - (oldDeliv?.l || 0);
+        const deltaXL = (newDeliv?.xl || 0) - (oldDeliv?.xl || 0);
+        const deltaXXL = (newDeliv?.xxl || 0) - (oldDeliv?.xxl || 0);
+        const deltaAnak4 = (newDeliv?.anak4 || 0) - (oldDeliv?.anak4 || 0);
+        const deltaAnak6 = (newDeliv?.anak6 || 0) - (oldDeliv?.anak6 || 0);
+        const deltaAnak8 = (newDeliv?.anak8 || 0) - (oldDeliv?.anak8 || 0);
+        const deltaAnak10 = (newDeliv?.anak10 || 0) - (oldDeliv?.anak10 || 0);
+        const deltaAnak12 = (newDeliv?.anak12 || 0) - (oldDeliv?.anak12 || 0);
+        const deltaAnak14 = (newDeliv?.anak14 || 0) - (oldDeliv?.anak14 || 0);
+        const deltaAnak16 = (newDeliv?.anak16 || 0) - (oldDeliv?.anak16 || 0);
 
         let updatedItems = spk.items;
         if (updatedItems && updatedItems.length > 0) {
