@@ -272,7 +272,8 @@ export interface ArusKasSummary {
   brand: string;
   totalTagihan: number;    // Dari BuyerInvoice (surat jalan)
   totalTerbayar: number;   // Total yang sudah dibayar
-  outstanding: number;     // Sisa belum dibayar
+  outstanding: number;     // Sisa belum dibayar (jika tagihan > terbayar)
+  lebihBayar?: number;     // Kelebihan bayar / deposit (jika terbayar > tagihan)
   persentase: number;      // % pelunasan
 }
 

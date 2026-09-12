@@ -91,6 +91,7 @@ export const ArusKasView: React.FC = () => {
   const totalTagihanAll = visibleSummary.reduce((a, b) => a + b.totalTagihan, 0);
   const totalTerbayarAll = visibleSummary.reduce((a, b) => a + b.totalTerbayar, 0);
   const totalOutstandingAll = visibleSummary.reduce((a, b) => a + b.outstanding, 0);
+  const totalLebihBayarAll = visibleSummary.reduce((a, b) => a + (b.lebihBayar || 0), 0);
 
   const handleOpenModal = () => {
     setEditingItem(null);
@@ -213,19 +214,91 @@ export const ArusKasView: React.FC = () => {
           <p className="text-xs text-slate-400">{filteredPembayaran.length} transaksi tercatat</p>
         </div>
 
-        {/* Outstanding */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Outstanding</span>
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${totalOutstandingAll > 0 ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
-              <AlertTriangle className="w-4.5 h-4.5" />
+        {/* Card 3: Outstanding / Lebih Bayar (Deposit) / Lunas */}
+        {(() => {
+          const isLebihBayar = totalLebihBayarAll > 0 && totalOutstandingAll === 0;
+          const isKurangBayar = totalOutstandingAll > 0;
+          const isLunasPas = totalTagihanAll > 0 && totalOutstandingAll === 0 && totalLebihBayarAll === 0;
+
+          if (isLebihBayar) {
+            return (
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-emerald-200 shadow-xs space-y-2 bg-emerald-50/15">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-emerald-800">Lebih Bayar / Deposit</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full">SURPLUS</span>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <CheckCircle2 className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-emerald-700 mt-0.5">
+                  + {formatRp(totalLebihBayarAll)}
+                </div>
+                <p className="text-xs text-emerald-600 font-medium">Kelebihan transfer tersimpan sebagai saldo deposit</p>
+              </div>
+            );
+          }
+
+          if (isKurangBayar) {
+            return (
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-200 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-rose-700">Outstanding (Kurang Bayar)</span>
+                    <span className="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded-full">BELUM LUNAS</span>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                    <AlertTriangle className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-rose-700 mt-0.5">
+                  {formatRp(totalOutstandingAll)}
+                </div>
+                <p className="text-xs text-slate-400">
+                  {totalLebihBayarAll > 0
+                    ? `Sisa tagihan (Deposit brand lain: +${formatRp(totalLebihBayarAll)})`
+                    : 'Sisa tagihan yang belum dilunasi'}
+                </p>
+              </div>
+            );
+          }
+
+          if (isLunasPas) {
+            return (
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-slate-700">Outstanding</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full">LUNAS ✓</span>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <CheckCircle2 className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                  Rp 0
+                </div>
+                <p className="text-xs text-emerald-600 font-medium">Semua tagihan surat jalan lunas terbayar</p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Outstanding</span>
+                <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                  <CheckCircle2 className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                Rp 0
+              </div>
+              <p className="text-xs text-slate-400">Tidak ada tagihan tertunggak</p>
             </div>
-          </div>
-          <div className={`text-2xl font-bold mt-0.5 ${totalOutstandingAll > 0 ? 'text-rose-700' : 'text-slate-900'}`}>
-            {formatRp(totalOutstandingAll)}
-          </div>
-          <p className="text-xs text-slate-400">Sisa tagihan belum dilunasi</p>
-        </div>
+          );
+        })()}
       </div>
 
       {/* Per-Brand Status Cards (Admin only) */}
@@ -247,13 +320,17 @@ export const ArusKasView: React.FC = () => {
                     <span className="text-xs font-semibold text-slate-800">{summary.brand}</span>
                   </div>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                    summary.persentase >= 100
+                    summary.lebihBayar && summary.lebihBayar > 0
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                      : summary.persentase >= 100
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                       : summary.persentase >= 50
                       ? 'bg-amber-50 text-amber-700 border-amber-100'
                       : 'bg-red-50 text-red-600 border-red-100'
                   }`}>
-                    {summary.persentase}%
+                    {summary.lebihBayar && summary.lebihBayar > 0
+                      ? `SURPLUS (+${formatRp(summary.lebihBayar)})`
+                      : `${summary.persentase}%`}
                   </span>
                 </div>
 
@@ -281,9 +358,21 @@ export const ArusKasView: React.FC = () => {
                     <span className="font-medium text-emerald-700">{formatRp(summary.totalTerbayar)}</span>
                   </div>
                   <div className="flex justify-between border-t border-slate-200 pt-1 mt-1">
-                    <span className="font-medium text-slate-600">Outstanding</span>
-                    <span className={`font-semibold ${summary.outstanding > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                      {summary.outstanding > 0 ? formatRp(summary.outstanding) : 'LUNAS ✓'}
+                    <span className="font-medium text-slate-600">
+                      {summary.lebihBayar && summary.lebihBayar > 0 ? 'Lebih Bayar (Deposit)' : 'Outstanding'}
+                    </span>
+                    <span className={`font-semibold ${
+                      summary.lebihBayar && summary.lebihBayar > 0
+                        ? 'text-emerald-700'
+                        : summary.outstanding > 0
+                        ? 'text-red-600'
+                        : 'text-emerald-600'
+                    }`}>
+                      {summary.lebihBayar && summary.lebihBayar > 0
+                        ? `+ ${formatRp(summary.lebihBayar)}`
+                        : summary.outstanding > 0
+                        ? formatRp(summary.outstanding)
+                        : 'LUNAS ✓'}
                     </span>
                   </div>
                 </div>
@@ -549,9 +638,21 @@ export const ArusKasView: React.FC = () => {
                       <span className="font-medium">{formatRp(s.totalTerbayar)}</span>
                     </div>
                     <div className="flex justify-between border-t border-indigo-100 pt-1 font-semibold">
-                      <span className="text-slate-700">Outstanding</span>
-                      <span className={s.outstanding > 0 ? 'text-red-600' : 'text-emerald-600'}>
-                        {s.outstanding > 0 ? formatRp(s.outstanding) : 'LUNAS'}
+                      <span className="text-slate-700">
+                        {s.lebihBayar && s.lebihBayar > 0 ? 'Lebih Bayar (Deposit)' : 'Outstanding'}
+                      </span>
+                      <span className={
+                        s.lebihBayar && s.lebihBayar > 0
+                          ? 'text-emerald-700'
+                          : s.outstanding > 0
+                          ? 'text-red-600'
+                          : 'text-emerald-600'
+                      }>
+                        {s.lebihBayar && s.lebihBayar > 0
+                          ? `+ ${formatRp(s.lebihBayar)} (Deposit)`
+                          : s.outstanding > 0
+                          ? formatRp(s.outstanding)
+                          : 'LUNAS'}
                       </span>
                     </div>
                   </div>

@@ -3035,9 +3035,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const totalTerbayar = pembayaranList
         .filter(p => p.brand === brand.name)
         .reduce((acc, p) => acc + p.jumlah, 0);
-      const outstanding = Math.max(0, totalTagihan - totalTerbayar);
-      const persentase = totalTagihan > 0 ? Math.min(100, Math.round((totalTerbayar / totalTagihan) * 100)) : 0;
-      return { brand: brand.name, totalTagihan, totalTerbayar, outstanding, persentase };
+      const selisih = totalTagihan - totalTerbayar;
+      const outstanding = selisih > 0 ? selisih : 0;
+      const lebihBayar = selisih < 0 ? Math.abs(selisih) : 0;
+      const persentase = totalTagihan > 0
+        ? Math.min(100, Math.round((totalTerbayar / totalTagihan) * 100))
+        : (totalTerbayar > 0 ? 100 : 0);
+      return { brand: brand.name, totalTagihan, totalTerbayar, outstanding, lebihBayar, persentase };
     });
   };
 
