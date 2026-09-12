@@ -456,7 +456,7 @@ export const BarangMasukView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6">
       {/* 1. Header Banner */}
       <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1359,30 +1359,30 @@ export const BarangMasukView: React.FC = () => {
 
       {/* 9. MODAL: Verifikasi & Penyesuaian Fisik Real Diterima Brand */}
       {verifyingSJ && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
           <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-slideUp">
-            {/* Header */}
-            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+            {/* Header (Warna Putih Bersih) */}
+            <div className="px-6 py-4 bg-white border-b border-slate-200/80 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
                   <SlidersHorizontal className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
                     <span>Penyesuaian Fisik Real Diterima</span>
-                    <span className="text-xs bg-indigo-500/30 text-indigo-300 font-mono px-2 py-0.5 rounded border border-indigo-400/30">
+                    <span className="text-xs bg-indigo-50 text-indigo-700 font-mono font-bold px-2 py-0.5 rounded border border-indigo-200">
                       {verifyingSJ.noSuratJalan}
                     </span>
                   </h3>
-                  <p className="text-slate-400 text-xs mt-0.5">
-                    Brand: <span className="text-white font-bold">{verifyingSJ.brand}</span> • Dikirim: {formatDateIndo(verifyingSJ.tanggal)} • Armada: {verifyingSJ.driverName || 'Kurir Konveksi'} ({verifyingSJ.nomorKendaraan || '-'})
+                  <p className="text-slate-500 text-xs mt-0.5">
+                    Brand: <span className="text-slate-800 font-bold">{verifyingSJ.brand}</span> • Dikirim: {formatDateIndo(verifyingSJ.tanggal)} • Armada: {verifyingSJ.driverName || 'Kurir Konveksi'} ({verifyingSJ.nomorKendaraan || '-'})
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setVerifyingSJ(null)}
                 disabled={isSavingVerification}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

@@ -111,8 +111,9 @@ export const ArusKasView: React.FC = () => {
       alert('Keterangan pembayaran wajib diisi!');
       return;
     }
+    const targetBrand = userRole === 'BRAND' ? activeBrand : form.brand;
     await addPembayaran({
-      brand: form.brand,
+      brand: targetBrand,
       tanggal: form.tanggal,
       jumlah: Number(form.jumlah),
       metode: form.metode,
@@ -139,19 +140,19 @@ export const ArusKasView: React.FC = () => {
             </div>
             <h1 className="text-xl font-bold tracking-tight">Pencatatan Pembayaran Brand</h1>
             <p className="text-slate-400 text-xs mt-1 max-w-xl leading-relaxed">
-              Catat pembayaran masuk dari brand — termasuk cicilan &amp; pembayaran parsial. Lacak outstanding tagihan secara real-time.
+              {userRole === 'ADMIN'
+                ? 'Catat pembayaran masuk dari brand — termasuk cicilan & pembayaran parsial. Lacak outstanding tagihan secara real-time.'
+                : 'Informasi tagihan, riwayat transfer pembayaran Anda ke konveksi, dan sisa outstanding secara real-time.'}
             </p>
           </div>
 
-          {userRole === 'ADMIN' && (
-            <button
-              onClick={handleOpenModal}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-base btn-press shadow-sm shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              Catat Pembayaran
-            </button>
-          )}
+          <button
+            onClick={handleOpenModal}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-base btn-press shadow-sm shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            {userRole === 'ADMIN' ? 'Catat Pembayaran' : 'Catat Bukti Transfer'}
+          </button>
         </div>
       </div>
 
@@ -296,15 +297,13 @@ export const ArusKasView: React.FC = () => {
             )}
 
             {/* Tombol tambah di sini juga (untuk mobile convenience) */}
-            {userRole === 'ADMIN' && (
-              <button
-                onClick={handleOpenModal}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Catat
-              </button>
-            )}
+            <button
+              onClick={handleOpenModal}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-base btn-press shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {userRole === 'ADMIN' ? 'Catat' : 'Catat Transfer'}
+            </button>
           </div>
         </div>
 
@@ -315,7 +314,9 @@ export const ArusKasView: React.FC = () => {
             </div>
             <div className="text-sm font-medium text-slate-500">Belum ada pembayaran tercatat</div>
             <p className="text-xs text-slate-400 max-w-xs mx-auto">
-              Catat pembayaran masuk dari brand menggunakan tombol "+ Catat Pembayaran" di atas.
+              {userRole === 'ADMIN'
+                ? 'Catat pembayaran masuk dari brand menggunakan tombol "+ Catat Pembayaran" di atas.'
+                : 'Catat pembayaran yang telah Anda transfer menggunakan tombol "+ Catat Bukti Transfer" di atas.'}
             </p>
           </div>
         ) : (
@@ -372,8 +373,14 @@ export const ArusKasView: React.FC = () => {
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-lg border border-slate-200 space-y-5 animate-slideUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-semibold text-slate-900 text-base">Catat Pembayaran Masuk</h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Rekam pembayaran dari brand (bisa cicilan)</p>
+                <h3 className="font-semibold text-slate-900 text-base">
+                  {userRole === 'ADMIN' ? 'Catat Pembayaran Masuk' : 'Konfirmasi Transfer Pembayaran'}
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {userRole === 'ADMIN'
+                    ? 'Rekam pembayaran dari brand (bisa cicilan)'
+                    : 'Input pembayaran yang telah Anda transfer ke Admin / Konveksi'}
+                </p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -388,19 +395,28 @@ export const ArusKasView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-600 mb-1.5">Brand / Klien</label>
-                  <select
-                    value={form.brand}
-                    onChange={e => setForm({ ...form, brand: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 transition-base"
-                  >
-                    {brands.map(b => (
-                      <option key={b.id} value={b.name}>{b.name}</option>
-                    ))}
-                  </select>
+                  {userRole === 'BRAND' ? (
+                    <div className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-800 font-semibold flex items-center justify-between">
+                      <span className="truncate">{activeBrand}</span>
+                      <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium shrink-0">Brand Anda</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={form.brand}
+                      onChange={e => setForm({ ...form, brand: e.target.value })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-indigo-400 transition-base"
+                    >
+                      {brands.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block font-medium text-slate-600 mb-1.5">Tanggal Bayar</label>
+                  <label className="block font-medium text-slate-600 mb-1.5">
+                    {userRole === 'ADMIN' ? 'Tanggal Bayar' : 'Tanggal Transfer'}
+                  </label>
                   <input
                     type="date"
                     value={form.tanggal}
@@ -505,7 +521,7 @@ export const ArusKasView: React.FC = () => {
                   type="submit"
                   className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition-base btn-press shadow-sm"
                 >
-                  Simpan Pembayaran
+                  {userRole === 'ADMIN' ? 'Simpan Pembayaran' : 'Kirim Bukti Transfer'}
                 </button>
               </div>
             </form>
