@@ -472,6 +472,13 @@ export async function apiAddPembayaran(data: Omit<ApiPembayaran, 'id'>) {
   });
 }
 
+export async function apiUpdatePembayaran(id: string, data: Partial<Omit<ApiPembayaran, 'id'>>) {
+  return apiFetch<ApiPembayaran>(`/api/arus-kas/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function apiDeletePembayaran(id: string) {
   return apiFetch<{ message: string }>(`/api/arus-kas/${id}`, {
     method: 'DELETE',

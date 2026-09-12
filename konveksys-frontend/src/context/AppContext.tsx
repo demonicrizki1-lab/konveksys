@@ -25,6 +25,7 @@ import {
   apiAddKasbon,
   apiGetPembayaran,
   apiAddPembayaran,
+  apiUpdatePembayaran,
   apiDeletePembayaran,
   apiGetSpk,
   apiCreateSpk,
@@ -320,6 +321,7 @@ interface AppContextType {
   // Arus Kas Brand
   pembayaranList: PembayaranBrand[];
   addPembayaran: (p: Omit<PembayaranBrand, 'id'>) => void;
+  updatePembayaran: (id: string, p: Partial<Omit<PembayaranBrand, 'id'>>) => void;
   deletePembayaran: (id: string) => void;
   getArusKasSummary: () => ArusKasSummary[];
 
@@ -2589,6 +2591,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updatePembayaran = async (id: string, p: Partial<Omit<PembayaranBrand, 'id'>>) => {
+    setPembayaranList(prev =>
+      prev.map(item => (item.id === id ? { ...item, ...p } : item))
+    );
+    try {
+      await apiUpdatePembayaran(id, p);
+    } catch (err) {
+      console.warn('Backend sync failed, updated locally:', err);
+    }
+  };
+
   const deletePembayaran = async (id: string) => {
     setPembayaranList(prev => prev.filter(p => p.id !== id));
     try {
@@ -3092,6 +3105,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addKasbon,
         pembayaranList,
         addPembayaran,
+        updatePembayaran,
         deletePembayaran,
         getArusKasSummary,
         getVendorRate,

@@ -6,6 +6,7 @@ import { ConfirmModal } from '../common/ConfirmModal';
 import {
   TrendingUp,
   Plus,
+  Edit2,
   Trash2,
   X,
   ArrowDownCircle,
@@ -43,6 +44,7 @@ export const ArusKasView: React.FC = () => {
     brands,
     pembayaranList,
     addPembayaran,
+    updatePembayaran,
     deletePembayaran,
     getArusKasSummary,
     userRole,
@@ -52,6 +54,7 @@ export const ArusKasView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState(userRole === 'BRAND' ? activeBrand : 'ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<PembayaranBrand | null>(null);
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     item?: PembayaranBrand;
@@ -90,13 +93,27 @@ export const ArusKasView: React.FC = () => {
   const totalOutstandingAll = visibleSummary.reduce((a, b) => a + b.outstanding, 0);
 
   const handleOpenModal = () => {
+    setEditingItem(null);
     setForm({
-      brand: userRole === 'BRAND' ? activeBrand : brands[0]?.name || 'GREYWOLF',
+      brand: userRole === 'BRAND' ? activeBrand : (brandFilter !== 'ALL' ? brandFilter : (brands[0]?.name || 'GREYWOLF')),
       tanggal: new Date().toISOString().split('T')[0],
       jumlah: 0,
       metode: 'TRANSFER',
       keterangan: '',
       referensiNomor: '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (p: PembayaranBrand) => {
+    setEditingItem(p);
+    setForm({
+      brand: p.brand,
+      tanggal: p.tanggal,
+      jumlah: p.jumlah,
+      metode: p.metode,
+      keterangan: p.keterangan,
+      referensiNomor: p.referensiNomor || '',
     });
     setIsModalOpen(true);
   };
@@ -112,15 +129,29 @@ export const ArusKasView: React.FC = () => {
       return;
     }
     const targetBrand = userRole === 'BRAND' ? activeBrand : form.brand;
-    await addPembayaran({
-      brand: targetBrand,
-      tanggal: form.tanggal,
-      jumlah: Number(form.jumlah),
-      metode: form.metode,
-      keterangan: form.keterangan,
-      referensiNomor: form.referensiNomor || undefined,
-    });
+
+    if (editingItem) {
+      await updatePembayaran(editingItem.id, {
+        brand: targetBrand,
+        tanggal: form.tanggal,
+        jumlah: Number(form.jumlah),
+        metode: form.metode,
+        keterangan: form.keterangan,
+        referensiNomor: form.referensiNomor || undefined,
+      });
+    } else {
+      await addPembayaran({
+        brand: targetBrand,
+        tanggal: form.tanggal,
+        jumlah: Number(form.jumlah),
+        metode: form.metode,
+        keterangan: form.keterangan,
+        referensiNomor: form.referensiNomor || undefined,
+      });
+    }
+
     setIsModalOpen(false);
+    setEditingItem(null);
   };
 
   const handleDelete = (p: PembayaranBrand) => {
@@ -330,7 +361,7 @@ export const ArusKasView: React.FC = () => {
                   <th className="p-3.5">Metode</th>
                   <th className="p-3.5">Keterangan</th>
                   <th className="p-3.5">No. Referensi</th>
-                  {userRole === 'ADMIN' && <th className="p-3.5 text-right">Aksi</th>}
+                  <th className="p-3.5 text-right whitespace-nowrap">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -348,17 +379,24 @@ export const ArusKasView: React.FC = () => {
                     <td className="p-3.5 text-slate-500 font-mono text-[11px]">
                       {p.referensiNomor || <span className="text-slate-300">—</span>}
                     </td>
-                    {userRole === 'ADMIN' && (
-                      <td className="p-3.5 text-right">
+                    <td className="p-3.5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleEdit(p)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-base btn-press cursor-pointer"
+                          title="Edit pembayaran"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={() => handleDelete(p)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-base btn-press"
-                          title="Hapus pencatatan"
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-base btn-press cursor-pointer"
+                          title="Hapus pembayaran"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      </td>
-                    )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -374,17 +412,28 @@ export const ArusKasView: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-semibold text-slate-900 text-base">
-                  {userRole === 'ADMIN' ? 'Catat Pembayaran Masuk' : 'Konfirmasi Transfer Pembayaran'}
+                  {editingItem
+                    ? userRole === 'ADMIN'
+                      ? 'Edit Pembayaran Brand'
+                      : 'Edit Bukti Transfer'
+                    : userRole === 'ADMIN'
+                    ? 'Catat Pembayaran Masuk'
+                    : 'Konfirmasi Transfer Pembayaran'}
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  {userRole === 'ADMIN'
+                  {editingItem
+                    ? 'Perbarui rincian nominal, tanggal, atau bukti transfer'
+                    : userRole === 'ADMIN'
                     ? 'Rekam pembayaran dari brand (bisa cicilan)'
                     : 'Input pembayaran yang telah Anda transfer ke Admin / Konveksi'}
                 </p>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg btn-press"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingItem(null);
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg btn-press cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -512,16 +561,23 @@ export const ArusKasView: React.FC = () => {
               <div className="flex gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-base btn-press"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingItem(null);
+                  }}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-base btn-press cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition-base btn-press shadow-sm"
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg transition-base btn-press shadow-sm cursor-pointer"
                 >
-                  {userRole === 'ADMIN' ? 'Simpan Pembayaran' : 'Kirim Bukti Transfer'}
+                  {editingItem
+                    ? 'Simpan Perubahan'
+                    : userRole === 'ADMIN'
+                    ? 'Simpan Pembayaran'
+                    : 'Kirim Bukti Transfer'}
                 </button>
               </div>
             </form>
@@ -539,22 +595,28 @@ export const ArusKasView: React.FC = () => {
             setDeleteModal({ isOpen: false });
           }
         }}
-        title="Hapus Pembayaran Brand?"
+        title={userRole === 'BRAND' ? 'Hapus Bukti Transfer?' : 'Hapus Pembayaran Brand?'}
         variant="danger"
-        confirmText="Ya, Hapus Pembayaran"
+        confirmText={userRole === 'BRAND' ? 'Ya, Hapus Bukti' : 'Ya, Hapus Pembayaran'}
         cancelText="Batal"
         message={
           deleteModal.item ? (
             <span>
               Apakah Anda yakin ingin menghapus pencatatan pembayaran{' '}
-              <strong className="text-slate-900">{formatRp(deleteModal.item.jumlah)}</strong> dari{' '}
-              <strong className="text-slate-900">{deleteModal.item.brand}</strong>?
+              <strong className="text-slate-900">{formatRp(deleteModal.item.jumlah)}</strong>
+              {userRole === 'ADMIN' ? (
+                <>
+                  {' '}dari <strong className="text-slate-900">{deleteModal.item.brand}</strong>?
+                </>
+              ) : (
+                '?'
+              )}
             </span>
           ) : (
             'Apakah Anda yakin ingin menghapus pembayaran ini?'
           )
         }
-        note="Data pencatatan kas masuk ini akan dihapus dan total akumulasi terbayar brand akan disesuaikan."
+        note="Data pencatatan kas ini akan dihapus dan total akumulasi terbayar akan disesuaikan secara real-time."
       />
     </div>
   );
