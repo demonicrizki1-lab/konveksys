@@ -4,6 +4,7 @@ import { ProductionPO } from '../../types';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import { formatDateIndo } from '../../utils/formatters';
 import ttdRizkiMaulana from '../../assets/ttd-rizki-maulana.png';
+import ttdCecepDayat from '../../assets/ttd-cecep-dayat.png';
 
 interface ProductionPOPrintModalProps {
   po: ProductionPO;
@@ -241,7 +242,12 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             <div>
               <div className="text-[9px] text-slate-500 mb-0.5">Disetujui:</div>
               <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">Pimpinan / Kepala Workshop</div>
-              <div className="h-10 flex items-end justify-center">
+              <div className="relative h-10 flex items-end justify-center">
+                <img 
+                  src={ttdCecepDayat} 
+                  alt="Tanda Tangan Cecep Dayat" 
+                  className="absolute bottom-[-1px] h-8 max-w-[120px] w-auto object-contain pointer-events-none select-none z-10" 
+                />
                 <div className="w-28 border-b border-slate-400"></div>
               </div>
               <div className="text-[9px] text-slate-700 mt-0.5 font-mono font-medium whitespace-nowrap">( Cecep Dayat )</div>
