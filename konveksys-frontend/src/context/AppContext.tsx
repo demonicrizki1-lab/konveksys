@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { getCache, setCache, clearAllCache } from '../utils/cacheManager';
 import {
   apiLogin,
   saveToken,
@@ -281,6 +282,10 @@ interface AppContextType {
   setIsMobileMenuOpen: (open: boolean) => void;
   toggleMobileMenu: () => void;
 
+  // Sync & Caching State
+  isSyncing: boolean;
+  lastSyncedAt: Date | null;
+
   // Master Data
   brands: Brand[];
   addBrand: (brand: Omit<Brand, 'id'>) => Promise<void>;
@@ -462,45 +467,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsMobileMenuOpen(prev => !prev);
   };
 
-  // Pure Database-backed State (NO localStorage persistence for business entities)
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [hargaKonveksi, setHargaKonveksi] = useState<HargaKonveksi[]>([]);
-  const [hargaBuyer, setHargaBuyer] = useState<HargaBuyer[]>([]);
-  const [inboundRolls, setInboundRolls] = useState<InboundRoll[]>([]);
-  const [spkList, setSpkList] = useState<SPKCutting[]>([]);
-  const [suratJalanList, setSuratJalanList] = useState<SuratJalan[]>([]);
-  const [kasbonList, setKasbonList] = useState<KasbonTransaction[]>([]);
-  const [pembayaranList, setPembayaranList] = useState<PembayaranBrand[]>([]);
-  const [returnList, setReturnList] = useState<ReturnItem[]>([]);
-  const [accessories, setAccessories] = useState<AccessoryItem[]>([]);
-  const [accessoryMutations, setAccessoryMutations] = useState<AccessoryMutation[]>([]);
-  const [brandSKUs, setBrandSKUs] = useState<BrandProductSKU[]>([]);
-  const [brandSales, setBrandSales] = useState<BrandSale[]>([]);
-  const [brandStockExits, setBrandStockExits] = useState<BrandStockExit[]>([]);
-  const [productionPOs, setProductionPOs] = useState<ProductionPO[]>([]);
+  // High-Performance State (Stale-While-Revalidate: initialized immediately from cache for 0ms initial render)
+  const [brands, setBrands] = useState<Brand[]>(() => getCache('brands', []));
+  const [vendors, setVendors] = useState<Vendor[]>(() => getCache('vendors', []));
+  const [hargaKonveksi, setHargaKonveksi] = useState<HargaKonveksi[]>(() => getCache('harga_konveksi', []));
+  const [hargaBuyer, setHargaBuyer] = useState<HargaBuyer[]>(() => getCache('harga_buyer', []));
+  const [inboundRolls, setInboundRolls] = useState<InboundRoll[]>(() => getCache('inbound_rolls', []));
+  const [spkList, setSpkList] = useState<SPKCutting[]>(() => getCache('spk_list', []));
+  const [suratJalanList, setSuratJalanList] = useState<SuratJalan[]>(() => getCache('surat_jalan', []));
+  const [kasbonList, setKasbonList] = useState<KasbonTransaction[]>(() => getCache('kasbon', []));
+  const [pembayaranList, setPembayaranList] = useState<PembayaranBrand[]>(() => getCache('pembayaran', []));
+  const [returnList, setReturnList] = useState<ReturnItem[]>(() => getCache('returns', []));
+  const [accessories, setAccessories] = useState<AccessoryItem[]>(() => getCache('accessories', []));
+  const [accessoryMutations, setAccessoryMutations] = useState<AccessoryMutation[]>(() => getCache('accessory_mutations', []));
+  const [brandSKUs, setBrandSKUs] = useState<BrandProductSKU[]>(() => getCache('brand_skus', []));
+  const [brandSales, setBrandSales] = useState<BrandSale[]>(() => getCache('brand_sales', []));
+  const [brandStockExits, setBrandStockExits] = useState<BrandStockExit[]>(() => getCache('brand_stock_exits', []));
+  const [productionPOs, setProductionPOs] = useState<ProductionPO[]>(() => getCache('production_pos', []));
 
-  // Auto-purge all legacy localStorage cache to guarantee 100% database integration
-  useEffect(() => {
-    const LEGACY_STORAGE_KEYS = [
-      'konvek_brands',
-      'konvek_returns',
-      'konvek_vendors',
-      'konvek_harga_konveksi',
-      'konvek_harga_buyer',
-      'konvek_inbound_rolls',
-      'konvek_spk_list',
-      'konvek_surat_jalan',
-      'konvek_kasbon',
-      'konvek_pembayaran',
-      'konvek_accessories',
-      'konvek_accessory_mutations',
-      'konvek_brand_skus',
-      'konvek_brand_sales',
-      'konvek_brand_stock_exits',
-    ];
-    LEGACY_STORAGE_KEYS.forEach(k => localStorage.removeItem(k));
-  }, []);
+  // Sync state tracking
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   // Helper for brand name normalization (CREADIVE -> NAMI)
   const normalizeBrandName = (name?: string): string => {
@@ -514,29 +501,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return code || '';
   };
 
-  // Sync to Backend Database if token exists
+  // Sync to Backend Database with Full Request Parallelization & Caching
   const syncFromBackend = useCallback(async () => {
     const token = getToken();
     if (!token) return;
 
+    setIsSyncing(true);
     try {
-      // 1. Fetch Brands
-      const { data: bData } = await apiGetBrands();
-      if (Array.isArray(bData)) {
-        setBrands(bData.map(b => ({
+      const isBrandUser = currentUser?.role === 'BRAND';
+
+      // Execute all endpoints in parallel with Promise.allSettled
+      const results = await Promise.allSettled([
+        apiGetBrands(), // 0
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetVendors(), // 1
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetHargaKonveksi(), // 2
+        apiGetHargaBuyer(), // 3
+        apiGetInboundRolls(), // 4
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetKasbon(), // 5
+        apiGetSpk(), // 6
+        apiGetSuratJalan(), // 7
+        apiGetPembayaran(), // 8
+        apiGetReturns(), // 9
+        apiGetAccessories(), // 10
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetAccessoryMutations(), // 11
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetUsers(), // 12
+        apiGetBrandSKUs(), // 13
+        apiGetBrandSales(), // 14
+        apiGetBrandStockExits(), // 15
+        apiGetProductionPOs(), // 16
+      ]);
+
+      // 0. Brands
+      if (results[0].status === 'fulfilled' && Array.isArray(results[0].value.data)) {
+        const mapped = results[0].value.data.map((b: any) => ({
           id: b.id,
           name: normalizeBrandName(b.name),
           code: normalizeBrandCode(b.name, b.code),
           contactPerson: b.contactPerson || '',
           phone: b.phone || '',
-        })));
+        }));
+        setBrands(mapped);
+        setCache('brands', mapped);
       }
 
-      // 2. Fetch Vendors
-      const { data: vData } = await apiGetVendors();
-      if (Array.isArray(vData)) {
-        setVendors(prev =>
-          vData.map(v => {
+      // 1. Vendors
+      if (results[1].status === 'fulfilled' && Array.isArray(results[1].value.data) && !isBrandUser) {
+        const vData = results[1].value.data;
+        setVendors(prev => {
+          const mapped = vData.map((v: any) => {
             const existing = prev.find(p => p.name === v.name);
             return {
               id: v.id,
@@ -545,26 +557,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               contact: v.contact || '',
               currentKasbon: existing ? existing.currentKasbon : 0,
             };
-          })
-        );
+          });
+          setCache('vendors', mapped);
+          return mapped;
+        });
       }
 
-      // 3. Fetch Harga Konveksi
-      const { data: hkData } = await apiGetHargaKonveksi();
-      if (Array.isArray(hkData)) {
-        setHargaKonveksi(hkData.map(hk => ({
+      // 2. Harga Konveksi
+      if (results[2].status === 'fulfilled' && Array.isArray(results[2].value.data) && !isBrandUser) {
+        const mapped = results[2].value.data.map((hk: any) => ({
           id: hk.id,
           vendor: hk.vendor,
           brand: normalizeBrandName(hk.brand),
           produk: hk.produk,
           harga: Number(hk.harga),
-        })));
+        }));
+        setHargaKonveksi(mapped);
+        setCache('harga_konveksi', mapped);
       }
 
-      // 4. Fetch Harga Buyer
-      const { data: hbData } = await apiGetHargaBuyer();
-      if (Array.isArray(hbData)) {
-        setHargaBuyer(hbData.map(hb => ({
+      // 3. Harga Buyer
+      if (results[3].status === 'fulfilled' && Array.isArray(results[3].value.data)) {
+        const mapped = results[3].value.data.map((hb: any) => ({
           id: hb.id,
           brand: normalizeBrandName(hb.brand),
           produk: hb.produk,
@@ -581,13 +595,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           rateAnak12: Number(hb.rateAnak12 || 0),
           rateAnak14: Number(hb.rateAnak14 || 0),
           rateAnak16: Number(hb.rateAnak16 || 0),
-        })));
+        }));
+        setHargaBuyer(mapped);
+        setCache('harga_buyer', mapped);
       }
 
-      // 5. Fetch Inbound Rolls
-      const { data: rollData } = await apiGetInboundRolls();
-      if (Array.isArray(rollData)) {
-        setInboundRolls(rollData.map(r => ({
+      // 4. Inbound Rolls
+      if (results[4].status === 'fulfilled' && Array.isArray(results[4].value.data)) {
+        const mapped = results[4].value.data.map((r: any) => ({
           id: r.id,
           rollCode: r.rollCode,
           brand: normalizeBrandName(r.brand),
@@ -598,26 +613,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: r.status,
           tanggalMasuk: r.tanggalMasuk,
           keterangan: r.keterangan || '',
-        })));
+        }));
+        setInboundRolls(mapped);
+        setCache('inbound_rolls', mapped);
       }
 
-      // 6. Fetch Kasbon
-      const { data: ksbData } = await apiGetKasbon();
-      if (Array.isArray(ksbData)) {
-        setKasbonList(ksbData.map(k => ({
+      // 5. Kasbon
+      if (results[5].status === 'fulfilled' && Array.isArray(results[5].value.data) && !isBrandUser) {
+        const mapped = results[5].value.data.map((k: any) => ({
           id: k.id,
           vendor: k.vendor,
           tanggal: k.tanggal,
           jumlah: Number(k.jumlah),
-          tipe: k.tipe === 'PELUNASAN' ? 'POTONGAN_GAJI' : 'PINJAMAN',
+          tipe: (k.tipe === 'PELUNASAN' ? 'POTONGAN_GAJI' : 'PINJAMAN') as 'PINJAMAN' | 'POTONGAN_GAJI',
           keterangan: k.keterangan,
-        })));
+        }));
+        setKasbonList(mapped);
+        setCache('kasbon', mapped);
       }
 
-      // 7. Fetch SPK
-      const { data: spkData } = await apiGetSpk();
-      if (Array.isArray(spkData)) {
-        setSpkList(spkData.map((s: any) => ({
+      // 6. SPK
+      if (results[6].status === 'fulfilled' && Array.isArray(results[6].value.data)) {
+        const mapped = results[6].value.data.map((s: any) => ({
           id: s.id,
           spkNumber: s.spkNumber,
           brand: normalizeBrandName(s.brand),
@@ -656,13 +673,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           targetSelesai: s.targetSelesai || '',
           status: s.status,
           catatan: s.catatan || '',
-        })));
+        }));
+        setSpkList(mapped);
+        setCache('spk_list', mapped);
       }
 
-      // 8. Fetch Surat Jalan
-      const { data: sjData } = await apiGetSuratJalan();
-      if (Array.isArray(sjData)) {
-        setSuratJalanList(sjData.map((sj: any) => ({
+      // 7. Surat Jalan
+      if (results[7].status === 'fulfilled' && Array.isArray(results[7].value.data)) {
+        const mapped = results[7].value.data.map((sj: any) => ({
           id: sj.id,
           noSuratJalan: sj.noSuratJalan,
           brand: normalizeBrandName(sj.brand),
@@ -696,13 +714,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak14: sj.qtyAnak14 || 0,
             anak16: sj.qtyAnak16 || 0,
           },
-        })));
+        }));
+        setSuratJalanList(mapped);
+        setCache('surat_jalan', mapped);
       }
 
-      // 9. Fetch Pembayaran Brand
-      const { data: payData } = await apiGetPembayaran();
-      if (Array.isArray(payData)) {
-        setPembayaranList(payData.map((p: any) => ({
+      // 8. Pembayaran
+      if (results[8].status === 'fulfilled' && Array.isArray(results[8].value.data)) {
+        const mapped = results[8].value.data.map((p: any) => ({
           id: p.id,
           brand: normalizeBrandName(p.brand),
           tanggal: p.tanggal,
@@ -710,13 +729,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           metode: p.metode,
           keterangan: p.keterangan || '',
           referensiNomor: p.referensiNomor || '',
-        })));
+        }));
+        setPembayaranList(mapped);
+        setCache('pembayaran', mapped);
       }
 
-      // 10. Fetch Returns
-      const { data: retData } = await apiGetReturns();
-      if (Array.isArray(retData)) {
-        setReturnList(retData.map((r: any) => ({
+      // 9. Returns
+      if (results[9].status === 'fulfilled' && Array.isArray(results[9].value.data)) {
+        const mapped = results[9].value.data.map((r: any) => ({
           id: r.id,
           noRetur: r.noRetur,
           sumber: r.sumber,
@@ -750,13 +770,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           qtyRejectTotal: r.qtyRejectTotal || 0,
           spk: r.spk,
           suratJalan: r.suratJalan,
-        })));
+        }));
+        setReturnList(mapped);
+        setCache('returns', mapped);
       }
 
-      // 11. Fetch Accessories
-      const { data: accData } = await apiGetAccessories();
-      if (Array.isArray(accData)) {
-        setAccessories(accData.map((a: any) => ({
+      // 10. Accessories
+      if (results[10].status === 'fulfilled' && Array.isArray(results[10].value.data)) {
+        const mapped = results[10].value.data.map((a: any) => ({
           id: a.id,
           sku: a.sku,
           name: a.name,
@@ -770,13 +791,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           notes: a.notes || '',
           createdAt: a.createdAt,
           updatedAt: a.updatedAt,
-        })));
+        }));
+        setAccessories(mapped);
+        setCache('accessories', mapped);
       }
 
-      // 12. Fetch Accessory Mutations
-      const { data: mutData } = await apiGetAccessoryMutations();
-      if (Array.isArray(mutData)) {
-        setAccessoryMutations(mutData.map((m: any) => ({
+      // 11. Accessory Mutations
+      if (results[11].status === 'fulfilled' && Array.isArray(results[11].value.data) && !isBrandUser) {
+        const mapped = results[11].value.data.map((m: any) => ({
           id: m.id,
           accessoryId: m.accessoryId,
           accessoryName: m.accessoryName,
@@ -792,67 +814,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           notes: m.notes || undefined,
           costTotal: m.costTotal ? Number(m.costTotal) : undefined,
           createdAt: String(m.createdAt),
-        })));
+        }));
+        setAccessoryMutations(mapped);
+        setCache('accessory_mutations', mapped);
       }
 
-      // 13. Fetch Users (if Admin)
-      try {
-        const { data: userData } = await apiGetUsers();
-        if (Array.isArray(userData)) {
-          setManagedUsers(userData);
-        }
-      } catch {
-        // Not admin or unauthenticated
+      // 12. Users
+      if (results[12].status === 'fulfilled' && Array.isArray(results[12].value.data) && !isBrandUser) {
+        setManagedUsers(results[12].value.data);
       }
 
-      // 14. Fetch Brand Inventory (SKUs, Sales, Stock Exits)
-      try {
-        const [skusRes, salesRes, exitsRes] = await Promise.all([
-          apiGetBrandSKUs(),
-          apiGetBrandSales(),
-          apiGetBrandStockExits(),
-        ]);
-        if (Array.isArray(skusRes.data)) {
-          setBrandSKUs(skusRes.data.map(s => ({
-            ...s,
-            hpp: Number(s.hpp || 0),
-            stokAwal: Number(s.stokAwal || 0),
-          })));
-        }
-        if (Array.isArray(salesRes.data)) {
-          setBrandSales(salesRes.data.map(s => ({
-            ...s,
-            qty: Number(s.qty || 1),
-            hpp: Number(s.hpp || 0),
-            omset: Number(s.omset || 0),
-            biayaIklan: Number(s.biayaIklan || 0),
-            biayaOperasional: Number(s.biayaOperasional || 0),
-            estimasiProfit: Number(s.estimasiProfit || 0),
-          })));
-        }
-        if (Array.isArray(exitsRes.data)) {
-          setBrandStockExits(exitsRes.data.map(e => ({
-            ...e,
-            qty: Number(e.qty || 1),
-          })));
-        }
-      } catch (err) {
-        console.warn('Sync brand inventory failed:', err);
+      // 13. Brand SKUs
+      if (results[13].status === 'fulfilled' && Array.isArray(results[13].value.data)) {
+        const mapped = results[13].value.data.map((s: any) => ({
+          ...s,
+          hpp: Number(s.hpp || 0),
+          stokAwal: Number(s.stokAwal || 0),
+        }));
+        setBrandSKUs(mapped);
+        setCache('brand_skus', mapped);
       }
 
-      // 15. Fetch Production POs (Database-backed)
-      try {
-        const { data: poData } = await apiGetProductionPOs();
-        if (Array.isArray(poData)) {
-          setProductionPOs(poData);
-        }
-      } catch (err) {
-        console.warn('Failed to fetch production POs:', err);
+      // 14. Brand Sales
+      if (results[14].status === 'fulfilled' && Array.isArray(results[14].value.data)) {
+        const mapped = results[14].value.data.map((s: any) => ({
+          ...s,
+          qty: Number(s.qty || 1),
+          hpp: Number(s.hpp || 0),
+          omset: Number(s.omset || 0),
+          biayaIklan: Number(s.biayaIklan || 0),
+          biayaOperasional: Number(s.biayaOperasional || 0),
+          estimasiProfit: Number(s.estimasiProfit || 0),
+        }));
+        setBrandSales(mapped);
+        setCache('brand_sales', mapped);
       }
+
+      // 15. Brand Stock Exits
+      if (results[15].status === 'fulfilled' && Array.isArray(results[15].value.data)) {
+        const mapped = results[15].value.data.map((e: any) => ({
+          ...e,
+          qty: Number(e.qty || 1),
+        }));
+        setBrandStockExits(mapped);
+        setCache('brand_stock_exits', mapped);
+      }
+
+      // 16. Production POs
+      if (results[16].status === 'fulfilled' && Array.isArray(results[16].value.data)) {
+        setProductionPOs(results[16].value.data);
+        setCache('production_pos', results[16].value.data);
+      }
+
+      setLastSyncedAt(new Date());
     } catch (err) {
       console.warn('[Sync Error] Continuing with cached data:', err);
+    } finally {
+      setIsSyncing(false);
     }
-  }, []);
+  }, [currentUser]);
 
   // Run backend sync on startup or when currentUser changes
   useEffect(() => {
@@ -1377,6 +1397,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(null);
     clearToken();
     localStorage.removeItem('konvek_auth_user');
+    clearAllCache();
     setActiveTab('dashboard');
   };
 
@@ -2572,7 +2593,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addPembayaran = async (p: Omit<PembayaranBrand, 'id'>) => {
     const tempId = `pay-${Date.now()}`;
     const newP: PembayaranBrand = { ...p, id: tempId };
-    setPembayaranList(prev => [newP, ...prev]);
+    setPembayaranList(prev => {
+      const next = [newP, ...prev];
+      setCache('pembayaran', next);
+      return next;
+    });
 
     try {
       const { data } = await apiAddPembayaran({
@@ -2584,7 +2609,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         referensiNomor: p.referensiNomor,
       });
       if (data) {
-        setPembayaranList(prev => prev.map(item => (item.id === tempId ? { ...item, id: data.id } : item)));
+        setPembayaranList(prev => {
+          const next = prev.map(item => (item.id === tempId ? { ...item, id: data.id } : item));
+          setCache('pembayaran', next);
+          return next;
+        });
       }
     } catch (err) {
       console.warn('Backend sync failed, saved locally:', err);
@@ -2592,9 +2621,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePembayaran = async (id: string, p: Partial<Omit<PembayaranBrand, 'id'>>) => {
-    setPembayaranList(prev =>
-      prev.map(item => (item.id === id ? { ...item, ...p } : item))
-    );
+    setPembayaranList(prev => {
+      const next = prev.map(item => (item.id === id ? { ...item, ...p } : item));
+      setCache('pembayaran', next);
+      return next;
+    });
     try {
       await apiUpdatePembayaran(id, p);
     } catch (err) {
@@ -2603,7 +2634,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deletePembayaran = async (id: string) => {
-    setPembayaranList(prev => prev.filter(p => p.id !== id));
+    setPembayaranList(prev => {
+      const next = prev.filter(p => p.id !== id);
+      setCache('pembayaran', next);
+      return next;
+    });
     try {
       await apiDeletePembayaran(id);
     } catch (err) {
@@ -3008,6 +3043,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetToDefaultData = () => {
     localStorage.clear();
+    clearAllCache();
     window.location.reload();
   };
 
@@ -3114,6 +3150,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         calculateVendorPayroll,
         calculateBuyerInvoice,
         resetToDefaultData,
+        isSyncing,
+        lastSyncedAt,
       }}
     >
       {children}
