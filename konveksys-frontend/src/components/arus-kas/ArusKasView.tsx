@@ -131,15 +131,15 @@ export const ArusKasView: React.FC = () => {
     <div className="space-y-6">
 
       {/* Header Banner */}
-      <div className="bg-slate-900 rounded-xl p-6 sm:p-7 text-white border border-slate-800 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <div className="bg-white rounded-xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
-            <div className="inline-flex items-center gap-2 bg-indigo-500/15 border border-indigo-400/20 px-3 py-1 rounded-full text-xs font-medium text-indigo-300 mb-3">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg mb-2 border border-indigo-100">
               <TrendingUp className="w-3.5 h-3.5" />
-              {userRole === 'ADMIN' ? 'Manajemen Arus Kas Semua Brand' : `Arus Kas ${activeBrand}`}
+              {userRole === 'ADMIN' ? 'Manajemen Arus Kas Semua Brand' : `Arus Kas • ${activeBrand}`}
             </div>
-            <h1 className="text-xl font-bold tracking-tight">Pencatatan Pembayaran Brand</h1>
-            <p className="text-slate-400 text-xs mt-1 max-w-xl leading-relaxed">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Pencatatan Pembayaran Brand</h1>
+            <p className="text-slate-500 text-xs mt-1 max-w-xl leading-relaxed">
               {userRole === 'ADMIN'
                 ? 'Catat pembayaran masuk dari brand — termasuk cicilan & pembayaran parsial. Lacak outstanding tagihan secara real-time.'
                 : 'Informasi tagihan, riwayat transfer pembayaran Anda ke konveksi, dan sisa outstanding secara real-time.'}
@@ -148,7 +148,7 @@ export const ArusKasView: React.FC = () => {
 
           <button
             onClick={handleOpenModal}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-base btn-press shadow-sm shrink-0"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-base btn-press shadow-sm shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             {userRole === 'ADMIN' ? 'Catat Pembayaran' : 'Catat Bukti Transfer'}
