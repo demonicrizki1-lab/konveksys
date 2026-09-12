@@ -116,12 +116,42 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
   doc.write(fullHtml);
   doc.close();
 
-  // Beri waktu 350ms agar semua stylesheet Tailwind ter-render sempurna
-  setTimeout(() => {
+  const triggerPrint = () => {
     iframe.contentWindow?.focus();
     iframe.contentWindow?.print();
     setTimeout(() => {
       document.body.removeChild(iframe);
     }, 2000);
-  }, 350);
+  };
+
+  // Pastikan gambar (termasuk tanda tangan) selesai di-load sebelum dialog print terbuka
+  const images = doc.querySelectorAll('img');
+  if (images.length > 0) {
+    let pending = images.length;
+    let printed = false;
+    const checkDone = () => {
+      pending--;
+      if (pending <= 0 && !printed) {
+        printed = true;
+        setTimeout(triggerPrint, 150);
+      }
+    };
+    images.forEach((img) => {
+      if (img.complete) {
+        checkDone();
+      } else {
+        img.onload = checkDone;
+        img.onerror = checkDone;
+      }
+    });
+    // Fallback maksimal 600ms jika ada gambar yang lambat/hang
+    setTimeout(() => {
+      if (!printed) {
+        printed = true;
+        triggerPrint();
+      }
+    }, 600);
+  } else {
+    setTimeout(triggerPrint, 350);
+  }
 }

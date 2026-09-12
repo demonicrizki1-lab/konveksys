@@ -3,6 +3,7 @@ import { Download, Printer, X, FileText, Building2, Calendar, Clock } from 'luci
 import { ProductionPO } from '../../types';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import { formatDateIndo } from '../../utils/formatters';
+import ttdRizkiMaulana from '../../assets/ttd-rizki-maulana.png';
 
 interface ProductionPOPrintModalProps {
   po: ProductionPO;
@@ -226,7 +227,12 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             <div>
               <div className="text-[9px] text-slate-500 mb-0.5">Dibuat Oleh:</div>
               <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">Admin Produksi</div>
-              <div className="h-8 flex items-end justify-center">
+              <div className="relative h-12 flex items-end justify-center">
+                <img 
+                  src={ttdRizkiMaulana} 
+                  alt="Tanda Tangan Rizki Maulana" 
+                  className="absolute bottom-[-2px] h-12 w-auto object-contain pointer-events-none select-none z-10" 
+                />
                 <div className="w-28 border-b border-slate-400"></div>
               </div>
               <div className="text-[9px] text-slate-700 mt-0.5 font-mono font-medium whitespace-nowrap">( Rizki Maulana )</div>
@@ -235,7 +241,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             <div>
               <div className="text-[9px] text-slate-500 mb-0.5">Disetujui:</div>
               <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">Pimpinan / Kepala Workshop</div>
-              <div className="h-8 flex items-end justify-center">
+              <div className="h-12 flex items-end justify-center">
                 <div className="w-28 border-b border-slate-400"></div>
               </div>
               <div className="text-[9px] text-slate-700 mt-0.5 font-mono font-medium whitespace-nowrap">( Cecep Dayat )</div>
@@ -244,7 +250,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             <div>
               <div className="text-[9px] text-slate-500 mb-0.5">Diterima & Disanggupi:</div>
               <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">Vendor / Penjahit Konveksi</div>
-              <div className="h-8 flex items-end justify-center">
+              <div className="h-12 flex items-end justify-center">
                 <div className="w-28 border-b border-slate-400"></div>
               </div>
               <div className="text-[9px] text-slate-600 mt-0.5 font-mono whitespace-nowrap">
