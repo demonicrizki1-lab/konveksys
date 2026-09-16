@@ -433,9 +433,9 @@ fobRoutes.post('/ai-analysis', async (c) => {
       return c.json({ error: 'Data kalkulasi HPP tidak ditemukan.' }, 400);
     }
 
-    const maiaApiKey = process.env.MAIA_API_KEY || 'sk-1x_rJPP6A_ETaVcUWQVVfw';
+    const maiaApiKey = process.env.MAIA_API_KEY || 'sk-3ZeAEDvzknbT9gxAgJMrsA';
     const maiaBaseUrl = process.env.MAIA_BASE_URL || 'https://api.maiarouter.ai/v1';
-    const maiaModel = process.env.MAIA_MODEL || 'openai/gpt-4o-mini';
+    const maiaModel = process.env.MAIA_MODEL || 'deepseek/deepseek-v3';
 
     const systemPrompt = `Anda adalah Senior Garment Costing & Manufacturing Consultant di Indonesia (Maison Rayyan Manufacturing).
 Tugas Anda adalah melakukan audit mendalam terhadap data kalkulasi biaya HPP garmen FOB, mendeteksi pemborosan, menganalisis risiko produksi, dan menyusun strategi penawaran harga.
@@ -498,6 +498,7 @@ ${componentsList}`;
         },
         body: JSON.stringify({
           model: maiaModel,
+          extra_body: { model: 'deepseek-flash' },
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },

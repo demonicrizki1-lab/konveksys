@@ -112,8 +112,8 @@ export const FobAiAnalysisTab: React.FC<FobAiAnalysisTabProps> = ({
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-2">
             <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             <span>AI Garment Intelligence & Optimization Engine</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-            <span className="text-[11px] font-medium text-indigo-600">MAIA Router (gpt-4o-mini)</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-[11px] font-medium text-indigo-600">MAIA Router (DeepSeek V3 / Flash)</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
             Analisis Cerdas HPP & Rekomendasi Negosiasi
