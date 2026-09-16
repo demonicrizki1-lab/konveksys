@@ -433,7 +433,7 @@ fobRoutes.post('/ai-analysis', async (c) => {
       return c.json({ error: 'Data kalkulasi HPP tidak ditemukan.' }, 400);
     }
 
-    const maiaApiKey = process.env.MAIA_API_KEY || 'sk-ZgN4dNJXBX8-tCp9BC3G9A';
+    const maiaApiKey = process.env.MAIA_API_KEY || 'sk-1x_rJPP6A_ETaVcUWQVVfw';
     const maiaBaseUrl = process.env.MAIA_BASE_URL || 'https://api.maiarouter.ai/v1';
     const maiaModel = process.env.MAIA_MODEL || 'openai/gpt-4o-mini';
 
