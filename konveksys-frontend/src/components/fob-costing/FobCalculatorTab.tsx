@@ -89,7 +89,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
 
   // Cost Parameters State
   const [targetLabaPercent, setTargetLabaPercent] = useState<number>(30);
-  const [overheadPercent, setOverheadPercent] = useState<number>(3);
+  const [overheadPercent, setOverheadPercent] = useState<number>(0);
   const [rejectPercent, setRejectPercent] = useState<number>(3);
   const [isPpnIncluded, setIsPpnIncluded] = useState<boolean>(false);
   const [ppnPercent, setPpnPercent] = useState<number>(0);
@@ -123,9 +123,9 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
       setBrand(initialRecord.brand || 'UMUM');
       setVendorCmt(initialRecord.vendorCmt || '');
       setBatchQty(initialRecord.batchQty || 100);
-      setTargetLabaPercent(initialRecord.targetLabaPercent || 30);
-      setOverheadPercent(initialRecord.overheadPercent ?? 3);
-      setRejectPercent(initialRecord.rejectPercent || 3);
+      setTargetLabaPercent(initialRecord.targetLabaPercent !== undefined && initialRecord.targetLabaPercent !== null ? Number(initialRecord.targetLabaPercent) : 30);
+      setOverheadPercent(initialRecord.overheadPercent !== undefined && initialRecord.overheadPercent !== null ? Number(initialRecord.overheadPercent) : 0);
+      setRejectPercent(initialRecord.rejectPercent !== undefined && initialRecord.rejectPercent !== null ? Number(initialRecord.rejectPercent) : 3);
       setIsPpnIncluded(initialRecord.isPpnIncluded ?? false);
       setPpnPercent(initialRecord.ppnPercent || 0);
       setZakatPercent(initialRecord.zakatPercent || 0);
@@ -272,7 +272,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
       batchQty: Number(batchQty) || 100,
 
       targetLabaPercent: Number(targetLabaPercent) || 30,
-      overheadPercent: Number(overheadPercent) || 3,
+      overheadPercent: overheadPercent !== undefined && overheadPercent !== null ? Number(overheadPercent) : 0,
       rejectPercent: Number(rejectPercent) || 3,
       ppnPercent: isPpnIncluded ? 11 : 0,
       zakatPercent: Number(zakatPercent) || 0,
@@ -281,7 +281,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
 
       hppBahanTotal,
       hppCmtTotal,
-      totalSebelumReject: totalSebelumOverhead,
+      totalSebelumReject,
       nilaiOverhead,
       nilaiReject,
       hppFinalPerPcs,
@@ -328,7 +328,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
     setVendorCmt('');
     setBatchQty(100);
     setTargetLabaPercent(30);
-    setOverheadPercent(3);
+    setOverheadPercent(0);
     setRejectPercent(3);
     setIsPpnIncluded(false);
     setPpnPercent(0);
@@ -360,7 +360,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
     isPpnIncluded,
     hppBahanTotal,
     hppCmtTotal,
-    totalSebelumReject: totalSebelumOverhead,
+    totalSebelumReject,
     nilaiOverhead,
     nilaiReject,
     hppFinalPerPcs,

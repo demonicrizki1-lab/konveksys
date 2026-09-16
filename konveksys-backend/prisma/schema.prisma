@@ -511,7 +511,9 @@ model FobHppRecord {
   batchQty             Int      @default(100)
 
   targetLabaPercent    Decimal  @db.Decimal(5, 2) @default(30)
+  overheadPercent      Decimal? @db.Decimal(5, 2) @default(0)
   rejectPercent        Decimal  @db.Decimal(5, 2) @default(3)
+  nilaiOverhead        Decimal? @db.Decimal(12, 2) @default(0)
   ppnPercent           Decimal  @db.Decimal(5, 2) @default(0)
   zakatPercent         Decimal  @db.Decimal(5, 2) @default(0)
   affiliatePercent     Decimal  @db.Decimal(5, 2) @default(0)

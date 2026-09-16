@@ -28,6 +28,25 @@ export const FobHppPrintModal: React.FC<FobHppPrintModalProps> = ({ hpp, onClose
     c => c.jenisBiaya !== 'BAHAN_BAKU' && c.jenisBiaya !== 'BAHAN_PENDUKUNG' && c.jenisBiaya !== 'AKSESORIS'
   );
 
+  const bahanTotal = Number(hpp.hppBahanTotal) || 0;
+  const cmtTotal = Number(hpp.hppCmtTotal) || 0;
+  const totalBahanCmt = bahanTotal + cmtTotal;
+
+  const ovhPct = hpp.overheadPercent !== undefined && hpp.overheadPercent !== null
+    ? Number(hpp.overheadPercent)
+    : (hpp.nilaiOverhead !== undefined && hpp.nilaiOverhead !== null
+        ? (totalBahanCmt > 0 ? Math.round((Number(hpp.nilaiOverhead) / totalBahanCmt) * 100) : 0)
+        : (
+          (Number(hpp.totalSebelumReject) || 0) > totalBahanCmt && totalBahanCmt > 0
+            ? Math.round(((Number(hpp.totalSebelumReject) - totalBahanCmt) / totalBahanCmt) * 100)
+            : 0
+        )
+      );
+
+  const ovhVal = hpp.nilaiOverhead !== undefined && hpp.nilaiOverhead !== null
+    ? Number(hpp.nilaiOverhead)
+    : Math.round(totalBahanCmt * (ovhPct / 100));
+
   return createPortal(
     <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-start p-2 sm:p-4 overflow-y-auto">
       {/* Top Floating Sticky Control Bar */}
@@ -284,8 +303,8 @@ export const FobHppPrintModal: React.FC<FobHppPrintModalProps> = ({ hpp, onClose
                     <span className="font-semibold tabular-nums">{formatRp(hpp.hppCmtTotal)}</span>
                   </div>
                   <div className="flex justify-between text-blue-700">
-                    <span>Biaya Overhead Pabrik ({hpp.overheadPercent ?? 3}%):</span>
-                    <span className="font-semibold tabular-nums">+ {formatRp(hpp.nilaiOverhead ?? Math.round((hpp.hppBahanTotal + hpp.hppCmtTotal) * ((hpp.overheadPercent ?? 3) / 100)))}</span>
+                    <span>Biaya Overhead Pabrik ({ovhPct}%):</span>
+                    <span className="font-semibold tabular-nums">+ {formatRp(ovhVal)}</span>
                   </div>
                   <div className="flex justify-between text-amber-700">
                     <span>Cadangan Reject ({hpp.rejectPercent}%):</span>

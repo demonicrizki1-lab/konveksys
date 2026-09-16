@@ -108,7 +108,9 @@ fobRoutes.post('/hpp', async (c) => {
         batchQty: Number(body.batchQty) || 100,
 
         targetLabaPercent: Number(body.targetLabaPercent) || 30,
+        overheadPercent: body.overheadPercent !== undefined ? Number(body.overheadPercent) : 0,
         rejectPercent: Number(body.rejectPercent) || 3,
+        nilaiOverhead: body.nilaiOverhead !== undefined ? Number(body.nilaiOverhead) : 0,
         ppnPercent: Number(body.ppnPercent) || 0,
         zakatPercent: Number(body.zakatPercent) || 0,
         affiliatePercent: Number(body.affiliatePercent) || 0,
@@ -155,7 +157,9 @@ fobRoutes.put('/hpp/:id', async (c) => {
         ...(body.batchQty !== undefined && { batchQty: Number(body.batchQty) }),
 
         ...(body.targetLabaPercent !== undefined && { targetLabaPercent: Number(body.targetLabaPercent) }),
+        ...(body.overheadPercent !== undefined && { overheadPercent: Number(body.overheadPercent) }),
         ...(body.rejectPercent !== undefined && { rejectPercent: Number(body.rejectPercent) }),
+        ...(body.nilaiOverhead !== undefined && { nilaiOverhead: Number(body.nilaiOverhead) }),
         ...(body.ppnPercent !== undefined && { ppnPercent: Number(body.ppnPercent) }),
         ...(body.zakatPercent !== undefined && { zakatPercent: Number(body.zakatPercent) }),
         ...(body.affiliatePercent !== undefined && { affiliatePercent: Number(body.affiliatePercent) }),
