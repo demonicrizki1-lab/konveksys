@@ -649,3 +649,42 @@ export interface FOBProductMaster {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface FobAiCostOptimization {
+  area: string;
+  saran: string;
+  potensiHematPerPcs: number;
+}
+
+export interface FobAiProductionRisk {
+  aspek: string;
+  tingkatRisiko: 'RENDAH' | 'SEDANG' | 'TINGGI' | string;
+  mitigasi: string;
+}
+
+export interface FobAiVolumePricing {
+  minQty: number;
+  hargaRekomendasi: number;
+  diskonPersen: number;
+  marginPersen: number;
+  catatan: string;
+}
+
+export interface FobAiAnalysisResult {
+  healthScore: number;
+  status: 'SEHAT' | 'WASPADA' | 'RISIKO' | string;
+  statusLabel: string;
+  ringkasanAudit: string;
+  costOptimization: FobAiCostOptimization[];
+  productionRisks: FobAiProductionRisk[];
+  volumePricing: FobAiVolumePricing[];
+  executiveSummary: string;
+}
+
+export interface FobAiAnalysisApiResponse {
+  success: boolean;
+  isAiLive: boolean;
+  modelUsed: string;
+  data: FobAiAnalysisResult;
+  error?: string;
+}

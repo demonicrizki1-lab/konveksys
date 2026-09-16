@@ -6,6 +6,7 @@ import {
   FileText,
   Layers,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { HPPCalculationRecord, FOBQuotation } from '../../types';
@@ -14,11 +15,12 @@ import { FobCalculatorTab } from './FobCalculatorTab';
 import { FobDatabaseTab } from './FobDatabaseTab';
 import { FobQuotationTab } from './FobQuotationTab';
 import { FobMasterDataTab } from './FobMasterDataTab';
+import { FobAiAnalysisTab } from './FobAiAnalysisTab';
 import { FobHppPrintModal } from './FobHppPrintModal';
 import { FobQuotationPrintModal } from './FobQuotationPrintModal';
 import { FobRekapPrintModal } from './FobRekapPrintModal';
 
-export type FobSubTab = 'dashboard' | 'kalkulator' | 'database' | 'penawaran' | 'master-data';
+export type FobSubTab = 'dashboard' | 'kalkulator' | 'database' | 'penawaran' | 'master-data' | 'ai-analysis';
 
 export const FobCostingView: React.FC = () => {
   const {
@@ -56,12 +58,13 @@ export const FobCostingView: React.FC = () => {
     setActiveSubTab('kalkulator');
   };
 
-  const navItems: { id: FobSubTab; label: string; icon: React.ElementType; count?: number }[] = [
+  const navItems: { id: FobSubTab; label: string; icon: React.ElementType; count?: number; isAi?: boolean }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'kalkulator', label: 'Kalkulator HPP', icon: Calculator },
     { id: 'database', label: 'Database Arsip HPP', icon: Database, count: hppRecords.length },
     { id: 'penawaran', label: 'Surat Penawaran (SPH)', icon: FileText, count: fobQuotations.length },
     { id: 'master-data', label: 'Master Data Acuan', icon: Layers },
+    { id: 'ai-analysis', label: 'Analisis AI & Rekomendasi', icon: Sparkles, isAi: true },
   ];
 
   return (
@@ -86,8 +89,17 @@ export const FobCostingView: React.FC = () => {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className={`w-4 h-4 ${tab.isAi && !isActive ? 'text-indigo-600' : ''}`} />
                 <span>{tab.label}</span>
+                {tab.isAi && (
+                  <span
+                    className={`text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wider ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-200/60'
+                    }`}
+                  >
+                    AI
+                  </span>
+                )}
                 {tab.count !== undefined && tab.count > 0 && (
                   <span
                     className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
@@ -164,6 +176,13 @@ export const FobCostingView: React.FC = () => {
           onDeleteMaterial={deleteFobMaterial}
           onSaveProduct={saveFobProduct}
           onDeleteProduct={deleteFobProduct}
+        />
+      )}
+
+      {activeSubTab === 'ai-analysis' && (
+        <FobAiAnalysisTab
+          records={hppRecords}
+          onNavigateTab={setActiveSubTab}
         />
       )}
 

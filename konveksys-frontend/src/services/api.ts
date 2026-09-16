@@ -3,6 +3,8 @@
 // Centralized fetch wrapper for all backend API calls
 // ============================================================
 
+import type { FobAiAnalysisApiResponse } from '../types';
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // Ambil token dari localStorage
@@ -969,6 +971,13 @@ export async function apiSaveFobProduct(data: any) {
 export async function apiDeleteFobProduct(id: string) {
   return apiFetch<{ success: boolean; message: string }>(`/api/fob/products/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export async function apiAnalyzeFobHpp(payload: { hppRecordId?: string; hppData?: any }) {
+  return apiFetch<FobAiAnalysisApiResponse>('/api/fob/ai-analysis', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 
