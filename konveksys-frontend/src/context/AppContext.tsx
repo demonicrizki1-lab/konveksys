@@ -2262,7 +2262,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // SPK Handlers
   const createSPK = async (spkData: Omit<SPKCutting, 'id' | 'spkNumber' | 'deliveredQty' | 'status'>) => {
-    const spkNumber = `SPK-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(spkList.length + 1).padStart(2, '0')}`;
+    // Generate next SPK number based on highest existing number for current month
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prefix = `SPK-${yearMonth}-`;
+
+    const existingNums = spkList
+      .filter((s) => s.spkNumber && s.spkNumber.startsWith(prefix))
+      .map((s) => {
+        const parts = s.spkNumber.split('-');
+        const n = parseInt(parts[parts.length - 1], 10);
+        return isNaN(n) ? 0 : n;
+      });
+    const nextSeq = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+    const spkNumber = `${prefix}${String(nextSeq).padStart(2, '0')}`;
+
     const tempId = `spk-${Date.now()}`;
 
     // Normalize items: if provided, use them; otherwise create a single default item
@@ -2335,7 +2349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     try {
-      const { data } = await apiCreateSpk({
+      const { data, error } = await apiCreateSpk({
         spkNumber,
         brand: spkData.brand,
         produk: spkData.produk,
@@ -2359,23 +2373,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rollIds: spkData.rollIds || [],
       });
 
+      if (error) {
+        throw new Error(error);
+      }
+
       if (data && (data as any).id) {
         const realId = (data as any).id;
+        const realSpkNumber = (data as any).spkNumber || spkNumber;
         setSpkList(prev => {
-          const updated = prev.map(s => (s.id === tempId ? { ...s, id: realId } : s));
+          const updated = prev.map(s => (s.id === tempId ? { ...s, id: realId, spkNumber: realSpkNumber } : s));
           setCache('spk_list', updated);
           return updated;
         });
         if (spkData.fabricSourceType === 'TITIPAN_VENDOR' && spkData.depositId) {
           setVendorFabricDeposits(prev => {
-            const updated = prev.map(dep => dep.id === spkData.depositId ? { ...dep, allocatedSPKId: realId } : dep);
+            const updated = prev.map(dep => dep.id === spkData.depositId ? { ...dep, allocatedSPKId: realId, allocatedSPKNumber: realSpkNumber } : dep);
             setCache('vendor_fabric_deposits', updated);
             return updated;
           });
         }
       }
-    } catch (err) {
-      console.warn('Backend sync SPK failed, saved locally:', err);
+    } catch (err: any) {
+      console.error('Backend sync SPK failed, rolling back local state:', err);
+      // Rollback optimistic SPK from list
+      setSpkList(prev => {
+        const reverted = prev.filter(s => s.id !== tempId);
+        setCache('spk_list', reverted);
+        return reverted;
+      });
+      // Rollback fabric roll status
+      if (spkData.fabricSourceType !== 'TITIPAN_VENDOR' && spkData.rollIds && spkData.rollIds.length > 0) {
+        setInboundRolls(prev => {
+          const reverted = prev.map(roll => {
+            if (spkData.rollIds.includes(roll.id)) {
+              return { ...roll, status: 'DI_GUDANG' as RollStatus, meterUsed: 0 };
+            }
+            return roll;
+          });
+          setCache('inbound_rolls', reverted);
+          return reverted;
+        });
+      }
+      // Rollback fabric deposit status
+      if (spkData.fabricSourceType === 'TITIPAN_VENDOR' && spkData.depositId) {
+        setVendorFabricDeposits(prev => {
+          const reverted = prev.map(dep => {
+            if (dep.id === spkData.depositId) {
+              return {
+                ...dep,
+                status: 'TERSEDIA' as FabricDepositStatus,
+                allocatedSPKId: undefined,
+                allocatedSPKNumber: undefined,
+              };
+            }
+            return dep;
+          });
+          setCache('vendor_fabric_deposits', reverted);
+          return reverted;
+        });
+      }
+      throw err;
     }
   };
 

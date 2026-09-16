@@ -321,13 +321,11 @@ export const SPKView: React.FC = () => {
         : null,
     };
 
-    setIsCreateModalOpen(false);
-
     try {
       await createSPK(payload);
-    } catch {
-      alert('Gagal membuat SPK');
-      setIsCreateModalOpen(true);
+      setIsCreateModalOpen(false);
+    } catch (err: any) {
+      alert(err?.message || 'Gagal membuat SPK');
     }
   };
 
