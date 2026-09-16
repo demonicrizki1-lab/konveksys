@@ -17,10 +17,12 @@ import {
   Zap,
   Tag,
   Boxes,
+  Printer,
 } from 'lucide-react';
 import { HPPCalculationRecord, FobAiAnalysisResult } from '../../types';
 import { formatRp, formatDateIndo } from '../../utils/formatters';
 import { apiAnalyzeFobHpp } from '../../services/api';
+import { FobAiPrintModal } from './FobAiPrintModal';
 
 interface FobAiAnalysisTabProps {
   records: HPPCalculationRecord[];
@@ -42,6 +44,7 @@ export const FobAiAnalysisTab: React.FC<FobAiAnalysisTabProps> = ({
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedWa, setCopiedWa] = useState<boolean>(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   const selectedRecord = records.find(r => r.id === selectedHppId) || null;
 
@@ -198,6 +201,17 @@ export const FobAiAnalysisTab: React.FC<FobAiAnalysisTabProps> = ({
                     </>
                   )}
                 </button>
+
+                {analysisResult && (
+                  <button
+                    onClick={() => setIsPrintModalOpen(true)}
+                    className="px-4 py-3 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-bold text-xs flex items-center gap-2 shadow-xs transition cursor-pointer"
+                    title="Download Dokumen Laporan Audit AI format PDF"
+                  >
+                    <Printer className="w-4 h-4 text-indigo-600" />
+                    <span>Download PDF</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -571,22 +585,33 @@ export const FobAiAnalysisTab: React.FC<FobAiAnalysisTabProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={handleCopyWhatsApp}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 transition cursor-pointer self-start sm:self-auto shadow-xs"
-              >
-                {copiedWa ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-200" />
-                    <span>Tersalin ke Clipboard!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span>Salin Format WhatsApp</span>
-                  </>
-                )}
-              </button>
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                <button
+                  onClick={() => setIsPrintModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-xs"
+                  title="Download Dokumen PDF atau Cetak Laporan Audit AI"
+                >
+                  <Printer className="w-4 h-4 text-indigo-300" />
+                  <span>Download / Cetak PDF</span>
+                </button>
+
+                <button
+                  onClick={handleCopyWhatsApp}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-xs"
+                >
+                  {copiedWa ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-200" />
+                      <span>Tersalin ke Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Salin Format WhatsApp</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed font-mono whitespace-pre-wrap select-all">
@@ -595,6 +620,16 @@ export const FobAiAnalysisTab: React.FC<FobAiAnalysisTabProps> = ({
           </div>
 
         </div>
+      )}
+
+      {/* PDF PRINT MODAL */}
+      {isPrintModalOpen && selectedRecord && analysisResult && (
+        <FobAiPrintModal
+          hpp={selectedRecord}
+          analysis={analysisResult}
+          modelUsed={analysisMeta?.modelUsed || 'DeepSeek V3 (via MAIA Router)'}
+          onClose={() => setIsPrintModalOpen(false)}
+        />
       )}
 
     </div>
