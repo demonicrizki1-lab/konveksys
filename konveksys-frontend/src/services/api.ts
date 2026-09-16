@@ -821,6 +821,8 @@ export async function apiCreateProductionPO(data: {
   targetDeadline: string;
   catatan?: string;
   status?: string;
+  usedDepositId?: string | null;
+  usedDepositInfo?: string | null;
   items: {
     namaProduk: string;
     warna?: string;
@@ -828,6 +830,8 @@ export async function apiCreateProductionPO(data: {
     qty: number;
     bahanKain?: string;
     catatan?: string;
+    depositId?: string | null;
+    depositInfo?: string | null;
   }[];
 }) {
   return apiFetch<{ success: boolean; message: string; data: any }>('/api/production-po', {
@@ -846,6 +850,8 @@ export async function apiUpdateProductionPO(
     targetDeadline: string;
     catatan?: string;
     status: string;
+    usedDepositId?: string | null;
+    usedDepositInfo?: string | null;
     items: {
       namaProduk: string;
       warna?: string;
@@ -853,6 +859,8 @@ export async function apiUpdateProductionPO(
       qty: number;
       bahanKain?: string;
       catatan?: string;
+      depositId?: string | null;
+      depositInfo?: string | null;
     }[];
   }>
 ) {
@@ -871,6 +879,95 @@ export async function apiUpdateProductionPOStatus(id: string, status: string) {
 
 export async function apiDeleteProductionPO(id: string) {
   return apiFetch<{ success: boolean; message: string }>(`/api/production-po/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================
+// FOB COSTING & COMMERCIAL QUOTATION (SPH)
+// ============================================================
+
+export async function apiGetFobHppList(params?: { brand?: string; kategori?: string; search?: string }) {
+  const queryParts: string[] = [];
+  if (params?.brand && params.brand !== 'ALL') queryParts.push(`brand=${encodeURIComponent(params.brand)}`);
+  if (params?.kategori && params.kategori !== 'ALL') queryParts.push(`kategori=${encodeURIComponent(params.kategori)}`);
+  if (params?.search && params.search.trim()) queryParts.push(`search=${encodeURIComponent(params.search.trim())}`);
+  const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return apiFetch<any[]>(`/api/fob/hpp${query}`);
+}
+
+export async function apiGetFobHppDetail(id: string) {
+  return apiFetch<any>(`/api/fob/hpp/${id}`);
+}
+
+export async function apiCreateFobHpp(data: any) {
+  return apiFetch<{ success: boolean; message: string; data: any }>('/api/fob/hpp', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateFobHpp(id: string, data: any) {
+  return apiFetch<{ success: boolean; message: string; data: any }>(`/api/fob/hpp/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteFobHpp(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/fob/hpp/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function apiGetFobQuotations(params?: { search?: string }) {
+  const query = params?.search ? `?search=${encodeURIComponent(params.search.trim())}` : '';
+  return apiFetch<any[]>(`/api/fob/quotations${query}`);
+}
+
+export async function apiCreateFobQuotation(data: any) {
+  return apiFetch<{ success: boolean; message: string; data: any }>('/api/fob/quotations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteFobQuotation(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/fob/quotations/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function apiGetFobMaterials() {
+  return apiFetch<any[]>('/api/fob/materials');
+}
+
+export async function apiSaveFobMaterial(data: any) {
+  return apiFetch<{ success: boolean; data: any }>('/api/fob/materials', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteFobMaterial(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/fob/materials/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function apiGetFobProducts() {
+  return apiFetch<any[]>('/api/fob/products');
+}
+
+export async function apiSaveFobProduct(data: any) {
+  return apiFetch<{ success: boolean; data: any }>('/api/fob/products', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteFobProduct(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/fob/products/${id}`, {
     method: 'DELETE',
   });
 }

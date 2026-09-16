@@ -21,6 +21,7 @@ import {
   Users,
   ShoppingBag,
   ClipboardList,
+  Calculator,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -42,6 +43,7 @@ export const Sidebar: React.FC = () => {
     isMobileMenuOpen,
     setIsMobileMenuOpen,
     getArusKasSummary,
+    hppRecords,
   } = useApp();
 
   // Stats untuk badge
@@ -196,6 +198,14 @@ export const Sidebar: React.FC = () => {
           description: 'Laba Bersih & Rekap Bulanan',
           icon: BarChart3,
           badge: 'Owner',
+          roles: ['ADMIN'],
+        },
+        {
+          id: 'kalkulator-fob',
+          label: 'HPP & Penawaran FOB',
+          description: 'Kalkulator HPP, Database & SPH',
+          icon: Calculator,
+          badge: hppRecords && hppRecords.length > 0 ? `${hppRecords.length} HPP` : undefined,
           roles: ['ADMIN'],
         },
       ],

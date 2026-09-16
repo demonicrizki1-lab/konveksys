@@ -18,10 +18,20 @@ import {
   Layers,
   X,
   Save,
+  ArrowRightLeft,
+  PackageCheck,
+  Archive,
+  RotateCcw,
+  Sparkles,
+  Scissors,
+  ShieldAlert,
+  Eye,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { ProductionPO, ProductionPOItem, ProductionPOStatus } from '../../types';
+import { ProductionPO, ProductionPOItem, ProductionPOStatus, VendorFabricDeposit, FabricTransferNote } from '../../types';
 import { ProductionPOPrintModal } from './ProductionPOPrintModal';
+import { FabricTransferModal } from './FabricTransferModal';
+import { FabricTransferPrintModal } from './FabricTransferPrintModal';
 import { formatDateIndo } from '../../utils/formatters';
 
 interface ItemFormState {
@@ -42,6 +52,10 @@ export const SuratPOProduksiView: React.FC = () => {
     updateProductionPO,
     updateProductionPOStatus,
     deleteProductionPO,
+    vendorFabricDeposits,
+    fabricTransferNotes,
+    returnDepositToWarehouse,
+    deleteFabricDeposit,
     brands,
     vendors,
   } = useApp();
@@ -52,12 +66,27 @@ export const SuratPOProduksiView: React.FC = () => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Sub-Navigation Tabs State
+  const [activeSubTab, setActiveSubTab] = useState<'DAFTAR_PO' | 'SALDO_TITIPAN'>('DAFTAR_PO');
+  const [selectedDepositVendorFilter, setSelectedDepositVendorFilter] = useState('ALL');
+  const [depositSearchTerm, setDepositSearchTerm] = useState('');
+
   // Modals State
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingPO, setEditingPO] = useState<ProductionPO | null>(null);
   const [printingPO, setPrintingPO] = useState<ProductionPO | null>(null);
   const [deleteConfirmPO, setDeleteConfirmPO] = useState<ProductionPO | null>(null);
   const [statusMenuPO, setStatusMenuPO] = useState<ProductionPO | null>(null);
+
+  // Transfer & Consignment Modals State
+  const [transferModalPO, setTransferModalPO] = useState<ProductionPO | null>(null);
+  const [printTransferNote, setPrintTransferNote] = useState<FabricTransferNote | null>(null);
+  const [returnConfirmDeposit, setReturnConfirmDeposit] = useState<VendorFabricDeposit | null>(null);
+  const [deleteConfirmDeposit, setDeleteConfirmDeposit] = useState<VendorFabricDeposit | null>(null);
+
+  // Form states for deposit usage
+  const [formUsedDepositId, setFormUsedDepositId] = useState<string | null>(null);
+  const [formUsedDepositInfo, setFormUsedDepositInfo] = useState<string | null>(null);
 
   // Form State
   const [formNoPO, setFormNoPO] = useState('');
@@ -98,6 +127,8 @@ export const SuratPOProduksiView: React.FC = () => {
     setFormTanggal(today);
     setFormDeadline(nextWeek);
     setFormCatatan('Prioritas potong dan jahit segera. Standar QC butik Maison Rayyan berlaku.');
+    setFormUsedDepositId(null);
+    setFormUsedDepositInfo(null);
     setFormItems([
       {
         namaProduk: '',
@@ -127,6 +158,8 @@ export const SuratPOProduksiView: React.FC = () => {
     setFormTanggal(po.tanggalPO ? String(po.tanggalPO).split('T')[0] : '');
     setFormDeadline(po.targetDeadline ? String(po.targetDeadline).split('T')[0] : '');
     setFormCatatan(po.catatan || '');
+    setFormUsedDepositId(po.usedDepositId || null);
+    setFormUsedDepositInfo(po.usedDepositInfo || null);
     setFormItems(
       po.items.map(item => ({
         id: item.id,
@@ -204,6 +237,8 @@ export const SuratPOProduksiView: React.FC = () => {
           tanggalPO: formTanggal,
           targetDeadline: formDeadline,
           catatan: formCatatan.trim() || undefined,
+          usedDepositId: formUsedDepositId || undefined,
+          usedDepositInfo: formUsedDepositInfo || undefined,
           items: formItems.map(i => ({
             namaProduk: i.namaProduk.trim(),
             warna: i.warna.trim() || undefined,
@@ -232,6 +267,8 @@ export const SuratPOProduksiView: React.FC = () => {
           tanggalPO: formTanggal,
           targetDeadline: formDeadline,
           catatan: formCatatan.trim() || undefined,
+          usedDepositId: formUsedDepositId || undefined,
+          usedDepositInfo: formUsedDepositInfo || undefined,
           items: formItems.map(i => ({
             namaProduk: i.namaProduk.trim(),
             warna: i.warna.trim() || undefined,
@@ -318,6 +355,43 @@ export const SuratPOProduksiView: React.FC = () => {
 
     return { totalPO, totalPcs, aktifPO, selesaiPO };
   }, [productionPOs]);
+
+  // Deposit Metrics & Filters
+  const depositMetrics = useMemo(() => {
+    const activeDeposits = vendorFabricDeposits.filter(d => d.status === 'TERSEDIA' && d.panjangSisa > 0);
+    const totalVendors = new Set(activeDeposits.map(d => d.targetVendor)).size;
+    const totalMeterTersedia = activeDeposits.reduce((acc, d) => acc + (Number(d.panjangSisa) || 0), 0);
+    const terpakaiCount = vendorFabricDeposits.filter(d => d.status === 'TERPAKAI').length;
+    return {
+      activeCount: activeDeposits.length,
+      totalVendors,
+      totalMeterTersedia,
+      terpakaiCount,
+    };
+  }, [vendorFabricDeposits]);
+
+  const filteredDeposits = useMemo(() => {
+    return vendorFabricDeposits.filter(d => {
+      const matchVendor = selectedDepositVendorFilter === 'ALL' || d.targetVendor === selectedDepositVendorFilter;
+      const q = depositSearchTerm.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        d.targetVendor.toLowerCase().includes(q) ||
+        d.sourceVendor.toLowerCase().includes(q) ||
+        d.sourcePONumber.toLowerCase().includes(q) ||
+        d.jenisKain.toLowerCase().includes(q) ||
+        (d.warna && d.warna.toLowerCase().includes(q)) ||
+        (d.allocatedPONumber && d.allocatedPONumber.toLowerCase().includes(q));
+      return matchVendor && matchSearch;
+    });
+  }, [vendorFabricDeposits, selectedDepositVendorFilter, depositSearchTerm]);
+
+  const availableVendorDeposits = useMemo(() => {
+    if (!formVendor) return [];
+    return vendorFabricDeposits.filter(
+      d => d.targetVendor.toLowerCase() === formVendor.toLowerCase() && d.status === 'TERSEDIA' && d.panjangSisa > 0
+    );
+  }, [formVendor, vendorFabricDeposits]);
 
   const getStatusBadgeUI = (status: string) => {
     switch (status) {
@@ -414,260 +488,599 @@ export const SuratPOProduksiView: React.FC = () => {
         </div>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total Surat PO */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total Surat PO</span>
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <FileText className="w-4.5 h-4.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-slate-900 mt-0.5">
-            {metrics.totalPO} <span className="text-sm font-semibold text-slate-500">Dokumen</span>
-          </div>
-          <p className="text-xs text-slate-400">Tersimpan di database</p>
-        </div>
+      {/* Sub-Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+        <button
+          onClick={() => setActiveSubTab('DAFTAR_PO')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer ${
+            activeSubTab === 'DAFTAR_PO'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Daftar Surat PO Produksi</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              activeSubTab === 'DAFTAR_PO' ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-700'
+            }`}
+          >
+            {metrics.totalPO}
+          </span>
+        </button>
 
-        {/* Card 2: Total Target Pcs */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total Target Pcs</span>
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Layers className="w-4.5 h-4.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-slate-900 mt-0.5">
-            {metrics.totalPcs.toLocaleString('id-ID')} <span className="text-sm font-semibold text-slate-500">Pcs</span>
-          </div>
-          <p className="text-xs text-slate-400">Akumulasi seluruh PO produksi</p>
-        </div>
-
-        {/* Card 3: PO Dalam Proses */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">PO Dalam Proses</span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Clock className="w-4.5 h-4.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-slate-900 mt-0.5">
-            {metrics.aktifPO} <span className="text-sm font-semibold text-slate-500">PO</span>
-          </div>
-          <p className="text-xs text-slate-400">Sedang dikerjakan penjahit</p>
-        </div>
-
-        {/* Card 4: PO Selesai */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">PO Selesai</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <CheckCircle2 className="w-4.5 h-4.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-slate-900 mt-0.5">
-            {metrics.selesaiPO} <span className="text-sm font-semibold text-slate-500">PO</span>
-          </div>
-          <p className="text-xs text-slate-400">Produksi selesai 100%</p>
-        </div>
+        <button
+          onClick={() => setActiveSubTab('SALDO_TITIPAN')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer ${
+            activeSubTab === 'SALDO_TITIPAN'
+              ? 'bg-violet-600 text-white shadow-md shadow-violet-200'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+          }`}
+        >
+          <ArrowRightLeft className="w-4 h-4" />
+          <span>Saldo Titipan Kain di Konveksi</span>
+          {depositMetrics.activeCount > 0 ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white animate-pulse">
+              {depositMetrics.activeCount} Stok Siap Pakai
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-600">
+              0
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Filter & Toolbar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-        {/* Search */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari No. PO, Brand, Vendor, atau Model..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
-          />
-        </div>
+      {/* ============================================================ */}
+      {/* SUB-VIEW 1: DAFTAR SURAT PO PRODUKSI */}
+      {/* ============================================================ */}
+      {activeSubTab === 'DAFTAR_PO' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Total Surat PO */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Total Surat PO</span>
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <FileText className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                {metrics.totalPO} <span className="text-sm font-semibold text-slate-500">Dokumen</span>
+              </div>
+              <p className="text-xs text-slate-400">Tersimpan di database</p>
+            </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap justify-end">
-          {/* Brand Filter */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <span className="text-[11px] font-medium text-slate-400">Brand:</span>
-            <select
-              value={selectedBrandFilter}
-              onChange={e => setSelectedBrandFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              <option value="ALL">Semua Brand</option>
-              {brands.map(b => (
-                <option key={b.id} value={b.name}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+            {/* Card 2: Total Target Pcs */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Total Target Pcs</span>
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Layers className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                {metrics.totalPcs.toLocaleString('id-ID')} <span className="text-sm font-semibold text-slate-500">Pcs</span>
+              </div>
+              <p className="text-xs text-slate-400">Akumulasi seluruh PO produksi</p>
+            </div>
+
+            {/* Card 3: PO Dalam Proses */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">PO Dalam Proses</span>
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <Clock className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                {metrics.aktifPO} <span className="text-sm font-semibold text-slate-500">PO</span>
+              </div>
+              <p className="text-xs text-slate-400">Sedang dikerjakan penjahit</p>
+            </div>
+
+            {/* Card 4: PO Selesai */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">PO Selesai Jahit</span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CheckCircle2 className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                {metrics.selesaiPO} <span className="text-sm font-semibold text-slate-500">PO</span>
+              </div>
+              <p className="text-xs text-slate-400">Produksi rampung & lolos QC</p>
+            </div>
           </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <span className="text-[11px] font-medium text-slate-400">Status:</span>
-            <select
-              value={selectedStatusFilter}
-              onChange={e => setSelectedStatusFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              <option value="ALL">Semua Status</option>
-              <option value="DRAFT">Draft PO</option>
-              <option value="DIKIRIM">Dikirim ke Konveksi</option>
-              <option value="DALAM_PROSES">Proses Jahit</option>
-              <option value="SELESAI">Selesai</option>
-            </select>
+          {/* Search & Filter Bar */}
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-96">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari no. PO, brand, penjahit, model..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              {/* Brand Filter */}
+              <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                <span className="text-[11px] font-medium text-slate-400">Brand:</span>
+                <select
+                  value={selectedBrandFilter}
+                  onChange={e => setSelectedBrandFilter(e.target.value)}
+                  className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                >
+                  <option value="ALL">Semua Brand</option>
+                  {brands.map(b => (
+                    <option key={b.id} value={b.name}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                <span className="text-[11px] font-medium text-slate-400">Status:</span>
+                <select
+                  value={selectedStatusFilter}
+                  onChange={e => setSelectedStatusFilter(e.target.value)}
+                  className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                >
+                  <option value="ALL">Semua Status</option>
+                  <option value="DRAFT">Draft PO</option>
+                  <option value="DIKIRIM">Dikirim ke Konveksi</option>
+                  <option value="DALAM_PROSES">Proses Jahit</option>
+                  <option value="SELESAI">Selesai</option>
+                </select>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Production PO Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-4">No. Surat PO</th>
-                <th className="py-3 px-3">Tanggal & Deadline</th>
-                <th className="py-3 px-3">Brand Pemesan</th>
-                <th className="py-3 px-3">Vendor / Penjahit</th>
-                <th className="py-3 px-3">Rincian Artikel</th>
-                <th className="py-3 px-3 text-right">Total Qty</th>
-                <th className="py-3 px-3 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredPOs.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                    <p className="font-semibold text-slate-600 text-sm">Belum ada Surat PO Produksi.</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Klik tombol "+ Buat Surat PO Baru" untuk membuat surat perintah kerja jahit konveksi.
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredPOs.map(po => {
-                  return (
-                    <tr key={po.id} className="hover:bg-slate-50/70 transition">
-                      {/* No PO */}
-                      <td className="py-3 px-4">
-                        <div className="font-mono font-bold text-slate-900 text-xs">{po.noPO}</div>
-                        <div className="text-[10px] text-slate-400">ID: {po.id.slice(-6)}</div>
-                      </td>
-
-                      {/* Tanggal & Deadline */}
-                      <td className="py-3 px-3">
-                        <div className="text-slate-700 font-medium">
-                          {po.tanggalPO ? formatDateIndo(String(po.tanggalPO).split('T')[0]) : '-'}
-                        </div>
-                        <div className="text-[10px] font-semibold text-rose-600 flex items-center gap-1 mt-0.5">
-                          <Clock className="w-2.5 h-2.5" />
-                          <span>DL: {po.targetDeadline ? formatDateIndo(String(po.targetDeadline).split('T')[0]) : '-'}</span>
-                        </div>
-                      </td>
-
-                      {/* Brand */}
-                      <td className="py-3 px-3">
-                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-slate-100 text-slate-800 border border-slate-200">
-                          {po.brand}
-                        </span>
-                      </td>
-
-                      {/* Vendor */}
-                      <td className="py-3 px-3">
-                        {po.vendorTujuan ? (
-                          <div className="text-slate-800 font-medium text-xs">{po.vendorTujuan}</div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
-                            ✍️ Ditulis Manual
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Item Preview */}
-                      <td className="py-3 px-3">
-                        <div className="space-y-0.5">
-                          {po.items.slice(0, 2).map((item, idx) => (
-                            <div key={idx} className="text-[11px] text-slate-700 truncate max-w-xs">
-                              <span className="font-semibold text-slate-900">{item.namaProduk}</span>
-                              {item.warna && <span className="text-slate-500"> ({item.warna})</span>}
-                              <span className="text-indigo-600 font-bold ml-1">{item.qty} pcs</span>
-                            </div>
-                          ))}
-                          {po.items.length > 2 && (
-                            <div className="text-[10px] text-slate-400 font-semibold italic">
-                              +{po.items.length - 2} artikel lainnya
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Total Qty */}
-                      <td className="py-3 px-3 text-right font-mono font-bold text-xs text-indigo-700">
-                        {Number(po.totalPcs).toLocaleString('id-ID')} Pcs
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          onClick={() => setStatusMenuPO(po)}
-                          title="Klik untuk ubah status pengerjaan"
-                          className="transition hover:scale-105 cursor-pointer inline-block"
-                        >
-                          {getStatusBadgeUI(po.status)}
-                        </button>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setPrintingPO(po)}
-                            title="Cetak / Download PDF"
-                            className="p-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition cursor-pointer"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            onClick={() => handleOpenEditModal(po)}
-                            title="Edit PO"
-                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            onClick={() => setStatusMenuPO(po)}
-                            title="Ubah Status Pengerjaan"
-                            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
-                          >
-                            <ChevronDown className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            onClick={() => setDeleteConfirmPO(po)}
-                            title="Hapus PO"
-                            className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+          {/* Production PO Table */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">No. Surat PO</th>
+                    <th className="py-3 px-3">Tanggal & Deadline</th>
+                    <th className="py-3 px-3">Brand Pemesan</th>
+                    <th className="py-3 px-3">Vendor / Penjahit</th>
+                    <th className="py-3 px-3">Rincian Artikel</th>
+                    <th className="py-3 px-3 text-right">Total Qty</th>
+                    <th className="py-3 px-3 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredPOs.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="font-semibold text-slate-600 text-sm">Belum ada Surat PO Produksi.</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Klik tombol "+ Buat Surat PO Baru" untuk membuat surat perintah kerja jahit konveksi.
+                        </p>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  ) : (
+                    filteredPOs.map(po => {
+                      return (
+                        <tr key={po.id} className="hover:bg-slate-50/70 transition">
+                          {/* No PO */}
+                          <td className="py-3 px-4">
+                            <div className="font-mono font-bold text-slate-900 text-xs">{po.noPO}</div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] text-slate-400">ID: {po.id.slice(-6)}</span>
+                              {po.usedDepositInfo && (
+                                <span
+                                  title={`Menggunakan kain titipan: ${po.usedDepositInfo}`}
+                                  className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-violet-100 text-violet-800 border border-violet-200 inline-flex items-center gap-0.5 cursor-help"
+                                >
+                                  <ArrowRightLeft className="w-2.5 h-2.5 text-violet-600" />
+                                  Kain Titipan
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Tanggal & Deadline */}
+                          <td className="py-3 px-3">
+                            <div className="text-slate-700 font-medium">
+                              {po.tanggalPO ? formatDateIndo(String(po.tanggalPO).split('T')[0]) : '-'}
+                            </div>
+                            <div className="text-[10px] font-semibold text-rose-600 flex items-center gap-1 mt-0.5">
+                              <Clock className="w-2.5 h-2.5" />
+                              <span>DL: {po.targetDeadline ? formatDateIndo(String(po.targetDeadline).split('T')[0]) : '-'}</span>
+                            </div>
+                          </td>
+
+                          {/* Brand */}
+                          <td className="py-3 px-3">
+                            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-slate-100 text-slate-800 border border-slate-200">
+                              {po.brand}
+                            </span>
+                          </td>
+
+                          {/* Vendor */}
+                          <td className="py-3 px-3">
+                            {po.vendorTujuan ? (
+                              <div className="text-slate-800 font-medium text-xs">{po.vendorTujuan}</div>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">
+                                ✍️ Ditulis Manual
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Item Preview */}
+                          <td className="py-3 px-3">
+                            <div className="space-y-0.5">
+                              {po.items.slice(0, 2).map((item, idx) => (
+                                <div key={idx} className="text-[11px] text-slate-700 truncate max-w-xs">
+                                  <span className="font-semibold text-slate-900">{item.namaProduk}</span>
+                                  {item.warna && <span className="text-slate-500"> ({item.warna})</span>}
+                                  <span className="text-indigo-600 font-bold ml-1">{item.qty} pcs</span>
+                                </div>
+                              ))}
+                              {po.items.length > 2 && (
+                                <div className="text-[10px] text-slate-400 font-semibold italic">
+                                  +{po.items.length - 2} artikel lainnya
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Total Qty */}
+                          <td className="py-3 px-3 text-right font-mono font-bold text-xs text-indigo-700">
+                            {Number(po.totalPcs).toLocaleString('id-ID')} Pcs
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              onClick={() => setStatusMenuPO(po)}
+                              title="Klik untuk ubah status pengerjaan"
+                              className="transition hover:scale-105 cursor-pointer inline-block"
+                            >
+                              {getStatusBadgeUI(po.status)}
+                            </button>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setPrintingPO(po)}
+                                title="Cetak / Download PDF"
+                                className="p-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Tombol Oper Sisa Kain ke Konveksi Lain */}
+                              <button
+                                onClick={() => setTransferModalPO(po)}
+                                title="Oper Sisa Kain ke Konveksi Lain (Surat Jalan Transfer)"
+                                className="p-1.5 rounded-lg border border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 transition cursor-pointer"
+                              >
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => handleOpenEditModal(po)}
+                                title="Edit PO"
+                                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => setStatusMenuPO(po)}
+                                title="Ubah Status Pengerjaan"
+                                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => setDeleteConfirmPO(po)}
+                                title="Hapus PO"
+                                className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* SUB-VIEW 2: SALDO TITIPAN KAIN DI KONVEKSI */}
+      {/* ============================================================ */}
+      {activeSubTab === 'SALDO_TITIPAN' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Deposit Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Konveksi Penerima */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Konveksi Penerima Titipan</span>
+                <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                  <Building2 className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                {depositMetrics.totalVendors} <span className="text-sm font-semibold text-slate-500">Mitra</span>
+              </div>
+              <p className="text-xs text-slate-400">Menyimpan saldo kain aktif</p>
+            </div>
+
+            {/* Card 2: Total Meter Siap Pakai */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Saldo Kain Siap Pakai</span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Scissors className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-emerald-700 mt-0.5">
+                {depositMetrics.totalMeterTersedia.toLocaleString('id-ID')}{' '}
+                <span className="text-sm font-semibold text-slate-500">Meter/Yard</span>
+              </div>
+              <p className="text-xs text-slate-400">Total panjang sisa terukur</p>
+            </div>
+
+            {/* Card 3: Sudah Dipakai PO */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Sudah Dialokasikan ke PO</span>
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <PackageCheck className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                {depositMetrics.terpakaiCount} <span className="text-sm font-semibold text-slate-500">Alokasi PO</span>
+              </div>
+              <p className="text-xs text-slate-400">Kain sisa yang sudah diproses</p>
+            </div>
+
+            {/* Card 4: Total Surat Jalan */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Surat Jalan Oper Terbit</span>
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <Truck className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+                {fabricTransferNotes.length} <span className="text-sm font-semibold text-slate-500">Dokumen</span>
+              </div>
+              <p className="text-xs text-slate-400">Bukti serah terima 3 pihak</p>
+            </div>
+          </div>
+
+          {/* Deposit Filter & Search Bar */}
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-96">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari konveksi, nomor PO asal, jenis kain, warna..."
+                value={depositSearchTerm}
+                onChange={e => setDepositSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                <span className="text-[11px] font-medium text-slate-400">Konveksi Penerima:</span>
+                <select
+                  value={selectedDepositVendorFilter}
+                  onChange={e => setSelectedDepositVendorFilter(e.target.value)}
+                  className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20 cursor-pointer"
+                >
+                  <option value="ALL">Semua Konveksi</option>
+                  {vendors.map(v => (
+                    <option key={v.id} value={v.name}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Deposit Table */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Konveksi Penyimpan (Tujuan)</th>
+                    <th className="py-3 px-3">Asal Bahan & PO</th>
+                    <th className="py-3 px-3">Jenis Kain & Warna</th>
+                    <th className="py-3 px-3 text-center">Saldo Sisa / Awal</th>
+                    <th className="py-3 px-3">Pengukur & Tanggal</th>
+                    <th className="py-3 px-3 text-center">Status Kain</th>
+                    <th className="py-3 px-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredDeposits.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <ArrowRightLeft className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="font-semibold text-slate-600 text-sm">Belum ada Saldo Titipan Kain di Konveksi.</p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                          Untuk mengoper sisa kain: buka tab <b>Daftar Surat PO Produksi</b>, lalu klik tombol panah ungu (<b>Oper Sisa Kain</b>) pada baris PO yang memiliki sisa potongan kain.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredDeposits.map(dep => {
+                      const matchedNote = fabricTransferNotes.find(n => n.depositId === dep.id);
+                      return (
+                        <tr key={dep.id} className="hover:bg-slate-50/70 transition">
+                          {/* Konveksi Penyimpan */}
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                              <Building2 className="w-3.5 h-3.5 text-violet-600 shrink-0" />
+                              <span>{dep.targetVendor}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              Brand: <span className="font-semibold uppercase text-slate-600">{dep.brand}</span>
+                            </div>
+                          </td>
+
+                          {/* Asal Kain */}
+                          <td className="py-3 px-3">
+                            <div className="font-medium text-slate-800 text-xs">{dep.sourceVendor}</div>
+                            <div className="font-mono text-[10px] text-indigo-600 mt-0.5 font-bold">
+                              {dep.sourcePONumber}
+                            </div>
+                          </td>
+
+                          {/* Jenis & Warna */}
+                          <td className="py-3 px-3">
+                            <div className="font-semibold text-slate-900">{dep.jenisKain}</div>
+                            <div className="text-[10px] text-slate-500">
+                              Warna: <span className="font-medium text-slate-700">{dep.warna || '-'}</span>
+                            </div>
+                          </td>
+
+                          {/* Saldo Sisa / Awal */}
+                          <td className="py-3 px-3 text-center">
+                            <div className="font-mono font-bold text-xs text-emerald-700">
+                              {dep.panjangSisa.toLocaleString('id-ID')} {dep.satuan === 'METER' ? 'Meter' : 'Yard'}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              Awal: {dep.panjangAwal.toLocaleString('id-ID')} {dep.satuan === 'METER' ? 'm' : 'yd'}
+                            </div>
+                          </td>
+
+                          {/* Pengukur & Tanggal */}
+                          <td className="py-3 px-3">
+                            <div className="text-slate-700 font-medium">
+                              {dep.measuredBy || 'Tim Logistik'}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {formatDateIndo(dep.tanggalTitip)}
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3 px-3 text-center">
+                            {dep.status === 'TERSEDIA' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Tersedia di Konveksi
+                              </span>
+                            )}
+                            {dep.status === 'TERPAKAI' && (
+                              <div className="space-y-0.5">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                  <PackageCheck className="w-3 h-3" />
+                                  Terpakai di PO
+                                </span>
+                                {dep.allocatedPONumber && (
+                                  <div className="font-mono text-[9.5px] font-bold text-indigo-700">
+                                    {dep.allocatedPONumber}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {dep.status === 'DITARIK' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                <Archive className="w-3 h-3" />
+                                Ditarik ke Gudang
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Cetak Surat Jalan */}
+                              <button
+                                onClick={() => {
+                                  if (matchedNote) {
+                                    setPrintTransferNote(matchedNote);
+                                  } else {
+                                    setPrintTransferNote({
+                                      id: `trf-transient-${dep.id}`,
+                                      transferNumber: `SJ-TRF-${dep.id.slice(-6).toUpperCase()}`,
+                                      depositId: dep.id,
+                                      sourcePOId: dep.sourcePOId,
+                                      sourcePONumber: dep.sourcePONumber,
+                                      sourceVendor: dep.sourceVendor,
+                                      targetVendor: dep.targetVendor,
+                                      brand: dep.brand,
+                                      jenisKain: dep.jenisKain,
+                                      warna: dep.warna || undefined,
+                                      panjang: dep.panjangAwal,
+                                      satuan: dep.satuan,
+                                      driverName: dep.measuredBy || 'Tim Logistik',
+                                      tanggal: dep.tanggalTitip,
+                                      kondisiKain: 'Utuh, diukur di lokasi',
+                                      createdAt: dep.createdAt,
+                                    });
+                                  }
+                                }}
+                                title="Lihat / Cetak Surat Jalan Transfer"
+                                className="p-1.5 rounded-lg border border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 transition cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Tarik ke Gudang (jika masih tersedia) */}
+                              {dep.status === 'TERSEDIA' && (
+                                <button
+                                  onClick={() => setReturnConfirmDeposit(dep)}
+                                  title="Tarik Kembali ke Gudang Pusat"
+                                  className="p-1.5 rounded-lg border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 transition cursor-pointer"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Hapus Catatan */}
+                              <button
+                                onClick={() => setDeleteConfirmDeposit(dep)}
+                                title="Hapus Catatan Titipan"
+                                className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ============================================================ */}
       {/* MODAL: BUAT / EDIT SURAT PO PRODUKSI */}
@@ -749,6 +1162,72 @@ export const SuratPOProduksiView: React.FC = () => {
                     ))}
                   </select>
                 </div>
+
+                {/* Available Fabric Deposits Banner */}
+                {availableVendorDeposits.length > 0 && (
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 p-3.5 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-violet-900">
+                        <Sparkles className="w-4 h-4 text-violet-600" />
+                        <span>Ditemukan Saldo Kain Titipan di Konveksi {formVendor}:</span>
+                      </div>
+                      <span className="text-[10.5px] font-semibold bg-violet-100 text-violet-800 px-2 py-0.5 rounded-full">
+                        {availableVendorDeposits.length} Stok Siap Pakai
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {availableVendorDeposits.map(dep => {
+                        const isSelected = formUsedDepositId === dep.id;
+                        return (
+                          <div
+                            key={dep.id}
+                            className={`p-2.5 rounded-lg border text-xs flex items-center justify-between gap-2 transition ${
+                              isSelected
+                                ? 'bg-violet-700 text-white border-violet-800 shadow-sm'
+                                : 'bg-white text-slate-800 border-violet-200 hover:border-violet-300'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="font-bold truncate">
+                                {dep.jenisKain} {dep.warna ? `(${dep.warna})` : ''}
+                              </div>
+                              <div className={`text-[10px] ${isSelected ? 'text-violet-100' : 'text-slate-500'}`}>
+                                Sisa: <b>{dep.panjangSisa} {dep.satuan === 'METER' ? 'Meter' : 'Yard'}</b> • ex-PO {dep.sourcePONumber}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setFormUsedDepositId(null);
+                                  setFormUsedDepositInfo(null);
+                                } else {
+                                  setFormUsedDepositId(dep.id);
+                                  setFormUsedDepositInfo(`${dep.panjangSisa} ${dep.satuan === 'METER' ? 'm' : 'yd'} ${dep.jenisKain} (ex-${dep.sourcePONumber})`);
+                                  setFormItems(prev =>
+                                    prev.map((it, idx) =>
+                                      idx === 0 && !it.bahanKain
+                                        ? { ...it, bahanKain: dep.jenisKain, warna: it.warna || dep.warna || '' }
+                                        : it
+                                    )
+                                  );
+                                }
+                              }}
+                              className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition shrink-0 ${
+                                isSelected
+                                  ? 'bg-white text-violet-800 hover:bg-violet-50'
+                                  : 'bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200'
+                              }`}
+                            >
+                              {isSelected ? '✓ Terpilih' : '+ Gunakan'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Tanggal PO */}
                 <div>
@@ -1069,6 +1548,102 @@ export const SuratPOProduksiView: React.FC = () => {
                 className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL: FORM TRANSFER SISA KAIN ANTAR-KONVEKSI */}
+      {/* ============================================================ */}
+      {transferModalPO && (
+        <FabricTransferModal
+          isOpen={!!transferModalPO}
+          sourcePO={transferModalPO}
+          onClose={() => setTransferModalPO(null)}
+          onSuccess={(deposit, note) => {
+            showToast('success', `Surat Jalan ${note.transferNumber} berhasil dibuat.`);
+            setPrintTransferNote(note);
+          }}
+        />
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL: CETAK SURAT JALAN OPER BAHAN */}
+      {/* ============================================================ */}
+      {printTransferNote && (
+        <FabricTransferPrintModal
+          isOpen={!!printTransferNote}
+          transferNote={printTransferNote}
+          onClose={() => setPrintTransferNote(null)}
+        />
+      )}
+
+      {/* ============================================================ */}
+      {/* DIALOG: KONFIRMASI TARIK KAIN TITIPAN KE GUDANG PUSAT */}
+      {/* ============================================================ */}
+      {returnConfirmDeposit && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mb-4">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-1">Tarik Kain ke Gudang Pusat?</h3>
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              Kain titipan <span className="font-bold text-slate-900">{returnConfirmDeposit.jenisKain}</span> ({returnConfirmDeposit.panjangSisa} {returnConfirmDeposit.satuan}) di <span className="font-bold text-indigo-700">{returnConfirmDeposit.targetVendor}</span> akan ditarik kembali ke gudang pusat. Status kain akan berubah menjadi <b>Ditarik</b>.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setReturnConfirmDeposit(null)}
+                className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={async () => {
+                  await returnDepositToWarehouse(returnConfirmDeposit.id, 'Ditarik oleh kurir logistik');
+                  showToast('success', 'Kain titipan berhasil ditarik kembali ke gudang.');
+                  setReturnConfirmDeposit(null);
+                }}
+                className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow transition cursor-pointer"
+              >
+                Konfirmasi Tarik Kain
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* DIALOG: KONFIRMASI HAPUS CATATAN TITIPAN */}
+      {/* ============================================================ */}
+      {deleteConfirmDeposit && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-1">Hapus Catatan Titipan?</h3>
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              Apakah Anda yakin ingin menghapus catatan saldo titipan kain <span className="font-bold text-slate-900">{deleteConfirmDeposit.jenisKain}</span> di <span className="font-bold text-slate-900">{deleteConfirmDeposit.targetVendor}</span>?
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setDeleteConfirmDeposit(null)}
+                className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteFabricDeposit(deleteConfirmDeposit.id);
+                  showToast('success', 'Catatan titipan bahan berhasil dihapus.');
+                  setDeleteConfirmDeposit(null);
+                }}
+                className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow transition cursor-pointer"
+              >
+                Hapus Catatan
               </button>
             </div>
           </div>

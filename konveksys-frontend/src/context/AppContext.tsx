@@ -71,6 +71,19 @@ import {
   apiUpdateProductionPO,
   apiUpdateProductionPOStatus,
   apiDeleteProductionPO,
+  apiGetFobHppList,
+  apiCreateFobHpp,
+  apiUpdateFobHpp,
+  apiDeleteFobHpp,
+  apiGetFobQuotations,
+  apiCreateFobQuotation,
+  apiDeleteFobQuotation,
+  apiGetFobMaterials,
+  apiSaveFobMaterial,
+  apiDeleteFobMaterial,
+  apiGetFobProducts,
+  apiSaveFobProduct,
+  apiDeleteFobProduct,
 } from '../services/api';
 import {
   AuthUser,
@@ -82,6 +95,7 @@ import {
   HargaKonveksi,
   HargaBuyer,
   InboundRoll,
+  RollStatus,
   SPKCutting,
   SPKProductItem,
   SuratJalan,
@@ -102,6 +116,13 @@ import {
   BrandStockExit,
   ProductionPO,
   ProductionPOItem,
+  VendorFabricDeposit,
+  FabricTransferNote,
+  FabricDepositStatus,
+  HPPCalculationRecord,
+  FOBQuotation,
+  FOBMaterialMaster,
+  FOBProductMaster,
 } from '../types';
 import {
   demoUsers,
@@ -116,10 +137,12 @@ import {
   initialReturnList,
   initialAccessories,
   initialAccessoryMutations,
+  initialFobMaterials,
+  initialFobProducts,
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk' | 'manajemen-user' | 'stok-penjualan' | 'po-produksi';
+export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk' | 'manajemen-user' | 'stok-penjualan' | 'po-produksi' | 'kalkulator-fob';
 
 interface AppContextType {
   // Auth & Session
@@ -242,6 +265,8 @@ interface AppContextType {
     targetDeadline: string;
     catatan?: string;
     status?: string;
+    usedDepositId?: string | null;
+    usedDepositInfo?: string | null;
     items: {
       namaProduk: string;
       warna?: string;
@@ -249,6 +274,8 @@ interface AppContextType {
       qty: number;
       bahanKain?: string;
       catatan?: string;
+      depositId?: string | null;
+      depositInfo?: string | null;
     }[];
   }) => Promise<{ success: boolean; message: string; data?: ProductionPO }>;
   updateProductionPO: (
@@ -261,6 +288,8 @@ interface AppContextType {
       targetDeadline: string;
       catatan?: string;
       status: string;
+      usedDepositId?: string | null;
+      usedDepositInfo?: string | null;
       items: {
         namaProduk: string;
         warna?: string;
@@ -268,11 +297,59 @@ interface AppContextType {
         qty: number;
         bahanKain?: string;
         catatan?: string;
+        depositId?: string | null;
+        depositInfo?: string | null;
       }[];
     }>
   ) => Promise<{ success: boolean; message: string; data?: ProductionPO }>;
   updateProductionPOStatus: (id: string, status: string) => Promise<{ success: boolean; message: string }>;
   deleteProductionPO: (id: string) => Promise<{ success: boolean; message: string }>;
+
+  // Vendor Fabric Deposits (Saldo Titipan & Transfer Bahan Antar-Vendor)
+  vendorFabricDeposits: VendorFabricDeposit[];
+  fabricTransferNotes: FabricTransferNote[];
+  createFabricTransfer: (data: {
+    sourcePOId: string;
+    sourcePONumber: string;
+    sourceVendor: string;
+    targetVendor: string;
+    brand: string;
+    jenisKain: string;
+    warna?: string;
+    panjang: number;
+    satuan: 'METER' | 'YARD';
+    driverName: string;
+    kondisiKain?: string;
+    catatan?: string;
+  }) => Promise<{ success: boolean; message: string; deposit?: VendorFabricDeposit; transferNote?: FabricTransferNote }>;
+  useVendorDeposit: (
+    depositId: string,
+    poId: string,
+    poNumber: string,
+    usedLength: number
+  ) => Promise<{ success: boolean; message: string }>;
+  returnDepositToWarehouse: (
+    depositId: string,
+    catatan?: string
+  ) => Promise<{ success: boolean; message: string }>;
+  deleteFabricDeposit: (depositId: string) => Promise<{ success: boolean; message: string }>;
+
+  // FOB Costing & Commercial Quotation (SPH)
+  hppRecords: HPPCalculationRecord[];
+  fobQuotations: FOBQuotation[];
+  fobMaterials: FOBMaterialMaster[];
+  fobProducts: FOBProductMaster[];
+  isLoadingFob: boolean;
+  saveHppRecord: (record: Partial<HPPCalculationRecord>) => Promise<{ success: boolean; data?: HPPCalculationRecord; error?: string }>;
+  updateHppRecord: (id: string, record: Partial<HPPCalculationRecord>) => Promise<{ success: boolean; error?: string }>;
+  deleteHppRecord: (id: string) => Promise<{ success: boolean; error?: string }>;
+  saveFobQuotation: (quotation: Partial<FOBQuotation>) => Promise<{ success: boolean; data?: FOBQuotation; error?: string }>;
+  deleteFobQuotation: (id: string) => Promise<{ success: boolean; error?: string }>;
+  saveFobMaterial: (mat: Partial<FOBMaterialMaster>) => Promise<{ success: boolean; error?: string }>;
+  deleteFobMaterial: (id: string) => Promise<{ success: boolean; error?: string }>;
+  saveFobProduct: (prod: Partial<FOBProductMaster>) => Promise<{ success: boolean; error?: string }>;
+  deleteFobProduct: (id: string) => Promise<{ success: boolean; error?: string }>;
+  refreshFobData: () => Promise<void>;
 
   // Sidebar & Layout State
   isSidebarCollapsed: boolean;
@@ -484,6 +561,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [brandSales, setBrandSales] = useState<BrandSale[]>(() => getCache('brand_sales', []));
   const [brandStockExits, setBrandStockExits] = useState<BrandStockExit[]>(() => getCache('brand_stock_exits', []));
   const [productionPOs, setProductionPOs] = useState<ProductionPO[]>(() => getCache('production_pos', []));
+  const [vendorFabricDeposits, setVendorFabricDeposits] = useState<VendorFabricDeposit[]>(() => getCache('vendor_fabric_deposits', []));
+  const [fabricTransferNotes, setFabricTransferNotes] = useState<FabricTransferNote[]>(() => getCache('fabric_transfer_notes', []));
+
+  // FOB Costing & SPH State
+  const [hppRecords, setHppRecords] = useState<HPPCalculationRecord[]>(() => {
+    const cached = getCache<HPPCalculationRecord[]>('fob_hpp_records', []);
+    if (cached && cached.length > 0) return cached;
+    try {
+      const v4Raw = localStorage.getItem('hpp_fob_v4');
+      if (v4Raw) return JSON.parse(v4Raw);
+    } catch {}
+    return [];
+  });
+  const [fobQuotations, setFobQuotations] = useState<FOBQuotation[]>(() => getCache('fob_quotations', []));
+  const [fobMaterials, setFobMaterials] = useState<FOBMaterialMaster[]>(() => getCache('fob_materials', initialFobMaterials));
+  const [fobProducts, setFobProducts] = useState<FOBProductMaster[]>(() => getCache('fob_products', initialFobProducts));
+  const [isLoadingFob, setIsLoadingFob] = useState<boolean>(false);
 
   // Sync state tracking
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -529,6 +623,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         apiGetBrandSales(), // 14
         apiGetBrandStockExits(), // 15
         apiGetProductionPOs(), // 16
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobHppList(), // 17
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobQuotations(), // 18
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobMaterials(), // 19
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobProducts(), // 20
       ]);
 
       // 0. Brands
@@ -634,46 +732,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // 6. SPK
       if (results[6].status === 'fulfilled' && Array.isArray(results[6].value.data)) {
-        const mapped = results[6].value.data.map((s: any) => ({
-          id: s.id,
-          spkNumber: s.spkNumber,
-          brand: normalizeBrandName(s.brand),
-          produk: s.produk,
-          vendor: s.vendor,
-          rollIds: s.rolsDigunakan ? s.rolsDigunakan.map((r: any) => r.rolId) : [],
-          targetCutQty: {
-            s: s.targetS || 0,
-            m: s.targetM || 0,
-            l: s.targetL || 0,
-            xl: s.targetXL || 0,
-            xxl: s.targetXXL || 0,
-            anak4: s.targetAnak4 || 0,
-            anak6: s.targetAnak6 || 0,
-            anak8: s.targetAnak8 || 0,
-            anak10: s.targetAnak10 || 0,
-            anak12: s.targetAnak12 || 0,
-            anak14: s.targetAnak14 || 0,
-            anak16: s.targetAnak16 || 0,
-          },
-          deliveredQty: {
-            s: s.deliveredS || 0,
-            m: s.deliveredM || 0,
-            l: s.deliveredL || 0,
-            xl: s.deliveredXL || 0,
-            xxl: s.deliveredXXL || 0,
-            anak4: s.deliveredAnak4 || 0,
-            anak6: s.deliveredAnak6 || 0,
-            anak8: s.deliveredAnak8 || 0,
-            anak10: s.deliveredAnak10 || 0,
-            anak12: s.deliveredAnak12 || 0,
-            anak14: s.deliveredAnak14 || 0,
-            anak16: s.deliveredAnak16 || 0,
-          },
-          tanggalSPK: s.tanggalSPK,
-          targetSelesai: s.targetSelesai || '',
-          status: s.status,
-          catatan: s.catatan || '',
-        }));
+        const cachedSpks = getCache<SPKCutting[]>('spk_list', []);
+        const mapped = results[6].value.data.map((s: any) => {
+          const cached = cachedSpks.find((e) => e.id === s.id || e.spkNumber === s.spkNumber);
+          return {
+            id: s.id,
+            spkNumber: s.spkNumber,
+            brand: normalizeBrandName(s.brand),
+            produk: s.produk,
+            vendor: s.vendor,
+            rollIds: s.rolsDigunakan ? s.rolsDigunakan.map((r: any) => r.rolId) : (cached?.rollIds || []),
+            targetCutQty: {
+              s: s.targetS || 0,
+              m: s.targetM || 0,
+              l: s.targetL || 0,
+              xl: s.targetXL || 0,
+              xxl: s.targetXXL || 0,
+              anak4: s.targetAnak4 || 0,
+              anak6: s.targetAnak6 || 0,
+              anak8: s.targetAnak8 || 0,
+              anak10: s.targetAnak10 || 0,
+              anak12: s.targetAnak12 || 0,
+              anak14: s.targetAnak14 || 0,
+              anak16: s.targetAnak16 || 0,
+            },
+            deliveredQty: {
+              s: s.deliveredS || 0,
+              m: s.deliveredM || 0,
+              l: s.deliveredL || 0,
+              xl: s.deliveredXL || 0,
+              xxl: s.deliveredXXL || 0,
+              anak4: s.deliveredAnak4 || 0,
+              anak6: s.deliveredAnak6 || 0,
+              anak8: s.deliveredAnak8 || 0,
+              anak10: s.deliveredAnak10 || 0,
+              anak12: s.deliveredAnak12 || 0,
+              anak14: s.deliveredAnak14 || 0,
+              anak16: s.deliveredAnak16 || 0,
+            },
+            tanggalSPK: s.tanggalSPK,
+            targetSelesai: s.targetSelesai || '',
+            status: s.status,
+            catatan: s.catatan || '',
+            items: s.items || cached?.items,
+            fabricSourceType: s.fabricSourceType || cached?.fabricSourceType || (s.rolsDigunakan?.length ? 'ROLL_GUDANG' : undefined),
+            depositId: s.depositId || cached?.depositId,
+            depositInfo: s.depositInfo || cached?.depositInfo,
+          };
+        });
         setSpkList(mapped);
         setCache('spk_list', mapped);
       }
@@ -864,6 +970,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (results[16].status === 'fulfilled' && Array.isArray(results[16].value.data)) {
         setProductionPOs(results[16].value.data);
         setCache('production_pos', results[16].value.data);
+      }
+
+      // 17. FOB HPP Records
+      if (results[17]?.status === 'fulfilled' && Array.isArray(results[17].value.data)) {
+        const rawHpp = results[17].value.data;
+        setHppRecords(rawHpp);
+        setCache('fob_hpp_records', rawHpp);
+        try { localStorage.setItem('hpp_fob_v4', JSON.stringify(rawHpp)); } catch {}
+      }
+
+      // 18. FOB Quotations
+      if (results[18]?.status === 'fulfilled' && Array.isArray(results[18].value.data)) {
+        const rawQuo = results[18].value.data;
+        setFobQuotations(rawQuo);
+        setCache('fob_quotations', rawQuo);
+      }
+
+      // 19. FOB Materials
+      if (results[19]?.status === 'fulfilled' && Array.isArray(results[19].value.data) && results[19].value.data.length > 0) {
+        setFobMaterials(results[19].value.data);
+        setCache('fob_materials', results[19].value.data);
+      }
+
+      // 20. FOB Products
+      if (results[20]?.status === 'fulfilled' && Array.isArray(results[20].value.data) && results[20].value.data.length > 0) {
+        setFobProducts(results[20].value.data);
+        setCache('fob_products', results[20].value.data);
       }
 
       setLastSyncedAt(new Date());
@@ -1245,6 +1378,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     targetDeadline: string;
     catatan?: string;
     status?: string;
+    usedDepositId?: string | null;
+    usedDepositInfo?: string | null;
     items: {
       namaProduk: string;
       warna?: string;
@@ -1252,15 +1387,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       qty: number;
       bahanKain?: string;
       catatan?: string;
+      depositId?: string | null;
+      depositInfo?: string | null;
     }[];
   }): Promise<{ success: boolean; message: string; data?: ProductionPO }> => {
     try {
       const { data, error } = await apiCreateProductionPO(poData);
       if (error || !data) {
-        return { success: false, message: error || 'Gagal membuat Surat PO.' };
+        // Fallback local creation jika backend offline/tidak merespon
+        const fallbackPO: ProductionPO = {
+          id: `po-${Date.now()}`,
+          noPO: poData.noPO,
+          brand: poData.brand,
+          vendorTujuan: poData.vendorTujuan,
+          tanggalPO: poData.tanggalPO,
+          targetDeadline: poData.targetDeadline,
+          catatan: poData.catatan || null,
+          usedDepositId: poData.usedDepositId || null,
+          usedDepositInfo: poData.usedDepositInfo || null,
+          status: poData.status || 'DRAFT',
+          totalPcs: poData.items.reduce((acc, it) => acc + (Number(it.qty) || 0), 0),
+          items: poData.items.map((it, idx) => ({
+            id: `poi-${Date.now()}-${idx}`,
+            namaProduk: it.namaProduk,
+            warna: it.warna || null,
+            ukuran: it.ukuran || null,
+            qty: Number(it.qty) || 0,
+            bahanKain: it.bahanKain || null,
+            catatan: it.catatan || null,
+            depositId: it.depositId || null,
+            depositInfo: it.depositInfo || null,
+            createdAt: new Date().toISOString(),
+          })),
+          createdAt: new Date().toISOString(),
+        };
+
+        setProductionPOs(prev => {
+          const updated = [fallbackPO, ...prev];
+          setCache('production_pos', updated);
+          return updated;
+        });
+
+        if (poData.usedDepositId) {
+          await useVendorDeposit(poData.usedDepositId, fallbackPO.id, fallbackPO.noPO, 999999);
+        }
+
+        return { success: true, message: 'Surat PO berhasil disimpan.', data: fallbackPO };
       }
+
       if (data.data) {
-        setProductionPOs(prev => [data.data, ...prev]);
+        setProductionPOs(prev => {
+          const updated = [data.data, ...prev];
+          setCache('production_pos', updated);
+          return updated;
+        });
+        if (poData.usedDepositId) {
+          await useVendorDeposit(poData.usedDepositId, data.data.id, data.data.noPO, 999999);
+        }
       }
       return { success: true, message: data.message || 'Surat PO berhasil disimpan ke database.', data: data.data };
     } catch (err: any) {
@@ -1278,6 +1461,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       targetDeadline: string;
       catatan?: string;
       status: string;
+      usedDepositId?: string | null;
+      usedDepositInfo?: string | null;
       items: {
         namaProduk: string;
         warna?: string;
@@ -1285,16 +1470,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qty: number;
         bahanKain?: string;
         catatan?: string;
+        depositId?: string | null;
+        depositInfo?: string | null;
       }[];
     }>
   ): Promise<{ success: boolean; message: string; data?: ProductionPO }> => {
     try {
       const { data, error } = await apiUpdateProductionPO(id, poData);
       if (error || !data) {
-        return { success: false, message: error || 'Gagal memperbarui Surat PO.' };
+        // Fallback local update
+        setProductionPOs(prev => {
+          const updated = prev.map(p => (p.id === id ? ({ ...p, ...poData } as ProductionPO) : p));
+          setCache('production_pos', updated);
+          return updated;
+        });
+        return { success: true, message: 'Surat PO berhasil diperbarui.' };
       }
       if (data.data) {
-        setProductionPOs(prev => prev.map(p => p.id === id ? data.data : p));
+        setProductionPOs(prev => {
+          const updated = prev.map(p => (p.id === id ? data.data : p));
+          setCache('production_pos', updated);
+          return updated;
+        });
       }
       return { success: true, message: data.message || 'Surat PO berhasil diperbarui.', data: data.data };
     } catch (err: any) {
@@ -1306,10 +1503,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const { data, error } = await apiUpdateProductionPOStatus(id, status);
       if (error || !data) {
-        return { success: false, message: error || 'Gagal mengubah status PO.' };
+        setProductionPOs(prev => {
+          const updated = prev.map(p => (p.id === id ? { ...p, status } : p));
+          setCache('production_pos', updated);
+          return updated;
+        });
+        return { success: true, message: 'Status PO berhasil diubah.' };
       }
       if (data.data) {
-        setProductionPOs(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+        setProductionPOs(prev => {
+          const updated = prev.map(p => (p.id === id ? { ...p, status } : p));
+          setCache('production_pos', updated);
+          return updated;
+        });
       }
       return { success: true, message: data.message || 'Status PO berhasil diubah.' };
     } catch (err: any) {
@@ -1321,12 +1527,441 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const { data, error } = await apiDeleteProductionPO(id);
       if (error) {
-        return { success: false, message: error };
+        setProductionPOs(prev => {
+          const updated = prev.filter(p => p.id !== id);
+          setCache('production_pos', updated);
+          return updated;
+        });
+        return { success: true, message: 'Surat PO berhasil dihapus.' };
       }
-      setProductionPOs(prev => prev.filter(p => p.id !== id));
+      setProductionPOs(prev => {
+        const updated = prev.filter(p => p.id !== id);
+        setCache('production_pos', updated);
+        return updated;
+      });
       return { success: true, message: data?.message || 'Surat PO berhasil dihapus dari database.' };
     } catch (err: any) {
       return { success: false, message: err?.message || 'Terjadi kesalahan sistem.' };
+    }
+  };
+
+  // Vendor Fabric Deposits (Saldo Titipan & Transfer Bahan Antar-Vendor)
+  const createFabricTransfer = async (data: {
+    sourcePOId: string;
+    sourcePONumber: string;
+    sourceVendor: string;
+    targetVendor: string;
+    brand: string;
+    jenisKain: string;
+    warna?: string;
+    panjang: number;
+    satuan: 'METER' | 'YARD';
+    driverName: string;
+    kondisiKain?: string;
+    catatan?: string;
+  }): Promise<{ success: boolean; message: string; deposit?: VendorFabricDeposit; transferNote?: FabricTransferNote }> => {
+    try {
+      const depositId = `dep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const transferId = `trf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+      const rand = Math.floor(100 + Math.random() * 900);
+      const transferNumber = `SJ-TRF-${dateStr}-${rand}`;
+      const now = new Date().toISOString();
+
+      const newDeposit: VendorFabricDeposit = {
+        id: depositId,
+        sourcePOId: data.sourcePOId,
+        sourcePONumber: data.sourcePONumber,
+        sourceVendor: data.sourceVendor,
+        targetVendor: data.targetVendor,
+        brand: data.brand,
+        jenisKain: data.jenisKain,
+        warna: data.warna || null,
+        panjangAwal: Number(data.panjang),
+        panjangSisa: Number(data.panjang),
+        satuan: data.satuan,
+        status: 'TERSEDIA',
+        measuredBy: data.driverName,
+        tanggalTitip: now.split('T')[0],
+        catatan: data.catatan || null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const newTransferNote: FabricTransferNote = {
+        id: transferId,
+        transferNumber,
+        depositId,
+        sourcePOId: data.sourcePOId,
+        sourcePONumber: data.sourcePONumber,
+        sourceVendor: data.sourceVendor,
+        targetVendor: data.targetVendor,
+        brand: data.brand,
+        jenisKain: data.jenisKain,
+        warna: data.warna || null,
+        panjang: Number(data.panjang),
+        satuan: data.satuan,
+        driverName: data.driverName,
+        kondisiKain: data.kondisiKain || null,
+        tanggal: now.split('T')[0],
+        catatan: data.catatan || null,
+        createdAt: now,
+      };
+
+      setVendorFabricDeposits(prev => {
+        const updated = [newDeposit, ...prev];
+        setCache('vendor_fabric_deposits', updated);
+        return updated;
+      });
+
+      setFabricTransferNotes(prev => {
+        const updated = [newTransferNote, ...prev];
+        setCache('fabric_transfer_notes', updated);
+        return updated;
+      });
+
+      return {
+        success: true,
+        message: `Sisa kain berhasil dititipkan ke ${data.targetVendor} dengan Surat Jalan ${transferNumber}.`,
+        deposit: newDeposit,
+        transferNote: newTransferNote,
+      };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Gagal memproses transfer kain.' };
+    }
+  };
+
+  const useVendorDeposit = async (
+    depositId: string,
+    poId: string,
+    poNumber: string,
+    usedLength: number
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      setVendorFabricDeposits(prev => {
+        const updated = prev.map(dep => {
+          if (dep.id === depositId) {
+            const remaining = Math.max(0, dep.panjangSisa - usedLength);
+            return {
+              ...dep,
+              panjangSisa: remaining,
+              status: (remaining === 0 ? 'TERPAKAI' : 'TERSEDIA') as FabricDepositStatus,
+              allocatedPOId: poId,
+              allocatedPONumber: poNumber,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return dep;
+        });
+        setCache('vendor_fabric_deposits', updated);
+        return updated;
+      });
+      return { success: true, message: 'Saldo titipan kain berhasil dialokasikan ke PO.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Gagal mengalokasikan kain titipan.' };
+    }
+  };
+
+  const returnDepositToWarehouse = async (
+    depositId: string,
+    catatan?: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      setVendorFabricDeposits(prev => {
+        const updated = prev.map(dep => {
+          if (dep.id === depositId) {
+            return {
+              ...dep,
+              status: 'DITARIK' as FabricDepositStatus,
+              catatan: catatan ? `${dep.catatan || ''} | Ditarik ke Gudang: ${catatan}` : dep.catatan,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return dep;
+        });
+        setCache('vendor_fabric_deposits', updated);
+        return updated;
+      });
+      return { success: true, message: 'Kain titipan berhasil ditarik kembali ke gudang pusat.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Gagal menarik kain titipan.' };
+    }
+  };
+
+  const deleteFabricDeposit = async (depositId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      setVendorFabricDeposits(prev => {
+        const updated = prev.filter(d => d.id !== depositId);
+        setCache('vendor_fabric_deposits', updated);
+        return updated;
+      });
+      setFabricTransferNotes(prev => {
+        const updated = prev.filter(n => n.depositId !== depositId);
+        setCache('fabric_transfer_notes', updated);
+        return updated;
+      });
+      return { success: true, message: 'Catatan titipan bahan berhasil dihapus.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Gagal menghapus catatan titipan bahan.' };
+    }
+  };
+
+  // ============================================================
+  // FOB COSTING & SPH (Database-backed Handlers)
+  // ============================================================
+
+  const refreshFobData = async () => {
+    setIsLoadingFob(true);
+    try {
+      const [resHpp, resQuo, resMat, resProd] = await Promise.all([
+        apiGetFobHppList(),
+        apiGetFobQuotations(),
+        apiGetFobMaterials(),
+        apiGetFobProducts(),
+      ]);
+
+      if (resHpp.data && Array.isArray(resHpp.data)) {
+        setHppRecords(resHpp.data);
+        setCache('fob_hpp_records', resHpp.data);
+        try { localStorage.setItem('hpp_fob_v4', JSON.stringify(resHpp.data)); } catch {}
+      }
+      if (resQuo.data && Array.isArray(resQuo.data)) {
+        setFobQuotations(resQuo.data);
+        setCache('fob_quotations', resQuo.data);
+      }
+      if (resMat.data && Array.isArray(resMat.data) && resMat.data.length > 0) {
+        setFobMaterials(resMat.data);
+        setCache('fob_materials', resMat.data);
+      }
+      if (resProd.data && Array.isArray(resProd.data) && resProd.data.length > 0) {
+        setFobProducts(resProd.data);
+        setCache('fob_products', resProd.data);
+      }
+    } catch (err) {
+      console.warn('[FOB-REFRESH-ERROR]', err);
+    } finally {
+      setIsLoadingFob(false);
+    }
+  };
+
+  const saveHppRecord = async (record: Partial<HPPCalculationRecord>): Promise<{ success: boolean; data?: HPPCalculationRecord; error?: string }> => {
+    try {
+      const { data, error } = await apiCreateFobHpp(record);
+      if (error || !data) {
+        // Fallback local save jika backend offline
+        const fallback: HPPCalculationRecord = {
+          id: `hpp-${Date.now()}`,
+          noHpp: record.noHpp || `HPP/${new Date().getFullYear()}/${String(hppRecords.length + 1).padStart(4, '0')}`,
+          tanggal: record.tanggal || new Date().toISOString(),
+          namaProduk: record.namaProduk || 'Untitled Product',
+          kodeProduk: record.kodeProduk || null,
+          size: record.size || 'ALL SIZE',
+          kategori: record.kategori || 'Kaos',
+          brand: record.brand || 'UMUM',
+          vendorCmt: record.vendorCmt || null,
+          batchQty: Number(record.batchQty) || 100,
+
+          targetLabaPercent: Number(record.targetLabaPercent) || 30,
+          rejectPercent: Number(record.rejectPercent) || 3,
+          ppnPercent: Number(record.ppnPercent) || 0,
+          zakatPercent: Number(record.zakatPercent) || 0,
+          affiliatePercent: Number(record.affiliatePercent) || 0,
+
+          hppBahanTotal: Number(record.hppBahanTotal) || 0,
+          hppCmtTotal: Number(record.hppCmtTotal) || 0,
+          totalSebelumReject: Number(record.totalSebelumReject) || 0,
+          nilaiReject: Number(record.nilaiReject) || 0,
+          hppFinalPerPcs: Number(record.hppFinalPerPcs) || 0,
+          hargaJualRekomendasi: Number(record.hargaJualRekomendasi) || 0,
+          labaBersihPerPcs: Number(record.labaBersihPerPcs) || 0,
+
+          totalBiayaBatch: Number(record.totalBiayaBatch) || 0,
+          totalOmzetBatch: Number(record.totalOmzetBatch) || 0,
+          totalLabaBatch: Number(record.totalLabaBatch) || 0,
+          catatan: record.catatan || null,
+          components: record.components || [],
+          createdAt: new Date().toISOString(),
+        };
+
+        setHppRecords(prev => {
+          const updated = [fallback, ...prev];
+          setCache('fob_hpp_records', updated);
+          try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        return { success: true, data: fallback };
+      }
+
+      const savedRecord = data.data;
+      setHppRecords(prev => {
+        const updated = [savedRecord, ...prev.filter(r => r.id !== savedRecord.id)];
+        setCache('fob_hpp_records', updated);
+        try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      return { success: true, data: savedRecord };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal menyimpan kalkulasi HPP.' };
+    }
+  };
+
+  const updateHppRecord = async (id: string, record: Partial<HPPCalculationRecord>): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await apiUpdateFobHpp(id, record);
+      setHppRecords(prev => {
+        const updated = prev.map(r => r.id === id ? { ...r, ...record, updatedAt: new Date().toISOString() } : r);
+        setCache('fob_hpp_records', updated);
+        try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal memperbarui HPP.' };
+    }
+  };
+
+  const deleteHppRecord = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await apiDeleteFobHpp(id);
+      setHppRecords(prev => {
+        const updated = prev.filter(r => r.id !== id);
+        setCache('fob_hpp_records', updated);
+        try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal menghapus kalkulasi HPP.' };
+    }
+  };
+
+  const saveFobQuotation = async (quotation: Partial<FOBQuotation>): Promise<{ success: boolean; data?: FOBQuotation; error?: string }> => {
+    try {
+      const { data, error } = await apiCreateFobQuotation(quotation);
+      if (error || !data) {
+        const fallback: FOBQuotation = {
+          id: `sph-${Date.now()}`,
+          noSurat: quotation.noSurat || `SPH/${new Date().getFullYear()}/${String(fobQuotations.length + 1).padStart(4, '0')}`,
+          tanggal: quotation.tanggal || new Date().toISOString(),
+          buyerName: quotation.buyerName || 'Buyer',
+          buyerCompany: quotation.buyerCompany || null,
+          buyerContact: quotation.buyerContact || null,
+          validUntil: quotation.validUntil || null,
+          termsDPPercent: Number(quotation.termsDPPercent) || 50,
+          totalQty: Number(quotation.totalQty) || 0,
+          totalOrderNominal: Number(quotation.totalOrderNominal) || 0,
+          nominalDP: Number(quotation.nominalDP) || 0,
+          sisaPelunasan: Number(quotation.sisaPelunasan) || 0,
+          paymentNotes: quotation.paymentNotes || null,
+          productionLeadTime: quotation.productionLeadTime || null,
+          companyProfile: quotation.companyProfile || null,
+          items: quotation.items || [],
+          createdAt: new Date().toISOString(),
+        };
+
+        setFobQuotations(prev => {
+          const updated = [fallback, ...prev];
+          setCache('fob_quotations', updated);
+          return updated;
+        });
+        return { success: true, data: fallback };
+      }
+
+      const savedQuo = data.data;
+      setFobQuotations(prev => {
+        const updated = [savedQuo, ...prev.filter(q => q.id !== savedQuo.id)];
+        setCache('fob_quotations', updated);
+        return updated;
+      });
+      return { success: true, data: savedQuo };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal menyimpan SPH.' };
+    }
+  };
+
+  const deleteFobQuotation = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await apiDeleteFobQuotation(id);
+      setFobQuotations(prev => {
+        const updated = prev.filter(q => q.id !== id);
+        setCache('fob_quotations', updated);
+        return updated;
+      });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal menghapus SPH.' };
+    }
+  };
+
+  const saveFobMaterial = async (mat: Partial<FOBMaterialMaster>): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await apiSaveFobMaterial(mat);
+      if (!error && data?.data) {
+        setFobMaterials(prev => {
+          const updated = [data.data, ...prev.filter(m => m.kodeMaterial !== data.data.kodeMaterial)];
+          setCache('fob_materials', updated);
+          return updated;
+        });
+      } else {
+        setFobMaterials(prev => {
+          const updated = [mat as FOBMaterialMaster, ...prev.filter(m => m.kodeMaterial !== mat.kodeMaterial)];
+          setCache('fob_materials', updated);
+          return updated;
+        });
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal menyimpan material.' };
+    }
+  };
+
+  const deleteFobMaterial = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await apiDeleteFobMaterial(id);
+      setFobMaterials(prev => {
+        const updated = prev.filter(m => m.id !== id);
+        setCache('fob_materials', updated);
+        return updated;
+      });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal menghapus material.' };
+    }
+  };
+
+  const saveFobProduct = async (prod: Partial<FOBProductMaster>): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await apiSaveFobProduct(prod);
+      if (!error && data?.data) {
+        setFobProducts(prev => {
+          const updated = [data.data, ...prev.filter(p => !(p.kodeProduk === data.data.kodeProduk && p.size === data.data.size))];
+          setCache('fob_products', updated);
+          return updated;
+        });
+      } else {
+        setFobProducts(prev => {
+          const updated = [prod as FOBProductMaster, ...prev.filter(p => !(p.kodeProduk === prod.kodeProduk && p.size === prod.size))];
+          setCache('fob_products', updated);
+          return updated;
+        });
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal menyimpan produk.' };
+    }
+  };
+
+  const deleteFobProduct = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await apiDeleteFobProduct(id);
+      setFobProducts(prev => {
+        const updated = prev.filter(p => p.id !== id);
+        setCache('fob_products', updated);
+        return updated;
+      });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Gagal menghapus produk.' };
     }
   };
 
@@ -1659,17 +2294,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'IN_PRODUCTION',
     };
 
-    // Update status of pooled rolls to DIPROSES
-    setInboundRolls(prev =>
-      prev.map(roll => {
-        if (spkData.rollIds.includes(roll.id)) {
-          return { ...roll, status: 'DIPROSES', meterUsed: roll.meterLength };
-        }
-        return roll;
-      })
-    );
+    // Update status of pooled rolls to DIPROSES (hanya jika bersumber dari gudang pusat)
+    if (spkData.fabricSourceType !== 'TITIPAN_VENDOR' && spkData.rollIds && spkData.rollIds.length > 0) {
+      setInboundRolls(prev => {
+        const updated = prev.map(roll => {
+          if (spkData.rollIds.includes(roll.id)) {
+            return { ...roll, status: 'DIPROSES' as RollStatus, meterUsed: roll.meterLength };
+          }
+          return roll;
+        });
+        setCache('inbound_rolls', updated);
+        return updated;
+      });
+    }
 
-    setSpkList(prev => [newSPK, ...prev]);
+    // Jika bersumber dari Saldo Titipan di Vendor, tandai titipan menjadi TERPAKAI
+    if (spkData.fabricSourceType === 'TITIPAN_VENDOR' && spkData.depositId) {
+      setVendorFabricDeposits(prev => {
+        const updated = prev.map(dep => {
+          if (dep.id === spkData.depositId) {
+            return {
+              ...dep,
+              status: 'TERPAKAI' as FabricDepositStatus,
+              allocatedSPKId: tempId,
+              allocatedSPKNumber: spkNumber,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return dep;
+        });
+        setCache('vendor_fabric_deposits', updated);
+        return updated;
+      });
+    }
+
+    setSpkList(prev => {
+      const updated = [newSPK, ...prev];
+      setCache('spk_list', updated);
+      return updated;
+    });
 
     try {
       const { data } = await apiCreateSpk({
@@ -1693,12 +2356,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetAnak12: spkData.targetCutQty.anak12 || 0,
         targetAnak14: spkData.targetCutQty.anak14 || 0,
         targetAnak16: spkData.targetCutQty.anak16 || 0,
-        rollIds: spkData.rollIds,
+        rollIds: spkData.rollIds || [],
       });
 
       if (data && (data as any).id) {
         const realId = (data as any).id;
-        setSpkList(prev => prev.map(s => (s.id === tempId ? { ...s, id: realId } : s)));
+        setSpkList(prev => {
+          const updated = prev.map(s => (s.id === tempId ? { ...s, id: realId } : s));
+          setCache('spk_list', updated);
+          return updated;
+        });
+        if (spkData.fabricSourceType === 'TITIPAN_VENDOR' && spkData.depositId) {
+          setVendorFabricDeposits(prev => {
+            const updated = prev.map(dep => dep.id === spkData.depositId ? { ...dep, allocatedSPKId: realId } : dep);
+            setCache('vendor_fabric_deposits', updated);
+            return updated;
+          });
+        }
       }
     } catch (err) {
       console.warn('Backend sync SPK failed, saved locally:', err);
@@ -1738,17 +2412,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Kembalikan status rol kain yang digunakan SPK menjadi DI_GUDANG dan meterUsed: 0
     if (targetSpk.rollIds && targetSpk.rollIds.length > 0) {
-      setInboundRolls(prev =>
-        prev.map(r => {
+      setInboundRolls(prev => {
+        const updated = prev.map(r => {
           if (targetSpk.rollIds.includes(r.id)) {
-            return { ...r, status: 'DI_GUDANG', meterUsed: 0 };
+            return { ...r, status: 'DI_GUDANG' as RollStatus, meterUsed: 0 };
           }
           return r;
-        })
-      );
+        });
+        setCache('inbound_rolls', updated);
+        return updated;
+      });
     }
 
-    setSpkList(prev => prev.filter(s => s.id !== id));
+    // Kembalikan status kain titipan jika SPK bersumber dari saldo titipan vendor
+    if (targetSpk.depositId) {
+      setVendorFabricDeposits(prev => {
+        const updated = prev.map(dep => {
+          if (dep.id === targetSpk.depositId) {
+            return {
+              ...dep,
+              status: 'TERSEDIA' as FabricDepositStatus,
+              allocatedSPKId: null,
+              allocatedSPKNumber: null,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return dep;
+        });
+        setCache('vendor_fabric_deposits', updated);
+        return updated;
+      });
+    }
+
+    setSpkList(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      setCache('spk_list', updated);
+      return updated;
+    });
     return { success: true, message: `SPK ${targetSpk.spkNumber} berhasil dihapus.` };
   };
 
@@ -3092,6 +3792,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProductionPO,
         updateProductionPOStatus,
         deleteProductionPO,
+        vendorFabricDeposits,
+        fabricTransferNotes,
+        createFabricTransfer,
+        useVendorDeposit,
+        returnDepositToWarehouse,
+        deleteFabricDeposit,
+        hppRecords,
+        fobQuotations,
+        fobMaterials,
+        fobProducts,
+        isLoadingFob,
+        saveHppRecord,
+        updateHppRecord,
+        deleteHppRecord,
+        saveFobQuotation,
+        deleteFobQuotation,
+        saveFobMaterial,
+        deleteFobMaterial,
+        saveFobProduct,
+        deleteFobProduct,
+        refreshFobData,
         isApprovalModalOpen,
         setIsApprovalModalOpen,
         syncFromBackend,

@@ -213,6 +213,23 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
             );
           })()}
 
+          {/* Fabric Consignment / Deposit Notice on SPK */}
+          {po.usedDepositInfo && (
+            <div className="border border-indigo-200 rounded p-1.5 px-2 bg-indigo-50/70 text-[8.5px] text-indigo-950 mb-2 flex items-center justify-between" style={{ breakInside: 'avoid' }}>
+              <div className="flex items-center gap-1.5">
+                <span className="px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-800 text-[8px] font-bold uppercase tracking-wider">
+                  Alokasi Bahan Titipan
+                </span>
+                <span>
+                  Menggunakan Kain Titipan di Tempat: <b>{po.usedDepositInfo}</b>
+                </span>
+              </div>
+              <span className="text-[8px] text-indigo-700 font-medium italic">
+                (Sudah berada di konveksi penerima)
+              </span>
+            </div>
+          )}
+
           {/* Standard Quality & SOP Clauses */}
           <div className="border border-slate-200 rounded p-1.5 px-2 bg-slate-50/50 text-[8.5px] text-slate-500 mb-2.5 space-y-0.5">
             <div className="font-bold text-slate-700 uppercase text-[9px]">Ketentuan & Standar Jahit:</div>

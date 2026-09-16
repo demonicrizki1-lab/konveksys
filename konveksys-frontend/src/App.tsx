@@ -17,13 +17,14 @@ import { BarangMasukView } from './components/barang-masuk/BarangMasukView';
 import { UserManagementView } from './components/user-management/UserManagementView';
 import { StokPenjualanView } from './components/stok-penjualan/StokPenjualanView';
 import { SuratPOProduksiView } from './components/po-produksi/SuratPOProduksiView';
+import { FobCostingView } from './components/fob-costing/FobCostingView';
 import { BrandApprovalModal } from './components/brands/BrandApprovalModal';
 
 const MainLayout: React.FC = () => {
   const { activeTab, setActiveTab, currentUser, userRole, isApprovalModalOpen, setIsApprovalModalOpen } = useApp();
 
   useEffect(() => {
-    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics' || activeTab === 'manajemen-user' || activeTab === 'po-produksi')) {
+    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics' || activeTab === 'manajemen-user' || activeTab === 'po-produksi' || activeTab === 'kalkulator-fob')) {
       setActiveTab('dashboard');
     }
     if (userRole === 'ADMIN' && activeTab === 'stok-penjualan') {
@@ -57,6 +58,7 @@ const MainLayout: React.FC = () => {
           {activeTab === 'arus-kas' && <ArusKasView />}
           {activeTab === 'margin-analytics' && userRole === 'ADMIN' && <MarginAnalyticsView />}
           {activeTab === 'manajemen-user' && userRole === 'ADMIN' && <UserManagementView />}
+          {activeTab === 'kalkulator-fob' && userRole === 'ADMIN' && <FobCostingView />}
         </main>
       </div>
 

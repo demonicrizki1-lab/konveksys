@@ -463,3 +463,96 @@ model ProductionPOItem {
 
   createdAt    DateTime     @default(now())
 }
+
+// ============================================================
+// FOB COSTING & COMMERCIAL QUOTATION (SPH)
+// ============================================================
+
+model FobMaterialMaster {
+  id           String   @id @default(cuid())
+  kodeMaterial String   @unique
+  namaBahan    String
+  kategori     String
+  satuan       String
+  hargaStandar Decimal  @db.Decimal(12, 2)
+  supplier     String?
+  catatan      String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model FobProductMaster {
+  id         String   @id @default(cuid())
+  kodeProduk String
+  namaProduk String
+  size       String
+  kategori   String
+  brand      String?
+  vendorCmt  String?
+  deskripsi  String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([kodeProduk, size])
+}
+
+model FobHppRecord {
+  id                   String   @id @default(cuid())
+  noHpp                String   @unique
+  tanggal              DateTime @default(now())
+  namaProduk           String
+  kodeProduk           String?
+  size                 String
+  kategori             String?
+  brand                String?
+  vendorCmt            String?
+  batchQty             Int      @default(100)
+
+  targetLabaPercent    Decimal  @db.Decimal(5, 2) @default(30)
+  rejectPercent        Decimal  @db.Decimal(5, 2) @default(3)
+  ppnPercent           Decimal  @db.Decimal(5, 2) @default(0)
+  zakatPercent         Decimal  @db.Decimal(5, 2) @default(0)
+  affiliatePercent     Decimal  @db.Decimal(5, 2) @default(0)
+
+  hppBahanTotal        Decimal  @db.Decimal(12, 2) @default(0)
+  hppCmtTotal          Decimal  @db.Decimal(12, 2) @default(0)
+  totalSebelumReject   Decimal  @db.Decimal(12, 2) @default(0)
+  nilaiReject          Decimal  @db.Decimal(12, 2) @default(0)
+  hppFinalPerPcs       Decimal  @db.Decimal(12, 2) @default(0)
+  hargaJualRekomendasi Decimal  @db.Decimal(12, 2) @default(0)
+  labaBersihPerPcs     Decimal  @db.Decimal(12, 2) @default(0)
+
+  totalBiayaBatch      Decimal  @db.Decimal(14, 2) @default(0)
+  totalOmzetBatch      Decimal  @db.Decimal(14, 2) @default(0)
+  totalLabaBatch       Decimal  @db.Decimal(14, 2) @default(0)
+  catatan              String?
+
+  components           Json
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model FobQuotation {
+  id                 String   @id @default(cuid())
+  noSurat            String   @unique
+  tanggal            DateTime @default(now())
+  buyerName          String
+  buyerCompany       String?
+  buyerContact       String?
+  validUntil         DateTime?
+  termsDPPercent     Decimal  @db.Decimal(5, 2) @default(50)
+  totalQty           Int      @default(0)
+  totalOrderNominal  Decimal  @db.Decimal(14, 2) @default(0)
+  nominalDP          Decimal  @db.Decimal(14, 2) @default(0)
+  sisaPelunasan      Decimal  @db.Decimal(14, 2) @default(0)
+  paymentNotes       String?
+  productionLeadTime String?
+  companyProfile     Json?
+  items              Json
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

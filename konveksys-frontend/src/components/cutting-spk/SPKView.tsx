@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { SPKCutting, SPKProductItem, SizeBreakdown } from '../../types';
+import { SPKCutting, SPKProductItem, SizeBreakdown, VendorFabricDeposit } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
@@ -14,6 +14,9 @@ import {
   Trash2,
   Package,
   CheckCircle2,
+  ArrowRightLeft,
+  Check,
+  Info,
 } from 'lucide-react';
 
 interface ProductFormItem {
@@ -39,7 +42,7 @@ const emptySizeBreakdown: SizeBreakdown = {
 };
 
 export const SPKView: React.FC = () => {
-  const { spkList, createSPK, deleteSPK, inboundRolls, brands, vendors, getSPKRemainingQty, userRole } = useApp();
+  const { spkList, createSPK, deleteSPK, inboundRolls, brands, vendors, getSPKRemainingQty, userRole, vendorFabricDeposits } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState('ALL');
@@ -54,6 +57,11 @@ export const SPKView: React.FC = () => {
     blockMessage?: string;
   }>({ isOpen: false });
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Fabric Source & Selection State
+  const [fabricSourceType, setFabricSourceType] = useState<'ROLL_GUDANG' | 'TITIPAN_VENDOR'>('ROLL_GUDANG');
+  const [selectedDepositId, setSelectedDepositId] = useState<string | null>(null);
+  const [depositVendorFilter, setDepositVendorFilter] = useState<string>('');
 
   const [selectedBrand, setSelectedBrand] = useState(brands[0]?.name || 'GREYWOLF');
   const [selectedRollIds, setSelectedRollIds] = useState<string[]>([]);
@@ -79,6 +87,16 @@ export const SPKView: React.FC = () => {
   const availableRolls = inboundRolls.filter(
     (r) => r.brand === selectedBrand && r.status === 'DI_GUDANG'
   );
+
+  // Available fabric deposits (filtered by vendor if selected)
+  const availableDeposits = vendorFabricDeposits.filter(
+    (d) =>
+      d.status === 'TERSEDIA' &&
+      d.panjangSisa > 0 &&
+      (!depositVendorFilter || d.targetVendor === depositVendorFilter)
+  );
+
+  const selectedDeposit = vendorFabricDeposits.find((d) => d.id === selectedDepositId);
 
   const totalPooledMeters = inboundRolls
     .filter((r) => selectedRollIds.includes(r.id))
@@ -112,6 +130,8 @@ export const SPKView: React.FC = () => {
       spk.spkNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       spk.produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
       spk.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (spk.depositInfo?.jenisKain && spk.depositInfo.jenisKain.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (spk.depositInfo?.sourceVendor && spk.depositInfo.sourceVendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (spk.items && spk.items.some((it) => it.produk.toLowerCase().includes(searchTerm.toLowerCase())));
     return matchBrand && matchStatus && matchSearch;
   });
@@ -119,6 +139,9 @@ export const SPKView: React.FC = () => {
   const handleOpenCreate = () => {
     const initBrand = brands[0]?.name || 'GREYWOLF';
     const initVendor = vendors[0]?.name || 'SAHIRA';
+    setFabricSourceType('ROLL_GUDANG');
+    setSelectedDepositId(null);
+    setDepositVendorFilter(initVendor);
     setSelectedBrand(initBrand);
     setSelectedRollIds([]);
     setProductItems([
@@ -135,6 +158,20 @@ export const SPKView: React.FC = () => {
     setIsCreateModalOpen(true);
   };
 
+  const handleSelectDeposit = (deposit: VendorFabricDeposit) => {
+    setSelectedDepositId(deposit.id);
+    if (deposit.brand) {
+      setSelectedBrand(deposit.brand);
+    }
+    // Update vendor pada artikel produk agar otomatis diarahkan ke vendor lokasi kain dititipkan
+    setProductItems((prev) =>
+      prev.map((it) => ({
+        ...it,
+        vendor: deposit.targetVendor,
+      }))
+    );
+  };
+
   const toggleRollSelection = (rollId: string) => {
     setSelectedRollIds((prev) =>
       prev.includes(rollId) ? prev.filter((id) => id !== rollId) : [...prev, rollId]
@@ -147,7 +184,9 @@ export const SPKView: React.FC = () => {
       return;
     }
     const newIdx = productItems.length + 1;
-    const defaultVendor = productItems[0]?.vendor || vendors[0]?.name || 'SAHIRA';
+    const defaultVendor = selectedDeposit
+      ? selectedDeposit.targetVendor
+      : productItems[0]?.vendor || vendors[0]?.name || 'SAHIRA';
     const newItem: ProductFormItem = {
       id: `prod-${Date.now()}-${newIdx}`,
       produk: '',
@@ -201,10 +240,17 @@ export const SPKView: React.FC = () => {
   const handleSaveSPK = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validasi pemilihan rol kain
-    if (selectedRollIds.length === 0) {
-      alert('Pilih minimal 1 rol kain untuk di-pool ke dalam SPK ini!');
-      return;
+    // Validasi pemilihan bahan kain
+    if (fabricSourceType === 'ROLL_GUDANG') {
+      if (selectedRollIds.length === 0) {
+        alert('Pilih minimal 1 rol kain untuk di-pool ke dalam SPK ini!');
+        return;
+      }
+    } else {
+      if (!selectedDepositId) {
+        alert('Pilih salah satu saldo kain titipan yang akan dicutting!');
+        return;
+      }
     }
 
     // Validasi setiap produk item
@@ -247,16 +293,32 @@ export const SPKView: React.FC = () => {
       deliveredQty: { ...emptySizeBreakdown },
     }));
 
+    const chosenDep = fabricSourceType === 'TITIPAN_VENDOR' ? selectedDeposit : null;
+
     const payload = {
-      brand: selectedBrand,
+      brand: chosenDep ? chosenDep.brand : selectedBrand,
       produk: produkSummary,
       vendor: vendorSummary,
-      rollIds: [...selectedRollIds],
+      rollIds: fabricSourceType === 'ROLL_GUDANG' ? [...selectedRollIds] : [],
       targetCutQty: combinedTargetCut,
       tanggalSPK: new Date().toISOString().split('T')[0],
       targetSelesai,
       catatan,
       items: itemsPayload,
+      fabricSourceType,
+      depositId: chosenDep ? chosenDep.id : null,
+      depositInfo: chosenDep
+        ? {
+            depositNumber: chosenDep.sourcePONumber ? `DEP-${chosenDep.sourcePONumber}` : undefined,
+            sourceVendor: chosenDep.sourceVendor,
+            targetVendor: chosenDep.targetVendor,
+            jenisKain: chosenDep.jenisKain,
+            warna: chosenDep.warna || null,
+            panjang: chosenDep.panjangSisa,
+            satuan: chosenDep.satuan,
+            sourcePONumber: chosenDep.sourcePONumber,
+          }
+        : null,
     };
 
     setIsCreateModalOpen(false);
@@ -412,11 +474,20 @@ export const SPKView: React.FC = () => {
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono font-bold text-slate-900 text-base">{spk.spkNumber}</span>
                       <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-md text-[10px]">
                         {spk.brand}
                       </span>
+                      {spk.fabricSourceType === 'TITIPAN_VENDOR' ? (
+                        <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-md text-[10px] border border-indigo-200">
+                          Sisa Kain Konveksi {spk.depositInfo?.sourceVendor ? `(ex-${spk.depositInfo.sourceVendor})` : ''}
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded-md text-[10px]">
+                          Rol Gudang
+                        </span>
+                      )}
                       {hasMultipleProducts && (
                         <span className="px-2 py-0.5 bg-purple-50 text-purple-700 font-bold rounded-md text-[10px] border border-purple-200">
                           {spk.items?.length} Produk Combo
@@ -481,8 +552,14 @@ export const SPKView: React.FC = () => {
                     <strong className="text-slate-800">{spk.vendor}</strong>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-semibold">Rol Di-Pool:</span>
-                    <strong className="text-slate-800">{spk.rollIds.length} Rol Kain</strong>
+                    <span className="text-[10px] text-slate-400 block font-semibold">Sumber Kain:</span>
+                    {spk.fabricSourceType === 'TITIPAN_VENDOR' ? (
+                      <strong className="text-indigo-900 font-bold truncate block" title={spk.depositInfo ? `${spk.depositInfo.panjang} ${spk.depositInfo.satuan} (${spk.depositInfo.jenisKain})` : 'Sisa Kain Konveksi'}>
+                        {spk.depositInfo ? `${spk.depositInfo.panjang} ${spk.depositInfo.satuan} ${spk.depositInfo.jenisKain}` : 'Sisa Kain Konveksi'}
+                      </strong>
+                    ) : (
+                      <strong className="text-slate-800">{spk.rollIds?.length || 0} Rol Kain</strong>
+                    )}
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block font-semibold">Tgl SPK:</span>
@@ -575,81 +652,256 @@ export const SPKView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveSPK} className="space-y-5 text-xs">
-              {/* Brand & Pool Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Pilih Brand Pemilik Kain:</label>
-                  <select
-                    value={selectedBrand}
-                    onChange={(e) => {
-                      setSelectedBrand(e.target.value);
-                      setSelectedRollIds([]);
+              {/* Pilihan Sumber Bahan Kain */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Pilih Sumber Bahan Kain untuk SPK Cutting Ini:
+                </label>
+                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFabricSourceType('ROLL_GUDANG');
+                      setSelectedDepositId(null);
                     }}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
+                    className={`py-2.5 px-3 rounded-lg font-bold text-xs transition cursor-pointer text-center ${
+                      fabricSourceType === 'ROLL_GUDANG'
+                        ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/80'
+                        : 'text-slate-600 hover:text-slate-900 font-semibold'
+                    }`}
                   >
-                    {brands.map((b) => (
-                      <option key={b.id} value={b.name}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    Rol Kain Gudang Pusat
+                  </button>
 
-                <div>
-                  <label className="block font-bold text-slate-600 mb-1">Target Selesai Jahit:</label>
-                  <input
-                    type="date"
-                    value={targetSelesai}
-                    onChange={(e) => setTargetSelesai(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
-                    required
-                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFabricSourceType('TITIPAN_VENDOR');
+                      setSelectedRollIds([]);
+                      if (!depositVendorFilter && vendors.length > 0) {
+                        setDepositVendorFilter(vendors[0].name);
+                      }
+                    }}
+                    className={`py-2.5 px-3 rounded-lg font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2 ${
+                      fabricSourceType === 'TITIPAN_VENDOR'
+                        ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/80'
+                        : 'text-slate-600 hover:text-slate-900 font-semibold'
+                    }`}
+                  >
+                    <span>Sisa Kain Konveksi</span>
+                    {vendorFabricDeposits.filter((d) => d.status === 'TERSEDIA' && d.panjangSisa > 0).length > 0 && (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          fabricSourceType === 'TITIPAN_VENDOR'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-slate-200 text-slate-600'
+                        }`}
+                      >
+                        {vendorFabricDeposits.filter((d) => d.status === 'TERSEDIA' && d.panjangSisa > 0).length}
+                      </span>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Smart Pooling Box: Select Rolls */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-indigo-600" />
-                    Smart Pooling: Pilih Rol Kain Milik {selectedBrand}
-                  </span>
-                  <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                    Total Pool: {totalPooledMeters} Meter ({selectedRollIds.length} Rol)
-                  </span>
-                </div>
+              {/* TAMPILAN JIKA SUMBER: ROL GUDANG PUSAT */}
+              {fabricSourceType === 'ROLL_GUDANG' && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-600 mb-1">Pilih Brand Pemilik Kain:</label>
+                      <select
+                        value={selectedBrand}
+                        onChange={(e) => {
+                          setSelectedBrand(e.target.value);
+                          setSelectedRollIds([]);
+                        }}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
+                      >
+                        {brands.map((b) => (
+                          <option key={b.id} value={b.name}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                {availableRolls.length === 0 ? (
-                  <p className="text-slate-400 italic py-2">
-                    Tidak ada stok rol kain yang berstatus &quot;Di Gudang&quot; untuk brand {selectedBrand}. Harap tambahkan rol di Modul Inbound terlebih dahulu.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
-                    {availableRolls.map((roll) => {
-                      const isSelected = selectedRollIds.includes(roll.id);
-                      return (
-                        <div
-                          key={roll.id}
-                          onClick={() => toggleRollSelection(roll.id)}
-                          className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
-                            isSelected
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                          }`}
-                        >
-                          <div>
-                            <div className="font-mono font-bold text-xs">{roll.rollCode}</div>
-                            <div className={`text-[10px] ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                              {roll.jenisKain}
-                            </div>
-                          </div>
-                          <span className="font-bold text-xs">{roll.meterLength} m</span>
-                        </div>
-                      );
-                    })}
+                    <div>
+                      <label className="block font-bold text-slate-600 mb-1">Target Selesai Jahit:</label>
+                      <input
+                        type="date"
+                        value={targetSelesai}
+                        onChange={(e) => setTargetSelesai(e.target.value)}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
+                        required
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Smart Pooling Box: Select Rolls */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-indigo-600" />
+                        Smart Pooling: Pilih Rol Kain Milik {selectedBrand}
+                      </span>
+                      <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                        Total Pool: {totalPooledMeters} Meter ({selectedRollIds.length} Rol)
+                      </span>
+                    </div>
+
+                    {availableRolls.length === 0 ? (
+                      <p className="text-slate-400 italic py-2">
+                        Tidak ada stok rol kain yang berstatus &quot;Di Gudang&quot; untuk brand {selectedBrand}. Harap tambahkan rol di Modul Inbound terlebih dahulu.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
+                        {availableRolls.map((roll) => {
+                          const isSelected = selectedRollIds.includes(roll.id);
+                          return (
+                            <div
+                              key={roll.id}
+                              onClick={() => toggleRollSelection(roll.id)}
+                              className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                                isSelected
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="font-mono font-bold text-xs">{roll.rollCode}</div>
+                                <div className={`text-[10px] ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                  {roll.jenisKain}
+                                </div>
+                              </div>
+                              <span className="font-bold text-xs">{roll.meterLength} m</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* TAMPILAN JIKA SUMBER: SISA KAIN KONVEKSI */}
+              {fabricSourceType === 'TITIPAN_VENDOR' && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Pilih Konveksi Lokasi Sisa Kain:
+                      </label>
+                      <select
+                        value={depositVendorFilter}
+                        onChange={(e) => {
+                          setDepositVendorFilter(e.target.value);
+                          setSelectedDepositId(null);
+                        }}
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:border-indigo-500 outline-none"
+                      >
+                        <option value="">Semua Konveksi</option>
+                        {vendors.map((v) => (
+                          <option key={v.id} value={v.name}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Target Selesai Jahit:</label>
+                      <input
+                        type="date"
+                        value={targetSelesai}
+                        onChange={(e) => setTargetSelesai(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:border-indigo-500 outline-none"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* List Saldo Sisa Kain */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <span className="font-bold text-slate-800 text-xs">
+                        Pilih Sisa Kain yang Akan Dicutting ({availableDeposits.length} Tersedia)
+                      </span>
+                    </div>
+
+                    {availableDeposits.length === 0 ? (
+                      <div className="p-4 bg-white rounded-xl border border-slate-200 text-center space-y-2">
+                        <Info className="w-8 h-8 text-slate-400 mx-auto" />
+                        <p className="text-slate-800 font-semibold text-xs">
+                          Tidak ada sisa kain yang berstatus &quot;TERSEDIA&quot;{' '}
+                          {depositVendorFilter ? `di ${depositVendorFilter}` : ''}.
+                        </p>
+                        <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                          Untuk mencatat sisa bahan kain yang dipindah ke konveksi ini, gunakan tombol transfer di menu{' '}
+                          <strong>PO Produksi &gt; Saldo Titipan Bahan</strong>.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
+                        {availableDeposits.map((dep) => {
+                          const isSelected = selectedDepositId === dep.id;
+                          return (
+                            <div
+                              key={dep.id}
+                              onClick={() => handleSelectDeposit(dep)}
+                              className={`p-3 rounded-xl border cursor-pointer transition flex flex-col justify-between gap-2 shadow-sm ${
+                                isSelected
+                                  ? 'bg-indigo-50/80 border-indigo-600 ring-2 ring-indigo-500/20'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-slate-50/50'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <div className="font-bold text-xs flex items-center gap-1.5 text-slate-900">
+                                    <span>{dep.jenisKain}</span>
+                                    {dep.warna && (
+                                      <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                                        {dep.warna}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 mt-1">
+                                    Asal: <strong className="text-slate-700">Konveksi {dep.sourceVendor}</strong>
+                                    {dep.sourcePONumber && ` (PO: ${dep.sourcePONumber})`}
+                                  </div>
+                                </div>
+                                <span
+                                  className={`font-black text-xs px-2.5 py-1 rounded-lg shrink-0 ${
+                                    isSelected
+                                      ? 'bg-indigo-600 text-white'
+                                      : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                  }`}
+                                >
+                                  {dep.panjangSisa} {dep.satuan}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-100 text-slate-500">
+                                <span>Brand: <strong className="text-slate-800">{dep.brand}</strong></span>
+                                <span>Lokasi: <strong className="text-slate-800">{dep.targetVendor}</strong></span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {selectedDeposit && (
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs text-emerald-900">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <strong>Kain Siap Potong:</strong> {selectedDeposit.panjangSisa} {selectedDeposit.satuan} {selectedDeposit.jenisKain} {selectedDeposit.warna ? `(${selectedDeposit.warna})` : ''} di <strong>Konveksi {selectedDeposit.targetVendor}</strong> (Brand: {selectedDeposit.brand}). Silakan input rincian artikel dan target size potong di bawah.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Multi-Product Builder Section */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
@@ -909,23 +1161,64 @@ export const SPKView: React.FC = () => {
             </div>
 
             <div className="space-y-4 text-xs">
-              {/* Rol Kain yang Di-Pool */}
-              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                <span className="font-bold text-slate-700 block mb-2">Rol Kain yang Di-Pool:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedSPKDetail.rollIds.map((id) => {
-                    const r = inboundRolls.find((item) => item.id === id);
-                    return (
-                      <span
-                        key={id}
-                        className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-mono font-bold text-indigo-700"
-                      >
-                        {r?.rollCode || id} ({r?.meterLength}m - {r?.jenisKain})
+              {/* Rol Kain yang Di-Pool atau Sisa Kain Konveksi */}
+              {selectedSPKDetail.fabricSourceType === 'TITIPAN_VENDOR' ? (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-xs">
+                      Sumber Bahan: Sisa Kain Konveksi
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {selectedSPKDetail.depositInfo?.panjang} {selectedSPKDetail.depositInfo?.satuan}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs pt-1">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-semibold">Kain & Warna:</span>
+                      <span className="font-bold text-slate-800">
+                        {selectedSPKDetail.depositInfo?.jenisKain}{' '}
+                        {selectedSPKDetail.depositInfo?.warna ? `(${selectedSPKDetail.depositInfo.warna})` : ''}
                       </span>
-                    );
-                  })}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-semibold">Konveksi Asal Kain:</span>
+                      <span className="font-bold text-slate-800">Konveksi {selectedSPKDetail.depositInfo?.sourceVendor || '-'}</span>
+                      {selectedSPKDetail.depositInfo?.sourcePONumber && (
+                        <span className="text-[10px] text-slate-500 block font-mono">
+                          PO: {selectedSPKDetail.depositInfo.sourcePONumber}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-semibold">Konveksi Penjahit / Potong:</span>
+                      <span className="font-bold text-slate-800">
+                        Konveksi {selectedSPKDetail.depositInfo?.targetVendor || selectedSPKDetail.vendor}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-700 block mb-2">Rol Kain yang Di-Pool:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedSPKDetail.rollIds && selectedSPKDetail.rollIds.length > 0 ? (
+                      selectedSPKDetail.rollIds.map((id) => {
+                        const r = inboundRolls.find((item) => item.id === id);
+                        return (
+                          <span
+                            key={id}
+                            className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-mono font-bold text-indigo-700"
+                          >
+                            {r?.rollCode || id} ({r?.meterLength}m - {r?.jenisKain})
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span className="text-slate-400 italic">Tidak ada rol gudang terhubung</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Multi-product tab or table */}
               {selectedSPKDetail.items && selectedSPKDetail.items.length > 1 ? (

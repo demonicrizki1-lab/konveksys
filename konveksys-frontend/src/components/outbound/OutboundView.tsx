@@ -128,6 +128,9 @@ export const OutboundView: React.FC = () => {
 
   // Helper function for SPK Fabric info
   const getSPKFabricName = (spk: SPKCutting) => {
+    if (spk.fabricSourceType === 'TITIPAN_VENDOR' && spk.depositInfo) {
+      return `${spk.depositInfo.jenisKain}${spk.depositInfo.warna ? ` (${spk.depositInfo.warna})` : ''} [Titipan Vendor]`;
+    }
     if (!spk.rollIds || spk.rollIds.length === 0) return '';
     const matchedRolls = inboundRolls.filter((r) => spk.rollIds.includes(r.id));
     if (matchedRolls.length === 0) return '';

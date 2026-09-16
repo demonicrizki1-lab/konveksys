@@ -133,6 +133,19 @@ export interface SPKCutting {
   status: 'DRAFT' | 'IN_PRODUCTION' | 'PARTIAL_DELIVERED' | 'COMPLETED' | 'OVER_DELIVERY';
   catatan?: string;
   items?: SPKProductItem[]; // 1 s/d Maksimal 3 produk/artikel yang dihasilkan dari kain ini
+  // Sisa bahan / Saldo Titipan Antar-Vendor
+  fabricSourceType?: 'ROLL_GUDANG' | 'TITIPAN_VENDOR';
+  depositId?: string | null;
+  depositInfo?: {
+    depositNumber?: string;
+    sourceVendor?: string;
+    targetVendor?: string;
+    jenisKain: string;
+    warna?: string | null;
+    panjang: number;
+    satuan: string;
+    sourcePONumber?: string;
+  } | null;
 }
 
 export interface SuratJalanItem {
@@ -432,6 +445,8 @@ export interface ProductionPOItem {
   qty: number;
   bahanKain?: string | null;
   catatan?: string | null;
+  depositId?: string | null;
+  depositInfo?: string | null;
   createdAt?: string;
 }
 
@@ -443,6 +458,8 @@ export interface ProductionPO {
   tanggalPO: string;
   targetDeadline: string;
   catatan?: string | null;
+  usedDepositId?: string | null;
+  usedDepositInfo?: string | null;
   status: ProductionPOStatus | string;
   totalPcs: number;
   items: ProductionPOItem[];
@@ -450,3 +467,185 @@ export interface ProductionPO {
   updatedAt?: string;
 }
 
+export type FabricDepositStatus = 'TERSEDIA' | 'TERPAKAI' | 'DITARIK';
+
+export interface VendorFabricDeposit {
+  id: string;
+  sourcePOId: string;
+  sourcePONumber: string;
+  sourceVendor: string;
+  targetVendor: string;
+  brand: string;
+  jenisKain: string;
+  warna?: string | null;
+  panjangAwal: number;
+  panjangSisa: number;
+  satuan: 'METER' | 'YARD';
+  status: FabricDepositStatus;
+  allocatedPOId?: string | null;
+  allocatedPONumber?: string | null;
+  allocatedSPKId?: string | null;
+  allocatedSPKNumber?: string | null;
+  measuredBy?: string | null;
+  tanggalTitip: string;
+  catatan?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface FabricTransferNote {
+  id: string;
+  transferNumber: string;
+  depositId: string;
+  sourcePOId: string;
+  sourcePONumber: string;
+  sourceVendor: string;
+  targetVendor: string;
+  brand: string;
+  jenisKain: string;
+  warna?: string | null;
+  panjang: number;
+  satuan: 'METER' | 'YARD';
+  driverName: string;
+  kondisiKain?: string | null;
+  tanggal: string;
+  catatan?: string | null;
+  createdAt: string;
+}
+
+// ============================================================
+// FOB COSTING & COMMERCIAL QUOTATION (SPH)
+// ============================================================
+
+export type HPPComponentType =
+  | 'BAHAN_BAKU'
+  | 'BAHAN_PENDUKUNG'
+  | 'AKSESORIS'
+  | 'JASA_CMT'
+  | 'SABLON_BORDIR'
+  | 'PACKAGING'
+  | 'OPERASIONAL';
+
+export interface HPPComponentItem {
+  id: string;
+  jenisBiaya: HPPComponentType;
+  namaBahan: string;
+  satuan: string;         // Meter, Yard, Pcs, Lembar, Rol, dll.
+  pemakaian: number;      // Marker/konsumsi per potong
+  hargaSatuan: number;    // Rp per satuan
+  wastePercent: number;   // % susut pemotongan (cutting waste)
+  subtotal: number;       // pemakaian * hargaSatuan * (1 + waste/100)
+  supplier?: string | null;
+}
+
+export interface HPPCalculationRecord {
+  id: string;
+  noHpp: string;          // Format: HPP/YYYY/0001
+  tanggal: string;
+  namaProduk: string;
+  kodeProduk?: string | null;
+  size: string;           // S, M, L, XL, XXL, 3XL, ALL SIZE
+  kategori: string;       // Jaket, Rompi, Kemeja, Kaos, Celana, dll.
+  brand?: string | null;
+  vendorCmt?: string | null;
+  batchQty: number;       // Jumlah produksi batch
+
+  // Parameter Biaya Tambahan & Margin
+  targetLabaPercent: number;  // % target keuntungan bersih
+  overheadPercent?: number;   // % overhead pabrik (default 3%)
+  rejectPercent: number;      // % cadangan reject cacat kain
+  ppnPercent?: number;        // % Pajak/PPN
+  zakatPercent?: number;      // % Zakat
+  affiliatePercent?: number;  // % Fee affiliate / sales marketing
+  isPpnIncluded?: boolean;    // Toggle PPN (default false/Exclude)
+
+  // Hasil Kalkulasi
+  hppBahanTotal: number;      // Total HPP bahan baku & aksesoris
+  hppCmtTotal: number;        // Total HPP jasa jahit & sablon/bordir
+  totalSebelumReject: number;  // HPP Bahan + HPP CMT
+  nilaiOverhead?: number;     // Nilai overhead per pcs
+  nilaiReject: number;        // Cadangan reject
+  hppFinalPerPcs: number;     // Subtotal + Overhead + Reject
+  hargaJualSebelumBulat?: number; // Harga jual sebelum pembulatan
+  hargaJualRekomendasi: number; // HPP Final * (1 + Target Laba %) dibulatkan ke Rp 1.000 terdekat
+  labaBersihPerPcs: number;   // Rekomendasi Jual - HPP Final
+  nilaiPpn?: number;          // Nilai PPN jika include
+  hargaJualPlusPpn?: number;  // Harga jual setelah PPN
+
+  // Proyeksi Batch
+  totalBiayaBatch: number;    // HPP Final * batchQty
+  totalOmzetBatch: number;    // Harga Jual Rekomendasi * batchQty
+  totalLabaBatch: number;     // Laba Bersih * batchQty
+  catatan?: string | null;
+
+  components: HPPComponentItem[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface FOBQuotationItem {
+  id: string;
+  skuWarna: string;           // Warna artikel
+  skuSize: string;            // Size
+  jumlahPcs: number;          // Target QTY
+  hargaPerPcs: number;        // Harga penawaran FOB per pcs
+  total: number;              // jumlahPcs * hargaPerPcs
+  catatan?: string | null;
+  hppReferenceId?: string | null;
+}
+
+export interface FOBQuotation {
+  id: string;
+  noSurat: string;            // Format: SPH/YYYY/0001
+  tanggal: string;
+  buyerName: string;
+  buyerCompany?: string | null;
+  buyerContact?: string | null;
+  validUntil?: string | null;
+  termsDPPercent: number;     // default 50%
+  totalQty: number;
+  totalOrderNominal: number;
+  nominalDP: number;
+  sisaPelunasan: number;
+  isPpnIncluded?: boolean;    // Toggle PPN (default false/Exclude)
+  ppnPercent?: number;        // default 11% jika include
+  ppnNominal?: number;        // nominal rupiah PPN
+  grandTotalWithPpn?: number; // total akhir setelah PPN
+  paymentNotes?: string | null;
+  productionLeadTime?: string | null;
+  companyProfile?: {
+    namaPerusahaan?: string;
+    alamat?: string;
+    telepon?: string;
+    bankInfo?: string;
+  } | null;
+  items: FOBQuotationItem[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface FOBMaterialMaster {
+  id: string;
+  kodeMaterial: string;
+  namaBahan: string;
+  kategori: HPPComponentType | string;
+  satuan: string;
+  hargaStandar: number;
+  supplier?: string | null;
+  catatan?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FOBProductMaster {
+  id: string;
+  kodeProduk: string;
+  namaProduk: string;
+  size: string;
+  kategori: string;
+  brand?: string | null;
+  vendorCmt?: string | null;
+  deskripsi?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
