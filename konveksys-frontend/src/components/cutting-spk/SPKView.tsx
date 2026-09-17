@@ -23,6 +23,7 @@ import {
   LayoutGrid,
   Clock,
   AlertTriangle,
+  Truck,
 } from 'lucide-react';
 
 interface ProductFormItem {
@@ -494,40 +495,81 @@ export const SPKView: React.FC = () => {
         </div>
 
         {/* KPI Stats Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1">
-          <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/70">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total SPK</span>
-            <div className="text-base font-black text-slate-900 mt-0.5">{totalSpkCount}</div>
-            <span className="text-[10px] text-slate-500">Semua batch terbit</span>
-          </div>
-          <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-200/60">
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">In Production</span>
-            <div className="text-base font-black text-blue-800 mt-0.5">{inProdCount}</div>
-            <span className="text-[10px] text-blue-600/80">Sedang dikerjakan</span>
-          </div>
-          <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-200/60">
-            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Partial Kirim</span>
-            <div className="text-base font-black text-amber-900 mt-0.5">{partialCount}</div>
-            <span className="text-[10px] text-amber-700/80">Sebagian masuk gudang</span>
-          </div>
-          <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-200/60">
-            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Completed</span>
-            <div className="text-base font-black text-emerald-900 mt-0.5">{completedCount}</div>
-            <span className="text-[10px] text-emerald-700/80">Selesai 100%</span>
-          </div>
-          <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-200/60">
-            <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Target Potong</span>
-            <div className="text-base font-black text-indigo-900 mt-0.5">
-              {totalTargetPcs.toLocaleString('id-ID')} <span className="text-[11px] font-normal text-slate-500">Pcs</span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 pt-1">
+          {/* Card 1: Total SPK */}
+          <div className="bg-slate-50/90 border border-slate-200/90 p-4 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total SPK</span>
+              <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shadow-xs shrink-0">
+                <Layers className="w-4.5 h-4.5" />
+              </div>
             </div>
-            <span className="text-[10px] text-indigo-600/80">Total alokasi cutting</span>
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">{totalSpkCount}</div>
+            <span className="text-xs text-slate-500 font-medium block">Semua batch terbit</span>
           </div>
-          <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/70">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Terkirim</span>
-            <div className="text-base font-black text-slate-900 mt-0.5">
-              {totalDeliveredPcs.toLocaleString('id-ID')} <span className="text-[11px] font-normal text-slate-500">Pcs</span>
+
+          {/* Card 2: In Production */}
+          <div className="bg-blue-50/70 border border-blue-200/80 p-4 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-blue-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">In Production</span>
+              <div className="w-9 h-9 rounded-xl bg-white border border-blue-200 text-blue-600 flex items-center justify-center shadow-xs shrink-0">
+                <Clock className="w-4.5 h-4.5" />
+              </div>
             </div>
-            <span className="text-[10px] text-slate-500">Hasil jahit masuk</span>
+            <div className="text-2xl sm:text-3xl font-black text-blue-800 mt-1">{inProdCount}</div>
+            <span className="text-xs text-blue-700/80 font-medium block">Sedang dikerjakan</span>
+          </div>
+
+          {/* Card 3: Partial Kirim */}
+          <div className="bg-amber-50/70 border border-amber-200/80 p-4 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-amber-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Partial Kirim</span>
+              <div className="w-9 h-9 rounded-xl bg-white border border-amber-200 text-amber-600 flex items-center justify-center shadow-xs shrink-0">
+                <Package className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-amber-900 mt-1">{partialCount}</div>
+            <span className="text-xs text-amber-700/80 font-medium block">Sebagian masuk gudang</span>
+          </div>
+
+          {/* Card 4: Completed */}
+          <div className="bg-emerald-50/70 border border-emerald-200/80 p-4 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-emerald-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Completed</span>
+              <div className="w-9 h-9 rounded-xl bg-white border border-emerald-200 text-emerald-600 flex items-center justify-center shadow-xs shrink-0">
+                <CheckCircle2 className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-emerald-900 mt-1">{completedCount}</div>
+            <span className="text-xs text-emerald-700/80 font-medium block">Selesai 100%</span>
+          </div>
+
+          {/* Card 5: Target Potong */}
+          <div className="bg-indigo-50/70 border border-indigo-200/80 p-4 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-indigo-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Target Potong</span>
+              <div className="w-9 h-9 rounded-xl bg-white border border-indigo-200 text-indigo-600 flex items-center justify-center shadow-xs shrink-0">
+                <Scissors className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-indigo-900 mt-1">
+              {totalTargetPcs.toLocaleString('id-ID')} <span className="text-xs sm:text-sm font-bold text-indigo-600/70">Pcs</span>
+            </div>
+            <span className="text-xs text-indigo-700/80 font-medium block">Total alokasi cutting</span>
+          </div>
+
+          {/* Card 6: Total Terkirim */}
+          <div className="bg-teal-50/70 border border-teal-200/80 p-4 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-teal-300 transition">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">Total Terkirim</span>
+              <div className="w-9 h-9 rounded-xl bg-white border border-teal-200 text-teal-600 flex items-center justify-center shadow-xs shrink-0">
+                <Truck className="w-4.5 h-4.5" />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-teal-950 mt-1">
+              {totalDeliveredPcs.toLocaleString('id-ID')} <span className="text-xs sm:text-sm font-bold text-teal-600/70">Pcs</span>
+            </div>
+            <span className="text-xs text-teal-700/80 font-medium block">Hasil jahit masuk</span>
           </div>
         </div>
 
