@@ -210,7 +210,7 @@ model SpkRol {
 model SuratJalan {
   id            String   @id @default(cuid())
   noSuratJalan  String   @unique
-  spkId         String
+  spkId         String?
   brand         String
   produk        String
   vendor        String
@@ -236,7 +236,7 @@ model SuratJalan {
   qtyAnak16     Int @default(0)
   totalPcs      Int @default(0)
 
-  spk        SpkCutting   @relation(fields: [spkId], references: [id])
+  spk        SpkCutting?  @relation(fields: [spkId], references: [id])
   brandRef   Brand        @relation(fields: [brand], references: [name])
   returnList ReturnItem[]
 

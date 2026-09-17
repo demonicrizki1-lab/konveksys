@@ -88,6 +88,7 @@ export const OutboundView: React.FC = () => {
     activeBrand,
     inboundRolls,
     brands,
+    vendors,
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,6 +122,13 @@ export const OutboundView: React.FC = () => {
   const [selectedSpkItemId, setSelectedSpkItemId] = useState<string>('');
   const [customJenisKain, setCustomJenisKain] = useState<string>('');
   const [qtySend, setQtySend] = useState<SizeBreakdown>(emptySizeBreakdown());
+
+  // Mode Muatan: 'SPK' (dari cutting) vs 'MANUAL' (PO Lama / Non-SPK)
+  const [cargoSourceMode, setCargoSourceMode] = useState<'SPK' | 'MANUAL'>('SPK');
+  const [manualVendor, setManualVendor] = useState<string>('');
+  const [manualProduk, setManualProduk] = useState<string>('');
+  const [manualJenisKain, setManualJenisKain] = useState<string>('');
+  const [manualPoNumber, setManualPoNumber] = useState<string>('');
 
   // Modal State for View / Print Detail Surat Jalan
   const [selectedSJDetail, setSelectedSJDetail] = useState<SuratJalan | null>(null);
@@ -240,6 +248,11 @@ export const OutboundView: React.FC = () => {
     setCatatan('');
     setDraftItems([]);
     setQtySend(emptySizeBreakdown());
+    setCargoSourceMode('SPK');
+    setManualVendor(vendors && vendors.length > 0 ? vendors[0].name : '');
+    setManualProduk('');
+    setManualJenisKain('');
+    setManualPoNumber('');
     setIsCreateModalOpen(true);
   };
 
@@ -262,6 +275,41 @@ export const OutboundView: React.FC = () => {
 
   // Add Item to Draft Cargo List
   const handleAddItemToDraft = () => {
+    if (cargoSourceMode === 'MANUAL') {
+      if (!manualProduk.trim()) {
+        alert('Harap masukkan Nama Produk / Artikel untuk muatan Non-SPK!');
+        return;
+      }
+      if (!manualVendor) {
+        alert('Harap pilih Mitra Konveksi (Vendor Penjahit)!');
+        return;
+      }
+      if (currentSendingPcs <= 0) {
+        alert(`Harap masukkan kuantiti minimal 1 pcs untuk artikel "${manualProduk}"!`);
+        return;
+      }
+
+      const newItem: SuratJalanItem = {
+        id: `draft-manual-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        spkId: undefined,
+        spkNumber: manualPoNumber.trim() ? `PO LAMA: ${manualPoNumber.trim()}` : 'PO LAMA',
+        isManual: true,
+        legacyPoNumber: manualPoNumber.trim() || undefined,
+        brand: selectedBrand,
+        produk: manualProduk.trim().toUpperCase(),
+        vendor: manualVendor,
+        jenisKain: manualJenisKain.trim() || 'Kain Standar (PO Lama)',
+        qtyDelivered: { ...qtySend },
+        totalPcs: currentSendingPcs,
+      };
+
+      setDraftItems((prev) => [...prev, newItem]);
+      setQtySend(emptySizeBreakdown());
+      setManualProduk('');
+      setManualJenisKain('');
+      return;
+    }
+
     if (!currentSPK) {
       alert('Silakan pilih SPK terlebih dahulu.');
       return;
@@ -342,19 +390,35 @@ export const OutboundView: React.FC = () => {
     let finalItems = [...draftItems];
 
     // If no draft items yet, but user filled quantities in the current form, auto-add it
-    if (finalItems.length === 0 && currentSendingPcs > 0 && currentSPK) {
-      finalItems.push({
-        id: `draft-${Date.now()}`,
-        spkId: currentSPK.id,
-        spkNumber: currentSPK.spkNumber,
-        spkItemId: selectedSpkItemId || undefined,
-        brand: currentSPK.brand || selectedBrand,
-        produk: selectedArticleName,
-        vendor: selectedArticleVendor || currentSPK.vendor,
-        jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
-        qtyDelivered: { ...qtySend },
-        totalPcs: currentSendingPcs,
-      });
+    if (finalItems.length === 0 && currentSendingPcs > 0) {
+      if (cargoSourceMode === 'MANUAL' && manualProduk.trim() && manualVendor) {
+        finalItems.push({
+          id: `draft-manual-${Date.now()}`,
+          spkId: undefined,
+          spkNumber: manualPoNumber.trim() ? `PO LAMA: ${manualPoNumber.trim()}` : 'PO LAMA',
+          isManual: true,
+          legacyPoNumber: manualPoNumber.trim() || undefined,
+          brand: selectedBrand,
+          produk: manualProduk.trim().toUpperCase(),
+          vendor: manualVendor,
+          jenisKain: manualJenisKain.trim() || 'Kain Standar (PO Lama)',
+          qtyDelivered: { ...qtySend },
+          totalPcs: currentSendingPcs,
+        });
+      } else if (currentSPK) {
+        finalItems.push({
+          id: `draft-${Date.now()}`,
+          spkId: currentSPK.id,
+          spkNumber: currentSPK.spkNumber,
+          spkItemId: selectedSpkItemId || undefined,
+          brand: currentSPK.brand || selectedBrand,
+          produk: selectedArticleName,
+          vendor: selectedArticleVendor || currentSPK.vendor,
+          jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
+          qtyDelivered: { ...qtySend },
+          totalPcs: currentSendingPcs,
+        });
+      }
     }
 
     if (finalItems.length === 0) {
@@ -750,9 +814,16 @@ export const OutboundView: React.FC = () => {
                             <span className="font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-[10px] border border-slate-200 uppercase">
                               {item.brand}
                             </span>
-                            <span className="font-mono text-[10px] text-slate-400 font-bold">
-                              [{item.spkNumber}]
-                            </span>
+                            {item.isManual ? (
+                              <span className="font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                                <span>📦</span>
+                                <span>PO LAMA {item.legacyPoNumber ? `(${item.legacyPoNumber})` : ''}</span>
+                              </span>
+                            ) : (
+                              <span className="font-mono text-[10px] text-slate-400 font-bold">
+                                [{item.spkNumber}]
+                              </span>
+                            )}
                             <strong className="font-bold text-slate-900 text-xs">{item.produk}</strong>
                             <span className="text-slate-500 font-medium text-[11px]">(@ {item.vendor})</span>
                           </div>
@@ -795,21 +866,223 @@ export const OutboundView: React.FC = () => {
                 )}
               </div>
 
-              {/* SECTION: Form Pemilih SPK, Artikel Produk, dan Size Matrix */}
+              {/* SECTION: Form Pemilih SPK vs Non-SPK */}
               <div className="p-4 bg-indigo-50/50 border border-indigo-200 rounded-2xl space-y-3.5">
-                <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-indigo-100 pb-2.5 gap-2">
                   <span className="font-bold text-indigo-950 text-xs flex items-center gap-1.5">
                     <Plus className="w-4 h-4 text-indigo-600" />
-                    Pilih & Muat Artikel dari Kain SPK
+                    Pilih & Muat Artikel ke Surat Jalan
                   </span>
-                  <span className="text-[11px] text-indigo-600 font-bold">
-                    {activeSPKsForBrand.length} SPK Aktif ({selectedBrand})
-                  </span>
+
+                  {/* Mode Tab Switcher: SPK vs Non-SPK / PO Lama */}
+                  <div className="flex p-1 bg-slate-200/70 rounded-xl gap-1 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setCargoSourceMode('SPK')}
+                      className={`py-1 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        cargoSourceMode === 'SPK'
+                          ? 'bg-white text-indigo-700 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>1. Dari SPK Cutting ({activeSPKsForBrand.length} SPK)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCargoSourceMode('MANUAL')}
+                      className={`py-1 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        cargoSourceMode === 'MANUAL'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>2. Non-SPK / PO Lama (Migrasi)</span>
+                    </button>
+                  </div>
                 </div>
 
-                {activeSPKsForBrand.length === 0 ? (
+                {cargoSourceMode === 'MANUAL' ? (
+                  /* ======================================================== */
+                  /* SUB-FORM NON-SPK / PO LAMA                               */
+                  /* ======================================================== */
+                  <div className="space-y-3">
+                    <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Mode Input Manual (Non-SPK / PO Lama):</strong>
+                        <p className="text-[11px] text-amber-800 mt-0.5">
+                          Gunakan fitur ini untuk mengirimkan produk dari PO lama yang dipotong sebelum sistem ini aktif. Pengiriman ini tidak memotong kuota SPK, namun tetap tercatat rapi pada Surat Jalan dan stok penerimaan Brand.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 bg-white p-3 rounded-xl border border-slate-200">
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                          1. Mitra Konveksi (Penjahit): <span className="text-rose-500">*</span>
+                        </label>
+                        <select
+                          value={manualVendor}
+                          onChange={(e) => setManualVendor(e.target.value)}
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-800 outline-none text-xs"
+                        >
+                          <option value="">-- Pilih Penjahit --</option>
+                          {vendors.map((v) => (
+                            <option key={v.id || v.name} value={v.name}>
+                              {v.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                          2. Nama Produk / Artikel: <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={manualProduk}
+                          onChange={(e) => setManualProduk(e.target.value)}
+                          placeholder="Contoh: QANITA KIDS"
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-800 outline-none text-xs uppercase"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                          3. Bahan / Kain (Opsional):
+                        </label>
+                        <input
+                          type="text"
+                          value={manualJenisKain}
+                          onChange={(e) => setManualJenisKain(e.target.value)}
+                          placeholder="Contoh: Linen Angel Crepe"
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-800 outline-none text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                          4. No PO Lama / Ket. (Opsional):
+                        </label>
+                        <input
+                          type="text"
+                          value={manualPoNumber}
+                          onChange={(e) => setManualPoNumber(e.target.value)}
+                          placeholder="Contoh: PO-AGUSTUS-05"
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-800 outline-none text-xs uppercase"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Size Inputs Grid for Manual */}
+                    <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="font-bold text-slate-800 text-xs">
+                          5. Masukkan Kuantitas Ukuran untuk Artikel "{manualProduk || 'Non-SPK'}":
+                        </span>
+                        <span className="font-bold text-amber-600 text-xs">
+                          Subtotal Artikel Ini: {currentSendingPcs} Pcs
+                        </span>
+                      </div>
+
+                      {/* Ukuran Seri Huruf */}
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                          Ukuran Seri Huruf (S - 2XL)
+                        </div>
+                        <div className="grid grid-cols-5 gap-2">
+                          {(['s', 'm', 'l', 'xl', 'xxl'] as (keyof SizeBreakdown)[]).map((sz) => {
+                            const val = qtySend[sz] || 0;
+                            return (
+                              <div key={sz} className="space-y-1">
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="uppercase font-bold text-slate-700">Size {sz}</span>
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={val === 0 ? '' : val}
+                                  placeholder="0"
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) =>
+                                    setQtySend({
+                                      ...qtySend,
+                                      [sz]: Number(e.target.value) || 0,
+                                    })
+                                  }
+                                  className={`w-full p-2 border rounded-lg font-bold text-center outline-none text-xs transition ${
+                                    val > 0
+                                      ? 'bg-amber-50 border-amber-400 text-amber-900 font-extrabold'
+                                      : 'bg-slate-50 border-slate-200 focus:bg-white focus:border-amber-400 text-slate-800'
+                                  }`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Ukuran Seri Angka */}
+                      <div className="pt-2 border-t border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                          Ukuran Anak - Seri Angka (4 - 16)
+                        </div>
+                        <div className="grid grid-cols-7 gap-1.5">
+                          {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                            const val = qtySend[sz] || 0;
+                            return (
+                              <div key={sz} className="space-y-1">
+                                <div className="text-[9px] text-center font-bold text-slate-600 truncate">
+                                  {sz.replace('anak', 'A')}
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={val === 0 ? '' : val}
+                                  placeholder="0"
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) =>
+                                    setQtySend({
+                                      ...qtySend,
+                                      [sz]: Number(e.target.value) || 0,
+                                    })
+                                  }
+                                  className={`w-full p-1.5 border rounded-lg font-bold text-center outline-none text-xs transition ${
+                                    val > 0
+                                      ? 'bg-amber-50 border-amber-400 text-amber-900 font-extrabold'
+                                      : 'bg-slate-50 border-slate-200 focus:bg-white focus:border-amber-400 text-slate-800'
+                                  }`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Tombol Tambahkan Artikel Non-SPK */}
+                      <div className="flex justify-end pt-1">
+                        <button
+                          type="button"
+                          onClick={handleAddItemToDraft}
+                          disabled={currentSendingPcs <= 0 || !manualProduk.trim() || !manualVendor}
+                          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition ${
+                            currentSendingPcs <= 0 || !manualProduk.trim() || !manualVendor
+                              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              : 'bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/25 cursor-pointer'
+                          }`}
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>+ Tambahkan Artikel "{manualProduk || 'Non-SPK'}" ({currentSendingPcs} Pcs) ke Surat Jalan</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : activeSPKsForBrand.length === 0 ? (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs">
-                    Tidak ada SPK aktif untuk Brand <strong>{selectedBrand}</strong>. Silakan buat SPK baru terlebih dahulu.
+                    Tidak ada SPK aktif untuk Brand <strong>{selectedBrand}</strong>. Silakan buat SPK baru terlebih dahulu atau pilih tab <strong>"Non-SPK / PO Lama"</strong> di atas.
                   </div>
                 ) : (
                   <>
@@ -1240,11 +1513,23 @@ export const OutboundView: React.FC = () => {
                             <td className="p-2 text-center font-bold text-slate-400">{idx + 1}</td>
                             <td className="p-2 font-bold text-slate-900">
                               <div>{item.produk}</div>
-                              {item.brand && (
-                                <span className="inline-block mt-0.5 px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded text-[9px] font-bold uppercase border border-slate-200">
-                                  {item.brand}
-                                </span>
-                              )}
+                              <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                {item.brand && (
+                                  <span className="px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded text-[9px] font-bold uppercase border border-slate-200">
+                                    {item.brand}
+                                  </span>
+                                )}
+                                {item.isManual && (
+                                  <span className="px-1.5 py-0.2 bg-amber-100 text-amber-900 rounded text-[9px] font-bold uppercase border border-amber-300">
+                                    NON-SPK / PO LAMA {item.legacyPoNumber ? `(${item.legacyPoNumber})` : ''}
+                                  </span>
+                                )}
+                                {!item.isManual && item.spkNumber && (
+                                  <span className="text-[9px] text-slate-400 font-mono">
+                                    [{item.spkNumber}]
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-2 text-slate-600 text-[11px]">{item.jenisKain || 'Kain Standar'}</td>
                             <td className="p-2 text-[10px] text-slate-600 space-y-0.5">

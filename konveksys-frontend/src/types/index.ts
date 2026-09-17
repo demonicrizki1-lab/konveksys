@@ -150,8 +150,10 @@ export interface SPKCutting {
 
 export interface SuratJalanItem {
   id?: string;
-  spkId: string;
-  spkNumber: string;
+  spkId?: string;
+  spkNumber?: string;
+  isManual?: boolean;
+  legacyPoNumber?: string;
   spkItemId?: string;
   brand: string;
   produk: string;

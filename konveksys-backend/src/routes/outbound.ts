@@ -1,3 +1,34 @@
+// Helper auto-generate Surat Jalan number: SJ/YYYYMM/001
+async function generateNextSjNumber(yearMonth?: string): Promise<string> {
+  const now = new Date();
+  const ym = yearMonth || `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const prefix = `SJ/${ym}/`;
+
+  const existingSJs = await prisma.suratJalan.findMany({
+    where: {
+      noSuratJalan: {
+        startsWith: prefix,
+      },
+    },
+    select: {
+      noSuratJalan: true,
+    },
+  });
+
+  if (!existingSJs || existingSJs.length === 0) {
+    return `${prefix}001`;
+  }
+
+  const seqs = existingSJs.map((s) => {
+    const parts = s.noSuratJalan.split('/');
+    const num = parseInt(parts[parts.length - 1], 10);
+    return isNaN(num) ? 0 : num;
+  });
+
+  const nextSeq = (seqs.length > 0 ? Math.max(...seqs) : 0) + 1;
+  return `${prefix}${String(nextSeq).padStart(3, '0')}`;
+}
+
 import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { authMiddleware, adminOnly } from '../middleware/auth.js';
@@ -30,133 +61,193 @@ outboundRoutes.get('/', async (c) => {
 });
 
 outboundRoutes.post('/', adminOnly, async (c) => {
-  const body = await c.req.json();
-  const { items, ...restData } = body;
+  try {
+    const body = await c.req.json();
+    const { items, ...restData } = body;
 
-  const totalPcs =
-    restData.totalPcs ||
-    (restData.qtySML || 0) + (restData.qtyM || 0) + (restData.qtyL || 0) +
-    (restData.qtyXL || 0) + (restData.qtyXXL || 0) +
-    (restData.qtyAnak4 || 0) + (restData.qtyAnak6 || 0) + (restData.qtyAnak8 || 0) +
-    (restData.qtyAnak10 || 0) + (restData.qtyAnak12 || 0) + (restData.qtyAnak14 || 0) + (restData.qtyAnak16 || 0);
+    // 1. Determine unique noSuratJalan
+    let finalNoSj = restData.noSuratJalan ? String(restData.noSuratJalan).trim() : '';
+    if (!finalNoSj) {
+      finalNoSj = await generateNextSjNumber();
+    } else {
+      const existing = await prisma.suratJalan.findUnique({
+        where: { noSuratJalan: finalNoSj },
+      });
+      if (existing) {
+        const parts = finalNoSj.split('/');
+        const ym = parts.length >= 2 ? parts[1] : undefined;
+        finalNoSj = await generateNextSjNumber(ym);
+      }
+    }
 
-  const sj = await prisma.suratJalan.create({
-    data: {
-      noSuratJalan: restData.noSuratJalan,
-      spkId: restData.spkId,
-      brand: restData.brand,
-      produk: restData.produk,
-      vendor: restData.vendor,
-      tanggal: new Date(restData.tanggal),
-      driverName: restData.driverName || null,
-      nomorKendaraan: restData.nomorKendaraan || null,
-      catatan: restData.catatan || null,
-      status: restData.status || 'DELIVERED',
-      items: items || null,
-      qtySML: restData.qtySML || 0,
-      qtyM: restData.qtyM || 0,
-      qtyL: restData.qtyL || 0,
-      qtyXL: restData.qtyXL || 0,
-      qtyXXL: restData.qtyXXL || 0,
-      qtyAnak4: restData.qtyAnak4 || 0,
-      qtyAnak6: restData.qtyAnak6 || 0,
-      qtyAnak8: restData.qtyAnak8 || 0,
-      qtyAnak10: restData.qtyAnak10 || 0,
-      qtyAnak12: restData.qtyAnak12 || 0,
-      qtyAnak14: restData.qtyAnak14 || 0,
-      qtyAnak16: restData.qtyAnak16 || 0,
-      totalPcs,
-    },
-  });
+    // 2. Validate spkId (nullable support for 100% Non-SPK / Manual PO)
+    let validSpkId: string | null = null;
+    if (restData.spkId && String(restData.spkId).trim() !== '') {
+      const spkExists = await prisma.spkCutting.findUnique({
+        where: { id: String(restData.spkId).trim() },
+        select: { id: true },
+      });
+      if (spkExists) {
+        validSpkId = spkExists.id;
+      }
+    }
 
-  // Update delivered qty di SPK (Multi-Item or Single Item)
-  const itemsToUpdate = Array.isArray(items) && items.length > 0
-    ? items
-    : [
-        {
-          spkId: restData.spkId,
-          qtyDelivered: {
-            s: restData.qtySML || 0,
-            m: restData.qtyM || 0,
-            l: restData.qtyL || 0,
-            xl: restData.qtyXL || 0,
-            xxl: restData.qtyXXL || 0,
-            anak4: restData.qtyAnak4 || 0,
-            anak6: restData.qtyAnak6 || 0,
-            anak8: restData.qtyAnak8 || 0,
-            anak10: restData.qtyAnak10 || 0,
-            anak12: restData.qtyAnak12 || 0,
-            anak14: restData.qtyAnak14 || 0,
-            anak16: restData.qtyAnak16 || 0,
+    // Fallback: If restData.spkId wasn't found or null, check if any item has a valid spkId
+    if (!validSpkId && Array.isArray(items)) {
+      for (const it of items) {
+        if (it.spkId && !it.isManual) {
+          const spkExists = await prisma.spkCutting.findUnique({
+            where: { id: String(it.spkId).trim() },
+            select: { id: true },
+          });
+          if (spkExists) {
+            validSpkId = spkExists.id;
+            break;
+          }
+        }
+      }
+    }
+
+    const totalPcs =
+      restData.totalPcs ||
+      (restData.qtySML || 0) + (restData.qtyM || 0) + (restData.qtyL || 0) +
+      (restData.qtyXL || 0) + (restData.qtyXXL || 0) +
+      (restData.qtyAnak4 || 0) + (restData.qtyAnak6 || 0) + (restData.qtyAnak8 || 0) +
+      (restData.qtyAnak10 || 0) + (restData.qtyAnak12 || 0) + (restData.qtyAnak14 || 0) + (restData.qtyAnak16 || 0);
+
+    let sj: any = null;
+    let attempts = 0;
+    while (attempts < 3) {
+      attempts++;
+      try {
+        sj = await prisma.suratJalan.create({
+          data: {
+            noSuratJalan: finalNoSj,
+            spkId: validSpkId,
+            brand: restData.brand,
+            produk: restData.produk,
+            vendor: restData.vendor,
+            tanggal: restData.tanggal ? new Date(restData.tanggal) : new Date(),
+            driverName: restData.driverName || null,
+            nomorKendaraan: restData.nomorKendaraan || null,
+            catatan: restData.catatan || null,
+            status: restData.status || 'DELIVERED',
+            items: items || null,
+            qtySML: restData.qtySML || 0,
+            qtyM: restData.qtyM || 0,
+            qtyL: restData.qtyL || 0,
+            qtyXL: restData.qtyXL || 0,
+            qtyXXL: restData.qtyXXL || 0,
+            qtyAnak4: restData.qtyAnak4 || 0,
+            qtyAnak6: restData.qtyAnak6 || 0,
+            qtyAnak8: restData.qtyAnak8 || 0,
+            qtyAnak10: restData.qtyAnak10 || 0,
+            qtyAnak12: restData.qtyAnak12 || 0,
+            qtyAnak14: restData.qtyAnak14 || 0,
+            qtyAnak16: restData.qtyAnak16 || 0,
+            totalPcs,
           },
+        });
+        break;
+      } catch (err: any) {
+        if (err.code === 'P2002' && attempts < 3) {
+          finalNoSj = await generateNextSjNumber();
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    // 3. Update delivered qty di SPK (Hanya untuk item yang terhubung dengan SPK nyata)
+    const itemsToUpdate = Array.isArray(items) && items.length > 0
+      ? items.filter((it: any) => Boolean(it.spkId) && !it.isManual)
+      : validSpkId
+      ? [
+          {
+            spkId: validSpkId,
+            qtyDelivered: {
+              s: restData.qtySML || 0,
+              m: restData.qtyM || 0,
+              l: restData.qtyL || 0,
+              xl: restData.qtyXL || 0,
+              xxl: restData.qtyXXL || 0,
+              anak4: restData.qtyAnak4 || 0,
+              anak6: restData.qtyAnak6 || 0,
+              anak8: restData.qtyAnak8 || 0,
+              anak10: restData.qtyAnak10 || 0,
+              anak12: restData.qtyAnak12 || 0,
+              anak14: restData.qtyAnak14 || 0,
+              anak16: restData.qtyAnak16 || 0,
+            },
+          },
+        ]
+      : [];
+
+    const affectedSpkIds = new Set<string>();
+
+    for (const it of itemsToUpdate) {
+      if (!it.spkId) continue;
+      affectedSpkIds.add(it.spkId);
+      const deliv = it.qtyDelivered || {};
+
+      await prisma.spkCutting.update({
+        where: { id: it.spkId },
+        data: {
+          deliveredS: { increment: (deliv.s || 0) + (deliv.qtySML || 0) },
+          deliveredM: { increment: deliv.m || 0 },
+          deliveredL: { increment: deliv.l || 0 },
+          deliveredXL: { increment: deliv.xl || 0 },
+          deliveredXXL: { increment: deliv.xxl || 0 },
+          deliveredAnak4: { increment: deliv.anak4 || 0 },
+          deliveredAnak6: { increment: deliv.anak6 || 0 },
+          deliveredAnak8: { increment: deliv.anak8 || 0 },
+          deliveredAnak10: { increment: deliv.anak10 || 0 },
+          deliveredAnak12: { increment: deliv.anak12 || 0 },
+          deliveredAnak14: { increment: deliv.anak14 || 0 },
+          deliveredAnak16: { increment: deliv.anak16 || 0 },
         },
-      ];
+      }).catch((err: any) => console.warn(`Failed updating SPK ${it.spkId}:`, err));
+    }
 
-  const affectedSpkIds = new Set<string>();
+    // Recalculate status for all affected SPKs
+    for (const spkId of affectedSpkIds) {
+      const updatedSpk = await prisma.spkCutting.findUnique({ where: { id: spkId } });
+      if (!updatedSpk) continue;
 
-  for (const it of itemsToUpdate) {
-    if (!it.spkId) continue;
-    affectedSpkIds.add(it.spkId);
-    const deliv = it.qtyDelivered || {};
+      const targetTotal =
+        (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
+        (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
+        (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
+        (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
 
-    await prisma.spkCutting.update({
-      where: { id: it.spkId },
-      data: {
-        deliveredS: { increment: (deliv.s || 0) + (deliv.qtySML || 0) },
-        deliveredM: { increment: deliv.m || 0 },
-        deliveredL: { increment: deliv.l || 0 },
-        deliveredXL: { increment: deliv.xl || 0 },
-        deliveredXXL: { increment: deliv.xxl || 0 },
-        deliveredAnak4: { increment: deliv.anak4 || 0 },
-        deliveredAnak6: { increment: deliv.anak6 || 0 },
-        deliveredAnak8: { increment: deliv.anak8 || 0 },
-        deliveredAnak10: { increment: deliv.anak10 || 0 },
-        deliveredAnak12: { increment: deliv.anak12 || 0 },
-        deliveredAnak14: { increment: deliv.anak14 || 0 },
-        deliveredAnak16: { increment: deliv.anak16 || 0 },
-      },
-    }).catch((err: any) => console.warn(`Failed updating SPK ${it.spkId}:`, err));
-  }
+      const deliveredTotal =
+        (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
+        (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
+        (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
+        (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
 
-  // Recalculate status for all affected SPKs
-  for (const spkId of affectedSpkIds) {
-    const updatedSpk = await prisma.spkCutting.findUnique({ where: { id: spkId } });
-    if (!updatedSpk) continue;
+      const newStatus =
+        deliveredTotal <= 0
+          ? 'IN_PRODUCTION'
+          : targetTotal > 0 && deliveredTotal > targetTotal
+          ? 'OVER_DELIVERY'
+          : targetTotal > 0 && deliveredTotal === targetTotal
+          ? 'COMPLETED'
+          : 'PARTIAL_DELIVERED';
 
-    const targetTotal =
-      (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
-      (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
-      (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
-      (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
-
-    const deliveredTotal =
-      (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
-      (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
-      (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
-      (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
-
-    const newStatus =
-      targetTotal > 0 && deliveredTotal > targetTotal
-        ? 'OVER_DELIVERY'
-        : targetTotal > 0 && deliveredTotal === targetTotal
-        ? 'COMPLETED'
-        : deliveredTotal > 0
-        ? 'PARTIAL_DELIVERED'
-        : updatedSpk.status;
-
-    if (newStatus !== updatedSpk.status) {
       await prisma.spkCutting.update({
         where: { id: updatedSpk.id },
         data: { status: newStatus },
       });
     }
-  }
 
-  return c.json({ ...sj, items }, 201);
+    return c.json(sj, 201);
+  } catch (error: any) {
+    console.error('Error creating Surat Jalan:', error);
+    return c.json({ error: error?.message || 'Terjadi kesalahan saat membuat Surat Jalan.' }, 500);
+  }
 });
 
-
-// PUT /api/outbound/:id - Update / Verify Surat Jalan Receipt (Admin or Brand)
 outboundRoutes.put('/:id', async (c) => {
   const { id } = c.req.param();
   const user = c.get('user');

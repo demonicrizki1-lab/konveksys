@@ -2616,6 +2616,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     for (const item of itemsToProcess) {
       grandTotalPcs += item.totalPcs;
+      if (!item.spkId || item.isManual) {
+        continue;
+      }
+
       const targetSPKIndex = updatedSpkList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
       if (targetSPKIndex !== -1) {
         const targetSPK = updatedSpkList[targetSPKIndex];
@@ -2699,8 +2703,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setSpkList(updatedSpkList);
 
-    const noSuratJalan = `SJ/${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}/${String(suratJalanList.length + 1).padStart(3, '0')}`;
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prefix = `SJ/${yearMonth}/`;
+
+    const existingNums = suratJalanList
+      .filter((s) => s.noSuratJalan && s.noSuratJalan.startsWith(prefix))
+      .map((s) => {
+        const parts = s.noSuratJalan.split('/');
+        const n = parseInt(parts[parts.length - 1], 10);
+        return isNaN(n) ? 0 : n;
+      });
+    const nextSeq = (existingNums.length > 0 ? Math.max(...existingNums) : 0) + 1;
+    const noSuratJalan = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+
     const tempId = `sj-${Date.now()}`;
+    const firstSpkItem = itemsToProcess.find(i => Boolean(i.spkId) && !i.isManual);
+    const primarySpkId = firstSpkItem?.spkId || undefined;
+    const primarySpkItemId = firstSpkItem?.spkItemId || undefined;
     const firstItem = itemsToProcess[0];
 
     const newSJ: SuratJalan = {
@@ -2716,8 +2736,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'DELIVERED',
       catatan: sjData.catatan,
       // Backward compatible single item fields
-      spkId: firstItem.spkId,
-      spkItemId: firstItem.spkItemId,
+      spkId: primarySpkId,
+      spkItemId: primarySpkItemId,
       produk: itemsToProcess.map(i => i.produk).join(', '),
       vendor: Array.from(new Set(itemsToProcess.map(i => i.vendor))).join(', '),
       qtyDelivered: firstItem.qtyDelivered,
@@ -2727,9 +2747,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSuratJalanList(prev => [newSJ, ...prev]);
 
     try {
-      const { data } = await apiCreateSuratJalan({
+      const { data, error } = await apiCreateSuratJalan({
         noSuratJalan,
-        spkId: firstItem.spkId,
+        spkId: primarySpkId || null,
         brand: sjData.brand,
         produk: newSJ.produk,
         vendor: newSJ.vendor,
@@ -2740,29 +2760,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status: 'DELIVERED',
         totalPcs: grandTotalPcs,
         items: itemsToProcess,
-        qtySML: firstItem.qtyDelivered.s + firstItem.qtyDelivered.m + firstItem.qtyDelivered.l,
-        qtyM: firstItem.qtyDelivered.m,
-        qtyL: firstItem.qtyDelivered.l,
-        qtyXL: firstItem.qtyDelivered.xl,
-        qtyXXL: firstItem.qtyDelivered.xxl,
-        qtyAnak4: firstItem.qtyDelivered.anak4,
-        qtyAnak6: firstItem.qtyDelivered.anak6,
-        qtyAnak8: firstItem.qtyDelivered.anak8,
-        qtyAnak10: firstItem.qtyDelivered.anak10,
-        qtyAnak12: firstItem.qtyDelivered.anak12,
-        qtyAnak14: firstItem.qtyDelivered.anak14,
-        qtyAnak16: firstItem.qtyDelivered.anak16,
+        qtySML: (firstItem.qtyDelivered.s || 0) + (firstItem.qtyDelivered.m || 0) + (firstItem.qtyDelivered.l || 0),
+        qtyM: firstItem.qtyDelivered.m || 0,
+        qtyL: firstItem.qtyDelivered.l || 0,
+        qtyXL: firstItem.qtyDelivered.xl || 0,
+        qtyXXL: firstItem.qtyDelivered.xxl || 0,
+        qtyAnak4: firstItem.qtyDelivered.anak4 || 0,
+        qtyAnak6: firstItem.qtyDelivered.anak6 || 0,
+        qtyAnak8: firstItem.qtyDelivered.anak8 || 0,
+        qtyAnak10: firstItem.qtyDelivered.anak10 || 0,
+        qtyAnak12: firstItem.qtyDelivered.anak12 || 0,
+        qtyAnak14: firstItem.qtyDelivered.anak14 || 0,
+        qtyAnak16: firstItem.qtyDelivered.anak16 || 0,
       });
+
+      if (error) {
+        throw new Error(error);
+      }
 
       if (data && (data as any).id) {
         const realId = (data as any).id;
-        setSuratJalanList(prev => prev.map(sj => (sj.id === tempId ? { ...sj, id: realId } : sj)));
+        const realNoSj = (data as any).noSuratJalan || noSuratJalan;
+        setSuratJalanList(prev => prev.map(sj => (sj.id === tempId ? { ...sj, id: realId, noSuratJalan: realNoSj } : sj)));
       }
-    } catch (err) {
-      console.warn('Backend sync Surat Jalan failed, saved locally:', err);
+      return { success: true, message: 'Surat Jalan berhasil diterbitkan' };
+    } catch (err: any) {
+      console.error('Backend sync Surat Jalan failed, rolling back local state:', err);
+      setSuratJalanList(prev => prev.filter(sj => sj.id !== tempId));
+      setSpkList(spkList);
+      return { success: false, message: err?.message || 'Gagal menyimpan Surat Jalan ke server.' };
     }
-
-    return { success: true };
   };
 
   const updateSuratJalanReceipt = async (
