@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { HargaKonveksi, HargaBuyer, Vendor } from '../../types';
 import { formatRupiahInput, parseRupiahInput } from '../../utils/formatters';
 import { ConfirmModal } from '../common/ConfirmModal';
-import { Coins, Plus, Search, Edit2, Trash2, Check, X, ShieldAlert, Sparkles, Factory, Phone, Tag } from 'lucide-react';
+import { Coins, Plus, Search, Edit2, Trash2, Check, X, ShieldAlert, Sparkles, Factory, Phone, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const MasterHargaView: React.FC = () => {
   const {
@@ -136,6 +136,72 @@ export const MasterHargaView: React.FC = () => {
     const matchBrand = brandFilter === 'ALL' || item.brand === brandFilter;
     return matchSearch && matchBrand;
   });
+
+  // Pagination State for Matriks Harga Konveksi (Default 10)
+  const [konveksiPage, setKonveksiPage] = useState(1);
+  const [konveksiItemsPerPage, setKonveksiItemsPerPage] = useState(10);
+
+  useEffect(() => {
+    setKonveksiPage(1);
+  }, [searchTerm, brandFilter, konveksiItemsPerPage]);
+
+  const totalKonveksiPages = Math.max(1, Math.ceil(filteredKonveksi.length / konveksiItemsPerPage));
+  const safeKonveksiPage = Math.min(konveksiPage, totalKonveksiPages);
+  const konveksiStartIndex = (safeKonveksiPage - 1) * konveksiItemsPerPage;
+  const konveksiEndIndex = Math.min(konveksiStartIndex + konveksiItemsPerPage, filteredKonveksi.length);
+
+  const paginatedKonveksi = useMemo(() => {
+    return filteredKonveksi.slice(konveksiStartIndex, konveksiStartIndex + konveksiItemsPerPage);
+  }, [filteredKonveksi, konveksiStartIndex, konveksiItemsPerPage]);
+
+  const getKonveksiPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalKonveksiPages <= 7) {
+      for (let i = 1; i <= totalKonveksiPages; i++) pages.push(i);
+    } else {
+      if (safeKonveksiPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalKonveksiPages);
+      } else if (safeKonveksiPage >= totalKonveksiPages - 3) {
+        pages.push(1, '...', totalKonveksiPages - 4, totalKonveksiPages - 3, totalKonveksiPages - 2, totalKonveksiPages - 1, totalKonveksiPages);
+      } else {
+        pages.push(1, '...', safeKonveksiPage - 1, safeKonveksiPage, safeKonveksiPage + 1, '...', totalKonveksiPages);
+      }
+    }
+    return pages;
+  };
+
+  // Pagination State for Matriks Tarif Buyer (Default 10)
+  const [buyerPage, setBuyerPage] = useState(1);
+  const [buyerItemsPerPage, setBuyerItemsPerPage] = useState(10);
+
+  useEffect(() => {
+    setBuyerPage(1);
+  }, [searchTerm, brandFilter, buyerItemsPerPage]);
+
+  const totalBuyerPages = Math.max(1, Math.ceil(filteredBuyer.length / buyerItemsPerPage));
+  const safeBuyerPage = Math.min(buyerPage, totalBuyerPages);
+  const buyerStartIndex = (safeBuyerPage - 1) * buyerItemsPerPage;
+  const buyerEndIndex = Math.min(buyerStartIndex + buyerItemsPerPage, filteredBuyer.length);
+
+  const paginatedBuyer = useMemo(() => {
+    return filteredBuyer.slice(buyerStartIndex, buyerStartIndex + buyerItemsPerPage);
+  }, [filteredBuyer, buyerStartIndex, buyerItemsPerPage]);
+
+  const getBuyerPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalBuyerPages <= 7) {
+      for (let i = 1; i <= totalBuyerPages; i++) pages.push(i);
+    } else {
+      if (safeBuyerPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalBuyerPages);
+      } else if (safeBuyerPage >= totalBuyerPages - 3) {
+        pages.push(1, '...', totalBuyerPages - 4, totalBuyerPages - 3, totalBuyerPages - 2, totalBuyerPages - 1, totalBuyerPages);
+      } else {
+        pages.push(1, '...', safeBuyerPage - 1, safeBuyerPage, safeBuyerPage + 1, '...', totalBuyerPages);
+      }
+    }
+    return pages;
+  };
 
   // Handlers for Konveksi Modal
   const openAddKonveksi = () => {
@@ -475,55 +541,127 @@ export const MasterHargaView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredKonveksi.map((row) => (
-                  <tr key={row.id} className="hover:bg-indigo-50/40 transition">
-                    <td className="p-3.5 font-bold text-slate-900">{row.vendor}</td>
-                    <td className="p-3.5 font-semibold text-slate-800">{row.produk}</td>
-                    <td className="p-3.5">
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-md text-[10px]">
-                        {row.brand}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-bold text-indigo-600 text-sm">{formatRp(row.harga)}</td>
-                    <td className="p-3.5 text-slate-400 text-[11px]">
-                      <code>[{row.vendor} + {row.produk} + {row.brand}]</code>
-                    </td>
-                    <td className="p-3.5 text-right space-x-1">
-                      <button
-                        onClick={() => openEditKonveksi(row)}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                        title="Edit Tarif"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeleteModal({
-                            isOpen: true,
-                            title: 'Hapus Tarif Konveksi?',
-                            message: (
-                              <span>
-                                Apakah Anda yakin ingin menghapus tarif{' '}
-                                <strong className="text-slate-900">{row.vendor}</strong> untuk produk{' '}
-                                <strong className="text-slate-900">{row.produk}</strong>?
-                              </span>
-                            ),
-                            onConfirm: () => {
-                              deleteHargaKonveksi(row.id);
-                              setDeleteModal((prev) => ({ ...prev, isOpen: false }));
-                            },
-                          });
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                        title="Hapus"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                {paginatedKonveksi.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-slate-400">
+                      Tidak ada data tarif ongkos jahit konveksi yang sesuai dengan filter.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  paginatedKonveksi.map((row) => (
+                    <tr key={row.id} className="hover:bg-indigo-50/40 transition">
+                      <td className="p-3.5 font-bold text-slate-900">{row.vendor}</td>
+                      <td className="p-3.5 font-semibold text-slate-800">{row.produk}</td>
+                      <td className="p-3.5">
+                        <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-md text-[10px]">
+                          {row.brand}
+                        </span>
+                      </td>
+                      <td className="p-3.5 font-bold text-indigo-600 text-sm">{formatRp(row.harga)}</td>
+                      <td className="p-3.5 text-slate-400 text-[11px]">
+                        <code>[{row.vendor} + {row.produk} + {row.brand}]</code>
+                      </td>
+                      <td className="p-3.5 text-right space-x-1">
+                        <button
+                          onClick={() => openEditKonveksi(row)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                          title="Edit Tarif"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteModal({
+                              isOpen: true,
+                              title: 'Hapus Tarif Konveksi?',
+                              message: (
+                                <span>
+                                  Apakah Anda yakin ingin menghapus tarif{' '}
+                                  <strong className="text-slate-900">{row.vendor}</strong> untuk produk{' '}
+                                  <strong className="text-slate-900">{row.produk}</strong>?
+                                </span>
+                              ),
+                              onConfirm: () => {
+                                deleteHargaKonveksi(row.id);
+                                setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+                              },
+                            });
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs">
+            <div className="flex items-center gap-3 text-slate-500 font-medium">
+              <span>
+                Menampilkan <strong className="text-slate-800">{filteredKonveksi.length > 0 ? konveksiStartIndex + 1 : 0}</strong> - <strong className="text-slate-800">{konveksiEndIndex}</strong> dari <strong className="text-slate-800">{filteredKonveksi.length}</strong> Data
+              </span>
+              <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+                <span className="text-[11px] text-slate-400">Tampilkan:</span>
+                <select
+                  value={konveksiItemsPerPage}
+                  onChange={(e) => setKonveksiItemsPerPage(Number(e.target.value))}
+                  className="bg-slate-50 border border-slate-200 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 cursor-pointer"
+                >
+                  <option value={10}>10 per hal</option>
+                  <option value={25}>25 per hal</option>
+                  <option value={50}>50 per hal</option>
+                  <option value={100}>100 per hal</option>
+                </select>
+              </div>
+            </div>
+
+            {totalKonveksiPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setKonveksiPage((p) => Math.max(1, p - 1))}
+                  disabled={safeKonveksiPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  title="Halaman Sebelumnya"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {getKonveksiPageNumbers().map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`dots-${idx}`} className="px-1 text-slate-400 font-medium">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`page-${p}`}
+                      onClick={() => setKonveksiPage(Number(p))}
+                      className={`min-w-[30px] h-7 px-2 text-xs font-bold rounded-lg transition ${
+                        safeKonveksiPage === p
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={() => setKonveksiPage((p) => Math.min(totalKonveksiPages, p + 1))}
+                  disabled={safeKonveksiPage === totalKonveksiPages}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  title="Halaman Selanjutnya"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -569,86 +707,158 @@ export const MasterHargaView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {filteredBuyer.map((row) => (
-                  <tr key={row.id} className="hover:bg-emerald-50/40 transition">
-                    <td className="p-3 font-bold text-slate-900 border-r border-slate-100 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-md text-[10px] whitespace-nowrap">
-                        {row.brand}
-                      </span>
-                    </td>
-                    <td className="p-3 font-semibold text-slate-800 border-r border-slate-100">{row.produk}</td>
-                    <td className="p-2 text-center font-bold text-slate-800 border-r border-slate-100 bg-indigo-50/10">
-                      {formatRp(row.rateS ?? row.rateSML)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-800 border-r border-slate-100 bg-indigo-50/10">
-                      {formatRp(row.rateM ?? row.rateSML)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-800 border-r border-slate-100 bg-indigo-50/10">
-                      {formatRp(row.rateL ?? row.rateSML)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-indigo-600 bg-indigo-50/30 border-r border-slate-100">
-                      {formatRp(row.rateXL)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-indigo-600 bg-indigo-50/30 border-r border-slate-100">
-                      {formatRp(row.rateXXL ?? row.rateXL)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak4)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak6)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak8)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak10)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak12)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak14)}
-                    </td>
-                    <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
-                      {formatRp(row.rateAnak16)}
-                    </td>
-                    <td className="p-3 text-right space-x-1">
-                      <button
-                        onClick={() => openEditBuyer(row)}
-                        className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
-                        title="Edit Tarif Size"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeleteModal({
-                            isOpen: true,
-                            title: 'Hapus Matriks Tarif Buyer?',
-                            message: (
-                              <span>
-                                Apakah Anda yakin ingin menghapus matriks tarif{' '}
-                                <strong className="text-slate-900">{row.brand}</strong> untuk produk{' '}
-                                <strong className="text-slate-900">{row.produk}</strong>?
-                              </span>
-                            ),
-                            onConfirm: () => {
-                              deleteHargaBuyer(row.id);
-                              setDeleteModal((prev) => ({ ...prev, isOpen: false }));
-                            },
-                          });
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                        title="Hapus"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                {paginatedBuyer.length === 0 ? (
+                  <tr>
+                    <td colSpan={15} className="p-8 text-center text-slate-400">
+                      Tidak ada data tarif buyer yang sesuai dengan filter.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  paginatedBuyer.map((row) => (
+                    <tr key={row.id} className="hover:bg-emerald-50/40 transition">
+                      <td className="p-3 font-bold text-slate-900 border-r border-slate-100 text-center whitespace-nowrap">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-md text-[10px] whitespace-nowrap">
+                          {row.brand}
+                        </span>
+                      </td>
+                      <td className="p-3 font-semibold text-slate-800 border-r border-slate-100">{row.produk}</td>
+                      <td className="p-2 text-center font-bold text-slate-800 border-r border-slate-100 bg-indigo-50/10">
+                        {formatRp(row.rateS ?? row.rateSML)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-800 border-r border-slate-100 bg-indigo-50/10">
+                        {formatRp(row.rateM ?? row.rateSML)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-800 border-r border-slate-100 bg-indigo-50/10">
+                        {formatRp(row.rateL ?? row.rateSML)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-indigo-600 bg-indigo-50/30 border-r border-slate-100">
+                        {formatRp(row.rateXL)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-indigo-600 bg-indigo-50/30 border-r border-slate-100">
+                        {formatRp(row.rateXXL ?? row.rateXL)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak4)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak6)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak8)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak10)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak12)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak14)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak16)}
+                      </td>
+                      <td className="p-3 text-right space-x-1">
+                        <button
+                          onClick={() => openEditBuyer(row)}
+                          className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                          title="Edit Tarif Size"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteModal({
+                              isOpen: true,
+                              title: 'Hapus Matriks Tarif Buyer?',
+                              message: (
+                                <span>
+                                  Apakah Anda yakin ingin menghapus matriks tarif{' '}
+                                  <strong className="text-slate-900">{row.brand}</strong> untuk produk{' '}
+                                  <strong className="text-slate-900">{row.produk}</strong>?
+                                </span>
+                              ),
+                              onConfirm: () => {
+                                deleteHargaBuyer(row.id);
+                                setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+                              },
+                            });
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs">
+            <div className="flex items-center gap-3 text-slate-500 font-medium">
+              <span>
+                Menampilkan <strong className="text-slate-800">{filteredBuyer.length > 0 ? buyerStartIndex + 1 : 0}</strong> - <strong className="text-slate-800">{buyerEndIndex}</strong> dari <strong className="text-slate-800">{filteredBuyer.length}</strong> Data
+              </span>
+              <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+                <span className="text-[11px] text-slate-400">Tampilkan:</span>
+                <select
+                  value={buyerItemsPerPage}
+                  onChange={(e) => setBuyerItemsPerPage(Number(e.target.value))}
+                  className="bg-slate-50 border border-slate-200 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 cursor-pointer"
+                >
+                  <option value={10}>10 per hal</option>
+                  <option value={25}>25 per hal</option>
+                  <option value={50}>50 per hal</option>
+                  <option value={100}>100 per hal</option>
+                </select>
+              </div>
+            </div>
+
+            {totalBuyerPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setBuyerPage((p) => Math.max(1, p - 1))}
+                  disabled={safeBuyerPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  title="Halaman Sebelumnya"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {getBuyerPageNumbers().map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`dots-${idx}`} className="px-1 text-slate-400 font-medium">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`page-${p}`}
+                      onClick={() => setBuyerPage(Number(p))}
+                      className={`min-w-[30px] h-7 px-2 text-xs font-bold rounded-lg transition ${
+                        safeBuyerPage === p
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={() => setBuyerPage((p) => Math.min(totalBuyerPages, p + 1))}
+                  disabled={safeBuyerPage === totalBuyerPages}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                  title="Halaman Selanjutnya"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
