@@ -21,6 +21,7 @@ import {
   Sparkles,
   ArrowRight,
   Check,
+  Edit2,
 } from 'lucide-react';
 
 interface ArticleOption {
@@ -80,6 +81,7 @@ export const OutboundView: React.FC = () => {
   const {
     suratJalanList,
     createSuratJalan,
+    updateSuratJalan,
     deleteSuratJalan,
     getSuratJalanItems,
     spkList,
@@ -94,8 +96,10 @@ export const OutboundView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState(userRole === 'BRAND' ? activeBrand : 'ALL');
 
-  // Modal State for Create Surat Jalan
+  // Modal State for Create / Edit Surat Jalan
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingSJ, setEditingSJ] = useState<SuratJalan | null>(null);
+  const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(null);
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     sj?: SuratJalan;
@@ -175,10 +179,14 @@ export const OutboundView: React.FC = () => {
     ];
   };
 
-  // Active SPKs available for the selected brand
-  const activeSPKsForBrand = spkList.filter(
-    (s) => s.brand === selectedBrand && s.status !== 'COMPLETED'
-  );
+  // Active SPKs available for the selected brand (include linked SPKs when editing)
+  const activeSPKsForBrand = spkList.filter((s) => {
+    if (s.brand !== selectedBrand) return false;
+    if (s.status !== 'COMPLETED') return true;
+    if (editingSJ && (editingSJ.spkId === s.id || editingSJ.spkId === s.spkNumber)) return true;
+    if (draftItems.some((it) => it.spkId === s.id || it.spkId === s.spkNumber)) return true;
+    return false;
+  });
 
   const currentSPK = spkList.find((s) => s.id === selectedSPKId) || activeSPKsForBrand[0];
   const availableArticles = getArticlesForSPK(currentSPK);
@@ -228,6 +236,8 @@ export const OutboundView: React.FC = () => {
 
   // Open Create Modal
   const handleOpenCreate = () => {
+    setEditingSJ(null);
+    setEditingDraftIndex(null);
     const initialBrand = userRole === 'BRAND' ? activeBrand : 'NAMI';
     setSelectedBrand(initialBrand);
 
@@ -248,6 +258,45 @@ export const OutboundView: React.FC = () => {
     setCatatan('');
     setDraftItems([]);
     setQtySend(emptySizeBreakdown());
+    setCargoSourceMode('SPK');
+    setManualVendor(vendors && vendors.length > 0 ? vendors[0].name : '');
+    setManualProduk('');
+    setManualJenisKain('');
+    setManualPoNumber('');
+    setIsCreateModalOpen(true);
+  };
+
+  // Open Edit Modal for Existing Surat Jalan
+  const handleOpenEdit = (sj: SuratJalan) => {
+    setEditingSJ(sj);
+    setEditingDraftIndex(null);
+    setSelectedBrand(sj.brand);
+    setDriverName(sj.driverName || '');
+    setNomorKendaraan(sj.nomorKendaraan || '');
+    setTanggalKirim(sj.tanggal ? sj.tanggal.split('T')[0] : new Date().toISOString().split('T')[0]);
+    setCatatan(sj.catatan || '');
+
+    const items = getSuratJalanItems(sj);
+    setDraftItems([...items]);
+    setQtySend(emptySizeBreakdown());
+
+    const availableSpks = spkList.filter(
+      (s) =>
+        s.brand === sj.brand &&
+        (s.status !== 'COMPLETED' ||
+          s.id === sj.spkId ||
+          s.spkNumber === sj.spkId ||
+          items.some((it) => it.spkId === s.id || it.spkId === s.spkNumber))
+    );
+    if (availableSpks.length > 0) {
+      selectSPK(availableSpks[0].id);
+    } else {
+      setSelectedSPKId('');
+      setSelectedArticleName('');
+      setSelectedArticleVendor('');
+      setSelectedSpkItemId('');
+      setCustomJenisKain('');
+    }
     setCargoSourceMode('SPK');
     setManualVendor(vendors && vendors.length > 0 ? vendors[0].name : '');
     setManualProduk('');
@@ -303,6 +352,19 @@ export const OutboundView: React.FC = () => {
         totalPcs: currentSendingPcs,
       };
 
+      if (editingDraftIndex !== null) {
+        setDraftItems((prev) => {
+          const next = [...prev];
+          next[editingDraftIndex] = newItem;
+          return next;
+        });
+        setEditingDraftIndex(null);
+        setQtySend(emptySizeBreakdown());
+        setManualProduk('');
+        setManualJenisKain('');
+        return;
+      }
+
       setDraftItems((prev) => [...prev, newItem]);
       setQtySend(emptySizeBreakdown());
       setManualProduk('');
@@ -333,6 +395,17 @@ export const OutboundView: React.FC = () => {
       totalPcs: currentSendingPcs,
     };
 
+    if (editingDraftIndex !== null) {
+      setDraftItems((prev) => {
+        const next = [...prev];
+        next[editingDraftIndex] = newItem;
+        return next;
+      });
+      setEditingDraftIndex(null);
+      setQtySend(emptySizeBreakdown());
+      return;
+    }
+
     setDraftItems((prev) => [...prev, newItem]);
     setQtySend(emptySizeBreakdown());
 
@@ -346,8 +419,42 @@ export const OutboundView: React.FC = () => {
     }
   };
 
+  // Edit an item inside draft cargo
+  const handleEditDraftItem = (index: number) => {
+    const item = draftItems[index];
+    if (!item) return;
+    setEditingDraftIndex(index);
+    if (item.isManual) {
+      setCargoSourceMode('MANUAL');
+      setManualVendor(item.vendor || (vendors && vendors[0] ? vendors[0].name : ''));
+      setManualProduk(item.produk || '');
+      setManualJenisKain(item.jenisKain || '');
+      setManualPoNumber(item.legacyPoNumber || '');
+      setQtySend({ ...item.qtyDelivered });
+    } else {
+      setCargoSourceMode('SPK');
+      if (item.spkId) {
+        setSelectedSPKId(item.spkId);
+        setSelectedArticleName(item.produk);
+        setSelectedArticleVendor(item.vendor);
+        setSelectedSpkItemId(item.spkItemId || '');
+        setCustomJenisKain(item.jenisKain || '');
+      }
+      setQtySend({ ...item.qtyDelivered });
+    }
+  };
+
+  const handleCancelEditDraftItem = () => {
+    setEditingDraftIndex(null);
+    setQtySend(emptySizeBreakdown());
+  };
+
   // Remove Item from Draft Cargo List
   const handleRemoveDraftItem = (index: number) => {
+    if (editingDraftIndex === index) {
+      setEditingDraftIndex(null);
+      setQtySend(emptySizeBreakdown());
+    }
     setDraftItems((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -448,11 +555,21 @@ export const OutboundView: React.FC = () => {
 
     setIsCreateModalOpen(false);
     setDraftItems([]);
+    setEditingDraftIndex(null);
 
-    const result = await createSuratJalan(payload);
-    if (!result.success) {
-      alert(result.message || 'Gagal menyimpan Surat Jalan');
-      setIsCreateModalOpen(true);
+    if (editingSJ) {
+      const result = await updateSuratJalan(editingSJ.id, payload);
+      setEditingSJ(null);
+      if (!result.success) {
+        alert(result.message || 'Gagal memperbarui Surat Jalan');
+        setIsCreateModalOpen(true);
+      }
+    } else {
+      const result = await createSuratJalan(payload);
+      if (!result.success) {
+        alert(result.message || 'Gagal menyimpan Surat Jalan');
+        setIsCreateModalOpen(true);
+      }
     }
   };
 
@@ -691,13 +808,22 @@ export const OutboundView: React.FC = () => {
                           <Eye className="w-4 h-4" />
                         </button>
                         {userRole === 'ADMIN' && (
-                          <button
-                            onClick={() => handleDeleteSJ(sj)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition btn-press inline-flex items-center align-middle"
-                            title="Hapus Surat Jalan ini"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleOpenEdit(sj)}
+                              className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition btn-press inline-flex items-center align-middle"
+                              title="Edit Surat Jalan ini"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSJ(sj)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition btn-press inline-flex items-center align-middle"
+                              title="Hapus Surat Jalan ini"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </td>
                     </tr>
@@ -718,15 +844,21 @@ export const OutboundView: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-indigo-600" />
-                  Terbitkan Surat Jalan (Outbound Multi-Artikel)
+                  <Truck className={`w-5 h-5 ${editingSJ ? 'text-amber-600' : 'text-indigo-600'}`} />
+                  {editingSJ ? `Edit Surat Jalan (${editingSJ.noSuratJalan})` : 'Terbitkan Surat Jalan (Outbound Multi-Artikel)'}
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Pilih SPK/Kain, tentukan artikel produk yang dikirim, isi ukuran, lalu tambahkan ke muatan Surat Jalan
+                  {editingSJ
+                    ? 'Sesuaikan driver, tanggal, catatan, atau sesuaikan rincian kuantiti artikel yang dimuat pada surat jalan ini'
+                    : 'Pilih SPK/Kain, tentukan artikel produk yang dikirim, isi ukuran, lalu tambahkan ke muatan Surat Jalan'}
                 </p>
               </div>
               <button
-                onClick={() => setIsCreateModalOpen(false)}
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setEditingSJ(null);
+                  setEditingDraftIndex(null);
+                }}
                 className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
               >
                 <X className="w-5 h-5" />
@@ -845,12 +977,24 @@ export const OutboundView: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <div className="text-right">
                             <strong className="text-sm font-bold text-indigo-600 block">
                               {item.totalPcs} Pcs
                             </strong>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => handleEditDraftItem(idx)}
+                            className={`p-1.5 rounded-lg transition ${
+                              editingDraftIndex === idx
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                            }`}
+                            title="Edit kuantiti artikel ini"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleRemoveDraftItem(idx)}
@@ -865,6 +1009,25 @@ export const OutboundView: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Editing Notification Banner */}
+              {editingDraftIndex !== null && (
+                <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between text-amber-900 text-xs animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <Edit2 className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      Sedang mengedit <strong>Artikel #{editingDraftIndex + 1} ({draftItems[editingDraftIndex]?.produk})</strong>. Ubah kuantiti di bawah lalu klik tombol perbarui.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCancelEditDraftItem}
+                    className="text-[11px] font-bold text-amber-800 hover:underline px-2.5 py-1 bg-amber-100 rounded-lg cursor-pointer"
+                  >
+                    Batal Edit
+                  </button>
+                </div>
+              )}
 
               {/* SECTION: Form Pemilih SPK vs Non-SPK */}
               <div className="p-4 bg-indigo-50/50 border border-indigo-200 rounded-2xl space-y-3.5">
@@ -1062,7 +1225,7 @@ export const OutboundView: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Tombol Tambahkan Artikel Non-SPK */}
+                      {/* Tombol Tambahkan / Perbarui Artikel Non-SPK */}
                       <div className="flex justify-end pt-1">
                         <button
                           type="button"
@@ -1075,7 +1238,11 @@ export const OutboundView: React.FC = () => {
                           }`}
                         >
                           <Plus className="w-4 h-4" />
-                          <span>+ Tambahkan Artikel "{manualProduk || 'Non-SPK'}" ({currentSendingPcs} Pcs) ke Surat Jalan</span>
+                          <span>
+                            {editingDraftIndex !== null
+                              ? `Perbarui Artikel "${manualProduk || 'Non-SPK'}" (${currentSendingPcs} Pcs)`
+                              : `+ Tambahkan Artikel "${manualProduk || 'Non-SPK'}" (${currentSendingPcs} Pcs) ke Surat Jalan`}
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -1326,7 +1493,7 @@ export const OutboundView: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Tombol Tambahkan Artikel Ini ke Surat Jalan */}
+                      {/* Tombol Tambahkan / Perbarui Artikel SPK */}
                       <div className="flex justify-end pt-1">
                         <button
                           type="button"
@@ -1335,11 +1502,17 @@ export const OutboundView: React.FC = () => {
                           className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition ${
                             currentSendingPcs <= 0
                               ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                              : editingDraftIndex !== null
+                              ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/25 cursor-pointer'
                               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/25 cursor-pointer'
                           }`}
                         >
                           <Plus className="w-4 h-4" />
-                          <span>+ Tambahkan Artikel "{selectedArticleName}" ({currentSendingPcs} Pcs) ke Surat Jalan</span>
+                          <span>
+                            {editingDraftIndex !== null
+                              ? `Perbarui Artikel "${selectedArticleName}" (${currentSendingPcs} Pcs)`
+                              : `+ Tambahkan Artikel "${selectedArticleName}" (${currentSendingPcs} Pcs) ke Surat Jalan`}
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -1374,7 +1547,11 @@ export const OutboundView: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsCreateModalOpen(false)}
+                    onClick={() => {
+                      setIsCreateModalOpen(false);
+                      setEditingSJ(null);
+                      setEditingDraftIndex(null);
+                    }}
                     className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition cursor-pointer"
                   >
                     Batal
@@ -1385,10 +1562,14 @@ export const OutboundView: React.FC = () => {
                     className={`px-5 py-2.5 text-white font-bold rounded-xl transition shadow-md ${
                       draftItems.length === 0 && currentSendingPcs <= 0
                         ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                        : editingSJ
+                        ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/30 cursor-pointer'
                         : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30 cursor-pointer'
                     }`}
                   >
-                    Terbitkan Surat Jalan ({draftItems.length > 0 ? draftItems.length : 1} Artikel • {grandTotalDraftPcs > 0 ? grandTotalDraftPcs : currentSendingPcs} Pcs)
+                    {editingSJ
+                      ? `Simpan Perubahan Surat Jalan (${draftItems.length > 0 ? draftItems.length : 1} Artikel • ${grandTotalDraftPcs > 0 ? grandTotalDraftPcs : currentSendingPcs} Pcs)`
+                      : `Terbitkan Surat Jalan (${draftItems.length > 0 ? draftItems.length : 1} Artikel • ${grandTotalDraftPcs > 0 ? grandTotalDraftPcs : currentSendingPcs} Pcs)`}
                   </button>
                 </div>
               </div>
@@ -1419,6 +1600,20 @@ export const OutboundView: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                {userRole === 'ADMIN' && (
+                  <button
+                    onClick={() => {
+                      const sj = selectedSJDetail;
+                      setSelectedSJDetail(null);
+                      handleOpenEdit(sj);
+                    }}
+                    className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition btn-press cursor-pointer"
+                    title="Edit Data Surat Jalan Ini"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>Edit Surat Jalan</span>
+                  </button>
+                )}
                 <button
                   onClick={handlePrintSJ}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition btn-press cursor-pointer"

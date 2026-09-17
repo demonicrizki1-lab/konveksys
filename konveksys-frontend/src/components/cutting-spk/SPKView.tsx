@@ -699,14 +699,15 @@ export const SPKView: React.FC = () => {
                   const isExpanded = !!expandedSpkIds[spk.id];
                   const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
                   const delivTotal = Object.values(spk.deliveredQty).reduce((a, b) => a + b, 0);
-                  const percent = targetTotal > 0 ? Math.round((delivTotal / targetTotal) * 100) : 0;
                   const remaining = getSPKRemainingQty(spk);
+                  const fulfilledTotal = Math.max(0, targetTotal - remaining.totalRemaining);
+                  const percent = targetTotal > 0 ? Math.min(100, Math.round((fulfilledTotal / targetTotal) * 100)) : 0;
                   const isOverDelivery = spk.status === 'OVER_DELIVERY' || (targetTotal > 0 && delivTotal > targetTotal);
-                  const isCompleted = spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal === targetTotal);
-                  const displayStatus = isOverDelivery
-                    ? 'OVER_DELIVERY'
-                    : isCompleted
+                  const isCompleted = (spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal >= targetTotal)) && remaining.totalRemaining === 0;
+                  const displayStatus = isCompleted
                     ? 'COMPLETED'
+                    : isOverDelivery
+                    ? 'OVER_DELIVERY'
                     : delivTotal > 0
                     ? 'PARTIAL_DELIVERED'
                     : spk.status;
@@ -1124,14 +1125,15 @@ export const SPKView: React.FC = () => {
             {paginatedSPK.map((spk) => {
               const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
               const delivTotal = Object.values(spk.deliveredQty).reduce((a, b) => a + b, 0);
-              const percent = targetTotal > 0 ? Math.round((delivTotal / targetTotal) * 100) : 0;
               const remaining = getSPKRemainingQty(spk);
+              const fulfilledTotal = Math.max(0, targetTotal - remaining.totalRemaining);
+              const percent = targetTotal > 0 ? Math.min(100, Math.round((fulfilledTotal / targetTotal) * 100)) : 0;
               const isOverDelivery = spk.status === 'OVER_DELIVERY' || (targetTotal > 0 && delivTotal > targetTotal);
-              const isCompleted = spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal === targetTotal);
-              const displayStatus = isOverDelivery
-                ? 'OVER_DELIVERY'
-                : isCompleted
+              const isCompleted = (spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal >= targetTotal)) && remaining.totalRemaining === 0;
+              const displayStatus = isCompleted
                 ? 'COMPLETED'
+                : isOverDelivery
+                ? 'OVER_DELIVERY'
                 : delivTotal > 0
                 ? 'PARTIAL_DELIVERED'
                 : spk.status;

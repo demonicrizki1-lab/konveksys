@@ -411,6 +411,7 @@ interface AppContextType {
 
   suratJalanList: SuratJalan[];
   createSuratJalan: (sj: Omit<SuratJalan, 'id' | 'noSuratJalan' | 'status'>) => Promise<{ success: boolean; message?: string }> | { success: boolean; message?: string };
+  updateSuratJalan: (id: string, updatedSJ: Partial<SuratJalan>) => Promise<{ success: boolean; message?: string }>;
   updateSuratJalanReceipt: (id: string, verifiedItems: SuratJalanItem[], verificationNote?: string) => Promise<{ success: boolean; message?: string }>;
   deleteSuratJalan: (id: string) => Promise<{ success: boolean; message?: string }>;
   getSuratJalanItems: (sj: SuratJalan) => SuratJalanItem[];
@@ -2879,11 +2880,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const targetTotal = Object.values(targetSPK.targetCutQty).reduce((a, b) => a + b, 0);
         const newTotalDelivered = Object.values(updatedDelivered).reduce((a, b) => a + b, 0);
+        const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+        const hasUnfulfilledSize = SIZES_CHECK.some(sz => (targetSPK.targetCutQty[sz] || 0) > (updatedDelivered[sz] || 0));
 
         const newStatus: SPKCutting['status'] =
           targetTotal > 0 && newTotalDelivered > targetTotal
             ? 'OVER_DELIVERY'
-            : newTotalDelivered === targetTotal
+            : newTotalDelivered >= targetTotal && !hasUnfulfilledSize
             ? 'COMPLETED'
             : 'PARTIAL_DELIVERED';
 
@@ -3233,13 +3236,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
           const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
           const totalDelivered = Object.values(newDelivered).reduce((a, b) => a + b, 0);
+          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+          const hasUnfulfilledSize = SIZES_CHECK.some(sz => (spk.targetCutQty[sz] || 0) > (newDelivered[sz] || 0));
 
           const newStatus: SPKCutting['status'] =
             totalDelivered <= 0
               ? 'IN_PRODUCTION'
               : targetTotal > 0 && totalDelivered > targetTotal
               ? 'OVER_DELIVERY'
-              : targetTotal > 0 && totalDelivered === targetTotal
+              : targetTotal > 0 && totalDelivered >= targetTotal && !hasUnfulfilledSize
               ? 'COMPLETED'
               : 'PARTIAL_DELIVERED';
 
@@ -3256,6 +3261,244 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setSuratJalanList(prev => prev.filter(sj => sj.id !== id));
     return { success: true, message: `Surat Jalan ${targetSJ.noSuratJalan} berhasil dihapus.` };
+  };
+
+  const updateSuratJalan = async (
+    id: string,
+    updatedData: Partial<SuratJalan>
+  ): Promise<{ success: boolean; message?: string }> => {
+    const targetSJ = suratJalanList.find(sj => sj.id === id);
+    if (!targetSJ) {
+      return { success: false, message: 'Surat Jalan tidak ditemukan.' };
+    }
+
+    const SIZES: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+
+    // 1. Dapatkan items lama sebelum diedit
+    const oldItems: SuratJalanItem[] = getSuratJalanItems(targetSJ);
+
+    // 2. Dapatkan items baru setelah diedit
+    const newItems: SuratJalanItem[] = updatedData.items && updatedData.items.length > 0
+      ? updatedData.items
+      : oldItems;
+
+    const grandTotalPcs = newItems.reduce((acc, item) => acc + (Number(item.totalPcs) || 0), 0);
+
+    // 3. Sinkronisasi kuantiti terkirim pada seluruh SPK terkait (Revert lama + Apply baru)
+    setSpkList(prev => {
+      let updatedList = [...prev];
+
+      // Langkah A: Revert kuantiti lama dari SPK terkait
+      for (const item of oldItems) {
+        if (!item.spkId || item.isManual) continue;
+        const spkIdx = updatedList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
+        if (spkIdx !== -1) {
+          const spk = updatedList[spkIdx];
+          let updatedItems = spk.items;
+          if (updatedItems && updatedItems.length > 0) {
+            updatedItems = updatedItems.map(it => {
+              const isTargetItem = item.spkItemId
+                ? it.id === item.spkItemId || it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase()
+                : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
+
+              if (isTargetItem && it.deliveredQty) {
+                return {
+                  ...it,
+                  deliveredQty: {
+                    s: Math.max(0, it.deliveredQty.s - (item.qtyDelivered?.s || 0)),
+                    m: Math.max(0, it.deliveredQty.m - (item.qtyDelivered?.m || 0)),
+                    l: Math.max(0, it.deliveredQty.l - (item.qtyDelivered?.l || 0)),
+                    xl: Math.max(0, it.deliveredQty.xl - (item.qtyDelivered?.xl || 0)),
+                    xxl: Math.max(0, it.deliveredQty.xxl - (item.qtyDelivered?.xxl || 0)),
+                    anak4: Math.max(0, it.deliveredQty.anak4 - (item.qtyDelivered?.anak4 || 0)),
+                    anak6: Math.max(0, it.deliveredQty.anak6 - (item.qtyDelivered?.anak6 || 0)),
+                    anak8: Math.max(0, it.deliveredQty.anak8 - (item.qtyDelivered?.anak8 || 0)),
+                    anak10: Math.max(0, it.deliveredQty.anak10 - (item.qtyDelivered?.anak10 || 0)),
+                    anak12: Math.max(0, it.deliveredQty.anak12 - (item.qtyDelivered?.anak12 || 0)),
+                    anak14: Math.max(0, it.deliveredQty.anak14 - (item.qtyDelivered?.anak14 || 0)),
+                    anak16: Math.max(0, it.deliveredQty.anak16 - (item.qtyDelivered?.anak16 || 0)),
+                  },
+                };
+              }
+              return it;
+            });
+          }
+
+          const newDelivered: SizeBreakdown = {
+            s: Math.max(0, spk.deliveredQty.s - (item.qtyDelivered?.s || 0)),
+            m: Math.max(0, spk.deliveredQty.m - (item.qtyDelivered?.m || 0)),
+            l: Math.max(0, spk.deliveredQty.l - (item.qtyDelivered?.l || 0)),
+            xl: Math.max(0, spk.deliveredQty.xl - (item.qtyDelivered?.xl || 0)),
+            xxl: Math.max(0, spk.deliveredQty.xxl - (item.qtyDelivered?.xxl || 0)),
+            anak4: Math.max(0, spk.deliveredQty.anak4 - (item.qtyDelivered?.anak4 || 0)),
+            anak6: Math.max(0, spk.deliveredQty.anak6 - (item.qtyDelivered?.anak6 || 0)),
+            anak8: Math.max(0, spk.deliveredQty.anak8 - (item.qtyDelivered?.anak8 || 0)),
+            anak10: Math.max(0, spk.deliveredQty.anak10 - (item.qtyDelivered?.anak10 || 0)),
+            anak12: Math.max(0, spk.deliveredQty.anak12 - (item.qtyDelivered?.anak12 || 0)),
+            anak14: Math.max(0, spk.deliveredQty.anak14 - (item.qtyDelivered?.anak14 || 0)),
+            anak16: Math.max(0, spk.deliveredQty.anak16 - (item.qtyDelivered?.anak16 || 0)),
+          };
+
+          updatedList[spkIdx] = {
+            ...spk,
+            items: updatedItems,
+            deliveredQty: newDelivered,
+          };
+        }
+      }
+
+      // Langkah B: Terapkan kuantiti baru ke SPK terkait
+      for (const item of newItems) {
+        if (!item.spkId || item.isManual) continue;
+        const spkIdx = updatedList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
+        if (spkIdx !== -1) {
+          const spk = updatedList[spkIdx];
+          const deliv = item.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+          let updatedItems = spk.items;
+          if (updatedItems && updatedItems.length > 0) {
+            updatedItems = updatedItems.map(it => {
+              const isTargetItem = item.spkItemId
+                ? it.id === item.spkItemId || it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase()
+                : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
+
+              if (isTargetItem) {
+                const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+                return {
+                  ...it,
+                  deliveredQty: {
+                    s: itemDeliv.s + (deliv.s || 0),
+                    m: itemDeliv.m + (deliv.m || 0),
+                    l: itemDeliv.l + (deliv.l || 0),
+                    xl: itemDeliv.xl + (deliv.xl || 0),
+                    xxl: itemDeliv.xxl + (deliv.xxl || 0),
+                    anak4: itemDeliv.anak4 + (deliv.anak4 || 0),
+                    anak6: itemDeliv.anak6 + (deliv.anak6 || 0),
+                    anak8: itemDeliv.anak8 + (deliv.anak8 || 0),
+                    anak10: itemDeliv.anak10 + (deliv.anak10 || 0),
+                    anak12: itemDeliv.anak12 + (deliv.anak12 || 0),
+                    anak14: itemDeliv.anak14 + (deliv.anak14 || 0),
+                    anak16: itemDeliv.anak16 + (deliv.anak16 || 0),
+                  },
+                };
+              }
+              return it;
+            });
+          }
+
+          const updatedDelivered: SizeBreakdown = {
+            s: spk.deliveredQty.s + (deliv.s || 0),
+            m: spk.deliveredQty.m + (deliv.m || 0),
+            l: spk.deliveredQty.l + (deliv.l || 0),
+            xl: spk.deliveredQty.xl + (deliv.xl || 0),
+            xxl: spk.deliveredQty.xxl + (deliv.xxl || 0),
+            anak4: spk.deliveredQty.anak4 + (deliv.anak4 || 0),
+            anak6: spk.deliveredQty.anak6 + (deliv.anak6 || 0),
+            anak8: spk.deliveredQty.anak8 + (deliv.anak8 || 0),
+            anak10: spk.deliveredQty.anak10 + (deliv.anak10 || 0),
+            anak12: spk.deliveredQty.anak12 + (deliv.anak12 || 0),
+            anak14: spk.deliveredQty.anak14 + (deliv.anak14 || 0),
+            anak16: spk.deliveredQty.anak16 + (deliv.anak16 || 0),
+          };
+
+          updatedList[spkIdx] = {
+            ...spk,
+            items: updatedItems,
+            deliveredQty: updatedDelivered,
+          };
+        }
+      }
+
+      // Langkah C: Hitung ulang status seluruh SPK yang terdampak
+      const affectedSpkIds = new Set<string>();
+      for (const it of [...oldItems, ...newItems]) {
+        if (it.spkId && !it.isManual) affectedSpkIds.add(it.spkId);
+      }
+
+      updatedList = updatedList.map(spk => {
+        if (!affectedSpkIds.has(spk.id) && !affectedSpkIds.has(spk.spkNumber)) {
+          return spk;
+        }
+
+        const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
+        const totalDelivered = Object.values(spk.deliveredQty).reduce((a, b) => a + b, 0);
+        const hasUnfulfilledSize = SIZES.some(sz => (spk.targetCutQty[sz] || 0) > (spk.deliveredQty[sz] || 0));
+
+        const newStatus: SPKCutting['status'] =
+          totalDelivered <= 0
+            ? 'IN_PRODUCTION'
+            : targetTotal > 0 && totalDelivered > targetTotal
+            ? 'OVER_DELIVERY'
+            : targetTotal > 0 && totalDelivered >= targetTotal && !hasUnfulfilledSize
+            ? 'COMPLETED'
+            : 'PARTIAL_DELIVERED';
+
+        return {
+          ...spk,
+          status: newStatus,
+        };
+      });
+
+      return updatedList;
+    });
+
+    // 4. Update data Surat Jalan di local state
+    const firstItem = newItems[0] || {};
+    const distinctBrands = Array.from(new Set(newItems.map(i => i.brand).filter(Boolean)));
+    const sjBrand = updatedData.brand || (distinctBrands.length === 1 ? distinctBrands[0] : distinctBrands.join(', ') || targetSJ.brand);
+
+    const updatedCompleteSJ: SuratJalan = {
+      ...targetSJ,
+      ...updatedData,
+      brand: sjBrand,
+      items: newItems,
+      totalPcs: grandTotalPcs,
+      driverName: updatedData.driverName !== undefined ? updatedData.driverName : targetSJ.driverName,
+      nomorKendaraan: updatedData.nomorKendaraan !== undefined ? updatedData.nomorKendaraan : targetSJ.nomorKendaraan,
+      tanggal: updatedData.tanggal || targetSJ.tanggal,
+      catatan: updatedData.catatan !== undefined ? updatedData.catatan : targetSJ.catatan,
+      produk: newItems.map(i => i.produk).join(', ') || targetSJ.produk,
+      vendor: Array.from(new Set(newItems.map(i => i.vendor).filter(Boolean))).join(', ') || targetSJ.vendor,
+      jenisKain: newItems.map(i => i.jenisKain).filter(Boolean).join(', ') || targetSJ.jenisKain,
+      qtyDelivered: firstItem.qtyDelivered || targetSJ.qtyDelivered,
+      spkId: firstItem.spkId || targetSJ.spkId,
+      spkItemId: firstItem.spkItemId || targetSJ.spkItemId,
+    };
+
+    setSuratJalanList(prev => prev.map(sj => sj.id === id ? updatedCompleteSJ : sj));
+
+    // 5. Kirim sinkronisasi ke backend server
+    try {
+      await apiUpdateSuratJalan(id, {
+        noSuratJalan: updatedCompleteSJ.noSuratJalan,
+        spkId: updatedCompleteSJ.spkId || null,
+        brand: updatedCompleteSJ.brand,
+        produk: updatedCompleteSJ.produk,
+        vendor: updatedCompleteSJ.vendor,
+        tanggal: updatedCompleteSJ.tanggal ? new Date(updatedCompleteSJ.tanggal).toISOString() : new Date().toISOString(),
+        driverName: updatedCompleteSJ.driverName || '',
+        nomorKendaraan: updatedCompleteSJ.nomorKendaraan || '',
+        catatan: updatedCompleteSJ.catatan || '',
+        status: updatedCompleteSJ.status,
+        totalPcs: grandTotalPcs,
+        items: newItems,
+        qtySML: (firstItem.qtyDelivered?.s || 0) + (firstItem.qtyDelivered?.m || 0) + (firstItem.qtyDelivered?.l || 0),
+        qtyM: firstItem.qtyDelivered?.m || 0,
+        qtyL: firstItem.qtyDelivered?.l || 0,
+        qtyXL: firstItem.qtyDelivered?.xl || 0,
+        qtyXXL: firstItem.qtyDelivered?.xxl || 0,
+        qtyAnak4: firstItem.qtyDelivered?.anak4 || 0,
+        qtyAnak6: firstItem.qtyDelivered?.anak6 || 0,
+        qtyAnak8: firstItem.qtyDelivered?.anak8 || 0,
+        qtyAnak10: firstItem.qtyDelivered?.anak10 || 0,
+        qtyAnak12: firstItem.qtyDelivered?.anak12 || 0,
+        qtyAnak14: firstItem.qtyDelivered?.anak14 || 0,
+        qtyAnak16: firstItem.qtyDelivered?.anak16 || 0,
+      });
+    } catch (err) {
+      console.warn('Backend update Surat Jalan failed, updated locally:', err);
+    }
+
+    return { success: true, message: `Surat Jalan ${targetSJ.noSuratJalan} berhasil diperbarui.` };
   };
 
   // Kasbon Handlers
@@ -4135,6 +4378,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteSPK,
         suratJalanList,
         createSuratJalan,
+        updateSuratJalan,
         updateSuratJalanReceipt,
         deleteSuratJalan,
         getSuratJalanItems,
