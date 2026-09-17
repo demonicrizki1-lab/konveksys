@@ -152,6 +152,12 @@ export const FobOrderPrintModal: React.FC<FobOrderPrintModalProps> = ({ order, o
                 <span className="text-slate-500">PIC Penanggung Jawab:</span>
                 <span className="font-semibold text-slate-800">{order.pic || '-'}</span>
               </div>
+              {order.management && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500">Management:</span>
+                  <span className="font-semibold text-slate-800">{order.management}</span>
+                </div>
+              )}
               <div className="flex justify-between text-[11px]">
                 <span className="text-slate-500">Tanggal Terbit PO:</span>
                 <span className="font-semibold text-slate-800">{formatDateIndo(order.tanggalPo)}</span>
@@ -327,7 +333,7 @@ export const FobOrderPrintModal: React.FC<FobOrderPrintModalProps> = ({ order, o
               <div className="flex flex-col justify-between h-24">
                 <div className="text-[10px] font-bold text-slate-600 uppercase">DISETUJUI OLEH (BRAND)</div>
                 <div className="border-b border-slate-400 pb-1 mx-2">
-                  <span className="text-[10.5px] font-bold text-slate-900">{order.persetujuanDisetujui || '........................'}</span>
+                  <span className="text-[10.5px] font-bold text-slate-900">{order.persetujuanDisetujui || order.management || '........................'}</span>
                 </div>
                 <div className="text-[9px] text-slate-400">Pihak Buyer / Brand</div>
               </div>

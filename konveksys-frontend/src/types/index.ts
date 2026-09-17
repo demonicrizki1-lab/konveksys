@@ -720,6 +720,7 @@ export interface FobPurchaseOrder {
   brand: string;                  // e.g. MONTURE
   vendor: string;                 // e.g. TRIKARSA
   pic?: string | null;            // e.g. CECEP
+  management?: string | null;     // e.g. DAYAT / MANAJEMEN
   prioritas: FobOrderPriority;    // TINGGI / NORMAL / RENDAH
   status: FobOrderStatus;         // DRAF / DISETUJUI / PROSES / SELESAI / BATAL
   skuInduk: string;               // e.g. ROMPI HOODIE PUFFER

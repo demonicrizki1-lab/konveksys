@@ -23,6 +23,7 @@ import {
   FileCheck2,
   Check,
   ChevronDown,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   FobPurchaseOrder,
@@ -143,6 +144,7 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
   const [brand, setBrand] = useState(initialOrder?.brand || '');
   const [vendor, setVendor] = useState(initialOrder?.vendor || '');
   const [pic, setPic] = useState(initialOrder?.pic || '');
+  const [management, setManagement] = useState(initialOrder?.management || '');
   const [prioritas, setPrioritas] = useState<FobOrderPriority>(initialOrder?.prioritas || 'TINGGI');
   const [status, setStatus] = useState<FobOrderStatus>(initialOrder?.status || 'DISETUJUI');
   const [skuInduk, setSkuInduk] = useState(initialOrder?.skuInduk || '');
@@ -476,6 +478,7 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
         brand: brand.trim(),
         vendor: vendor.trim(),
         pic: pic.trim() || null,
+        management: management.trim() || null,
         prioritas,
         status,
         skuInduk: skuInduk.trim(),
@@ -485,8 +488,8 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
         biayaLain: Number(biayaLain || 0),
         grandTotal,
         keterangan: keterangan.trim() || null,
-        persetujuanDibuat: persetujuanDibuat.trim() || null,
-        persetujuanDisetujui: persetujuanDisetujui.trim() || null,
+        persetujuanDibuat: persetujuanDibuat.trim() || pic.trim() || null,
+        persetujuanDisetujui: persetujuanDisetujui.trim() || management.trim() || null,
         persetujuanVendor: persetujuanVendor.trim() || null,
         hppReferenceId: selectedHppId || null,
         quotationReferenceId: selectedQuotationId || null,
@@ -723,10 +726,10 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
               </div>
             </div>
 
-            {/* BARIS 2: PRODUK INDUK (Span 2), PIC, PRIORITAS */}
+            {/* BARIS 2: PRODUK INDUK, PIC, MANAGEMENT, PRIORITAS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {/* SKU / NAMA PRODUK INDUK */}
-              <div className="lg:col-span-2">
+              <div>
                 <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center gap-1">
                   <Package className="w-3.5 h-3.5 text-slate-400" />
                   <span>SKU / Nama Produk Induk</span>
@@ -752,7 +755,32 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                   type="text"
                   placeholder="Contoh: CECEP"
                   value={pic}
-                  onChange={(e) => setPic(e.target.value)}
+                  onChange={(e) => {
+                    setPic(e.target.value);
+                    if (!persetujuanDibuat || persetujuanDibuat === pic) {
+                      setPersetujuanDibuat(e.target.value);
+                    }
+                  }}
+                  className="w-full bg-white border border-slate-300 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition uppercase"
+                />
+              </div>
+
+              {/* MANAGEMENT */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Management</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: DAYAT / MANAJEMEN"
+                  value={management}
+                  onChange={(e) => {
+                    setManagement(e.target.value);
+                    if (!persetujuanDisetujui || persetujuanDisetujui === management) {
+                      setPersetujuanDisetujui(e.target.value);
+                    }
+                  }}
                   className="w-full bg-white border border-slate-300 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition uppercase"
                 />
               </div>

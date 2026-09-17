@@ -67,7 +67,8 @@ export const FobOrdersTab: React.FC<FobOrdersTabProps> = ({
         const matchSku = o.skuInduk?.toLowerCase().includes(q);
         const matchBrand = o.brand?.toLowerCase().includes(q);
         const matchVendor = o.vendor?.toLowerCase().includes(q);
-        if (!matchPo && !matchId && !matchSku && !matchBrand && !matchVendor) return false;
+        const matchMgmt = o.management?.toLowerCase().includes(q);
+        if (!matchPo && !matchId && !matchSku && !matchBrand && !matchVendor && !matchMgmt) return false;
       }
       return true;
     });
@@ -264,9 +265,10 @@ export const FobOrdersTab: React.FC<FobOrdersTabProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
                           <span>ID: {order.internalId || '-'}</span>
                           <span>• PIC: {order.pic || '-'}</span>
+                          {order.management && <span>• Mgt: {order.management}</span>}
                         </div>
                       </td>
 

@@ -2028,6 +2028,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         brand: orderData.brand || 'MONTURE',
         vendor: orderData.vendor || 'TRIKARSA',
         pic: orderData.pic || null,
+        management: orderData.management || null,
         prioritas: orderData.prioritas || 'NORMAL',
         status: orderData.status || 'DRAF',
         skuInduk: orderData.skuInduk || '',
