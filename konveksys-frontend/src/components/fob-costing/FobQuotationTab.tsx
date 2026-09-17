@@ -67,9 +67,9 @@ export const FobQuotationTab: React.FC<FobQuotationTabProps> = ({
 
   // Append Mode Input Selector State
   const [selectedHppId, setSelectedHppId] = useState<string>('');
-  const [appendWarna, setAppendWarna] = useState<string>('Hitam Pekat (Jet Black)');
-  const [appendSize, setAppendSize] = useState<string>('M');
-  const [appendQty, setAppendQty] = useState<number>(100);
+  const [appendWarna, setAppendWarna] = useState<string>('');
+  const [appendSize, setAppendSize] = useState<string>('');
+  const [appendQty, setAppendQty] = useState<number>(0);
   const [appendHarga, setAppendHarga] = useState<number>(0);
   const [appendCatatan, setAppendCatatan] = useState<string>('');
 
@@ -89,10 +89,10 @@ export const FobQuotationTab: React.FC<FobQuotationTabProps> = ({
     setSelectedHppId(hppId);
     const selected = hppRecords.find(r => r.id === hppId);
     if (selected) {
-      setAppendSize(selected.size || 'M');
+      setAppendSize(selected.size || '');
       setAppendHarga(selected.hargaJualRekomendasi || 0);
-      if (!appendWarna || appendWarna.includes('Hitam')) {
-        setAppendWarna(`${selected.namaProduk} - Black`);
+      if (!appendWarna) {
+        setAppendWarna(selected.namaProduk || '');
       }
     }
   };
@@ -101,6 +101,10 @@ export const FobQuotationTab: React.FC<FobQuotationTabProps> = ({
   const handleAppendItem = () => {
     if (!appendWarna.trim()) {
       alert('Mohon isi nama varian warna atau SKU artikel.');
+      return;
+    }
+    if (!appendSize) {
+      alert('Mohon pilih ukuran (size).');
       return;
     }
     if (appendQty <= 0) {
@@ -413,6 +417,7 @@ export const FobQuotationTab: React.FC<FobQuotationTabProps> = ({
               onChange={e => setAppendSize(e.target.value)}
               className="w-full py-1.5 px-2.5 rounded-lg border border-indigo-200 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-indigo-500"
             >
+              <option value="">-- Pilih Ukuran --</option>
               {['S', 'M', 'L', 'XL', 'XXL', '3XL', 'ALL SIZE'].map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -424,9 +429,10 @@ export const FobQuotationTab: React.FC<FobQuotationTabProps> = ({
             <label className="block text-slate-600 font-bold mb-1">4. Target Qty (Pcs)</label>
             <input
               type="number"
-              min="1"
-              value={appendQty}
-              onChange={e => setAppendQty(parseInt(e.target.value, 10) || 1)}
+              min="0"
+              value={appendQty === 0 ? '' : appendQty}
+              onChange={e => setAppendQty(parseInt(e.target.value, 10) || 0)}
+              placeholder="0"
               className="w-full py-1.5 px-2.5 rounded-lg border border-indigo-200 bg-white font-bold text-slate-900 tabular-nums focus:ring-1 focus:ring-indigo-500"
             />
           </div>
@@ -452,7 +458,7 @@ export const FobQuotationTab: React.FC<FobQuotationTabProps> = ({
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Masukkan ke Rincian Order (Append)</span>
+            <span>Masukkan ke Rincian Order (Append)</span>
           </button>
         </div>
       </div>
