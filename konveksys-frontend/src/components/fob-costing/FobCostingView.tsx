@@ -76,20 +76,21 @@ export const FobCostingView: React.FC = () => {
 
   const navItems: { id: FobSubTab; label: string; icon: React.ElementType; count?: number; isAi?: boolean }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'order-brand', label: 'Order Masuk (PO Brand)', icon: ShoppingBag, count: fobOrders.length },
+    { id: 'order-brand', label: 'Order Masuk (PO)', icon: ShoppingBag, count: fobOrders.length },
     { id: 'kalkulator', label: 'Kalkulator HPP', icon: Calculator },
-    { id: 'database', label: 'Database Arsip HPP', icon: Database, count: hppRecords.length },
+    { id: 'database', label: 'Database HPP', icon: Database, count: hppRecords.length },
     { id: 'penawaran', label: 'Surat Penawaran (SPH)', icon: FileText, count: fobQuotations.length },
-    { id: 'master-data', label: 'Master Data Acuan', icon: Layers },
-    { id: 'ai-analysis', label: 'Analisis AI & Rekomendasi', icon: Sparkles, isAi: true },
+    { id: 'master-data', label: 'Master Data', icon: Layers },
+    { id: 'ai-analysis', label: 'Analisis AI', icon: Sparkles, isAi: true },
   ];
 
   return (
     <div className="space-y-6 pb-12">
       
-      {/* TOP NAVIGATION SUB-TABS */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-xs flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+      {/* TOP NAVIGATION SUB-TABS (SINGLE ROW RESPONSIVE SCROLLABLE BAR) */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xs flex items-center justify-between gap-2 overflow-hidden">
+        {/* Scrollable Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-1 min-w-0 py-0.5 px-0.5">
           {navItems.map(tab => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
@@ -100,17 +101,17 @@ export const FobCostingView: React.FC = () => {
                   if (tab.id !== 'kalkulator') setEditingHpp(null);
                   setActiveSubTab(tab.id);
                 }}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${tab.isAi && !isActive ? 'text-indigo-600' : ''}`} />
+                <Icon className={`w-4 h-4 shrink-0 ${tab.isAi && !isActive ? 'text-indigo-600' : ''}`} />
                 <span>{tab.label}</span>
                 {tab.isAi && (
                   <span
-                    className={`text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wider ${
+                    className={`text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-wider shrink-0 ${
                       isActive ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-200/60'
                     }`}
                   >
@@ -119,7 +120,7 @@ export const FobCostingView: React.FC = () => {
                 )}
                 {tab.count !== undefined && tab.count > 0 && (
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${
                       isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                     }`}
                   >
@@ -131,7 +132,8 @@ export const FobCostingView: React.FC = () => {
           })}
         </div>
 
-        <div className="flex items-center gap-2 pr-2">
+        {/* Pinned Right Actions (Refresh) */}
+        <div className="flex items-center gap-1 shrink-0 pl-2 pr-1 border-l border-slate-200/90">
           <button
             onClick={() => refreshFobData()}
             disabled={isLoadingFob}
