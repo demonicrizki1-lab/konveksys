@@ -1184,10 +1184,17 @@ export const ReturnView: React.FC = () => {
             <div className="border border-slate-800 p-6 rounded-lg text-slate-900 font-sans space-y-5">
               {/* Header Dokumen */}
               <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
-                <div>
-                  <h2 className="text-lg font-black tracking-wider uppercase">MAISON RAYYAN MANUFACTURING</h2>
-                  <p className="text-xs text-slate-600">Konveksi &amp; Garment CMT Solution</p>
-                  <p className="text-[11px] text-slate-500">Jl. Industri Konveksi No. 88, Bandung • Telp: (022) 8765-4321</p>
+                <div className="flex items-center gap-3.5">
+                  <img
+                    src="/logo-maison-rayyan.png"
+                    alt="Maison Rayyan Manufacturing"
+                    className="h-16 sm:h-20 w-auto object-contain shrink-0"
+                  />
+                  <div>
+                    <h2 className="text-lg font-black tracking-wider uppercase">MAISON RAYYAN MANUFACTURING</h2>
+                    <p className="text-xs text-slate-600">Konveksi &amp; Garment CMT Solution</p>
+                    <p className="text-[11px] text-slate-500">Jl. Industri Konveksi No. 88, Bandung • Telp: (022) 8765-4321</p>
+                  </div>
                 </div>
                 <div className="text-right">
                   <span className="inline-block px-2.5 py-1 bg-slate-900 text-white font-bold text-xs rounded uppercase tracking-wider">

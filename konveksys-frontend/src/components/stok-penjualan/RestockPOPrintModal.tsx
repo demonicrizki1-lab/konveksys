@@ -323,10 +323,17 @@ export const RestockPOPrintModal: React.FC<RestockPOPrintModalProps> = ({
             >
               {/* Kop Surat Perusahaan */}
               <div className="flex justify-between items-start border-b-2 border-slate-900 pb-3">
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">MAISON RAYYAN MANUFACTURING</h2>
-                  <p className="text-xs text-slate-600 font-medium mt-0.5">Konveksi & Makloon Garment Terpadu</p>
-                  <p className="text-[10px] text-slate-400">Jl. Industri Makloon No. 88, Bandung • Telp: 0812-3456-7890</p>
+                <div className="flex items-center gap-3.5">
+                  <img
+                    src="/logo-maison-rayyan.png"
+                    alt="Maison Rayyan Manufacturing"
+                    className="h-16 sm:h-20 w-auto object-contain shrink-0"
+                  />
+                  <div>
+                    <h2 className="text-lg font-bold tracking-tight text-slate-900">MAISON RAYYAN MANUFACTURING</h2>
+                    <p className="text-xs text-slate-600 font-medium mt-0.5">Konveksi & Makloon Garment Terpadu</p>
+                    <p className="text-[10px] text-slate-400">Jl. Industri Makloon No. 88, Bandung • Telp: 0812-3456-7890</p>
+                  </div>
                 </div>
                 <div className="text-right">
                   <span className="bg-slate-900 text-white text-[10px] font-bold px-3 py-1 rounded uppercase tracking-wider inline-block">

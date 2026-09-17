@@ -76,19 +76,26 @@ export const FobQuotationPrintModal: React.FC<FobQuotationPrintModalProps> = ({ 
         >
           {/* HEADER KORPORAT */}
           <div className="flex justify-between items-start border-b-2 border-slate-900 pb-3 mb-4">
-            <div className="max-w-[55%]">
-              <h1 className="text-lg font-black tracking-wider text-slate-900 uppercase leading-none">
-                {company.namaPerusahaan || 'MAISON RAYYAN MANUFACTURING'}
-              </h1>
-              <p className="text-[10.5px] font-semibold text-slate-700 tracking-wide mt-1">
-                Produsen & Manufaktur Garment Full Order (FOB)
-              </p>
-              <p className="text-[9.5px] text-slate-500 mt-0.5 leading-relaxed">
-                {company.alamat}
-              </p>
-              <p className="text-[9.5px] text-slate-500 font-medium">
-                {company.telepon}
-              </p>
+            <div className="flex items-center gap-3.5 max-w-[55%]">
+              <img
+                src="/logo-maison-rayyan.png"
+                alt="Maison Rayyan Manufacturing"
+                className="h-16 sm:h-20 w-auto object-contain shrink-0"
+              />
+              <div>
+                <h1 className="text-lg font-black tracking-wider text-slate-900 uppercase leading-none">
+                  {company.namaPerusahaan || 'MAISON RAYYAN MANUFACTURING'}
+                </h1>
+                <p className="text-[10.5px] font-semibold text-slate-700 tracking-wide mt-1">
+                  Produsen & Manufaktur Garment Full Order (FOB)
+                </p>
+                <p className="text-[9.5px] text-slate-500 mt-0.5 leading-relaxed">
+                  {company.alamat}
+                </p>
+                <p className="text-[9.5px] text-slate-500 font-medium">
+                  {company.telepon}
+                </p>
+              </div>
             </div>
 
               {/* BUYER INFO BOX */}

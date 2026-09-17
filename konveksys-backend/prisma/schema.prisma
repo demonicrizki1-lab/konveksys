@@ -558,3 +558,33 @@ model FobQuotation {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
+
+model FobPurchaseOrder {
+  id                   String   @id @default(cuid())
+  poNumber             String   @unique
+  internalId           String?
+  tanggalPo            DateTime @default(now())
+  targetTiba           DateTime?
+  deadlineDays         Int?     @default(14)
+  brand                String
+  vendor               String
+  pic                  String?
+  prioritas            String   @default("NORMAL")
+  status               String   @default("DRAF")
+  skuInduk             String
+  totalQty             Int      @default(0)
+  hargaRataRata        Decimal  @db.Decimal(12, 2) @default(0)
+  totalPembelian       Decimal  @db.Decimal(14, 2) @default(0)
+  biayaLain            Decimal  @db.Decimal(12, 2) @default(0)
+  grandTotal           Decimal  @db.Decimal(14, 2) @default(0)
+  keterangan           String?
+  persetujuanDibuat    String?
+  persetujuanDisetujui String?
+  persetujuanVendor    String?
+  hppReferenceId       String?
+  quotationReferenceId String?
+  items                Json
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}

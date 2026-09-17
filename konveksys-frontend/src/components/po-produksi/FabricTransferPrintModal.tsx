@@ -79,10 +79,12 @@ export const FabricTransferPrintModal: React.FC<FabricTransferPrintModalProps> =
         >
           {/* Header Kop */}
           <div className="border-b-2 border-slate-900 pb-3 mb-4 flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold font-serif text-xl">
-                MR
-              </div>
+            <div className="flex items-center gap-3.5">
+              <img
+                src="/logo-maison-rayyan.png"
+                alt="Maison Rayyan Manufacturing"
+                className="h-16 sm:h-20 w-auto object-contain shrink-0"
+              />
               <div>
                 <h1 className="text-base font-bold text-slate-900 uppercase tracking-wide">
                   MAISON RAYYAN MANUFACTURING

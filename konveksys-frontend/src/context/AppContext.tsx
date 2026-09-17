@@ -84,6 +84,11 @@ import {
   apiGetFobProducts,
   apiSaveFobProduct,
   apiDeleteFobProduct,
+  apiGetFobOrders,
+  apiCreateFobOrder,
+  apiUpdateFobOrder,
+  apiUpdateFobOrderStatus,
+  apiDeleteFobOrder,
 } from '../services/api';
 import {
   AuthUser,
@@ -123,6 +128,7 @@ import {
   FOBQuotation,
   FOBMaterialMaster,
   FOBProductMaster,
+  FobPurchaseOrder,
 } from '../types';
 import {
   demoUsers,
@@ -139,6 +145,7 @@ import {
   initialAccessoryMutations,
   initialFobMaterials,
   initialFobProducts,
+  initialFobOrders,
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
@@ -339,6 +346,7 @@ interface AppContextType {
   fobQuotations: FOBQuotation[];
   fobMaterials: FOBMaterialMaster[];
   fobProducts: FOBProductMaster[];
+  fobOrders: FobPurchaseOrder[];
   isLoadingFob: boolean;
   saveHppRecord: (record: Partial<HPPCalculationRecord>) => Promise<{ success: boolean; data?: HPPCalculationRecord; error?: string }>;
   updateHppRecord: (id: string, record: Partial<HPPCalculationRecord>) => Promise<{ success: boolean; error?: string }>;
@@ -349,6 +357,10 @@ interface AppContextType {
   deleteFobMaterial: (id: string) => Promise<{ success: boolean; error?: string }>;
   saveFobProduct: (prod: Partial<FOBProductMaster>) => Promise<{ success: boolean; error?: string }>;
   deleteFobProduct: (id: string) => Promise<{ success: boolean; error?: string }>;
+  saveFobOrder: (order: Partial<FobPurchaseOrder>) => Promise<{ success: boolean; data?: FobPurchaseOrder; error?: string }>;
+  updateFobOrder: (id: string, order: Partial<FobPurchaseOrder>) => Promise<{ success: boolean; error?: string }>;
+  updateFobOrderStatus: (id: string, status: string) => Promise<{ success: boolean; error?: string }>;
+  deleteFobOrder: (id: string) => Promise<{ success: boolean; error?: string }>;
   refreshFobData: () => Promise<void>;
 
   // Sidebar & Layout State
@@ -577,6 +589,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [fobQuotations, setFobQuotations] = useState<FOBQuotation[]>(() => getCache('fob_quotations', []));
   const [fobMaterials, setFobMaterials] = useState<FOBMaterialMaster[]>(() => getCache('fob_materials', initialFobMaterials));
   const [fobProducts, setFobProducts] = useState<FOBProductMaster[]>(() => getCache('fob_products', initialFobProducts));
+  const [fobOrders, setFobOrders] = useState<FobPurchaseOrder[]>(() => {
+    const cached = getCache<FobPurchaseOrder[]>('fob_orders', []);
+    if (cached && cached.length > 0) return cached;
+    return initialFobOrders;
+  });
   const [isLoadingFob, setIsLoadingFob] = useState<boolean>(false);
 
   // Sync state tracking
@@ -627,6 +644,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobQuotations(), // 18
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobMaterials(), // 19
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobProducts(), // 20
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobOrders(), // 21
       ]);
 
       // 0. Brands
@@ -997,6 +1015,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (results[20]?.status === 'fulfilled' && Array.isArray(results[20].value.data) && results[20].value.data.length > 0) {
         setFobProducts(results[20].value.data);
         setCache('fob_products', results[20].value.data);
+      }
+
+      // 21. FOB Orders (PO Brand)
+      if (results[21]?.status === 'fulfilled' && Array.isArray(results[21].value.data) && results[21].value.data.length > 0) {
+        setFobOrders(results[21].value.data);
+        setCache('fob_orders', results[21].value.data);
       }
 
       setLastSyncedAt(new Date());
@@ -1713,11 +1737,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshFobData = async () => {
     setIsLoadingFob(true);
     try {
-      const [resHpp, resQuo, resMat, resProd] = await Promise.all([
+      const [resHpp, resQuo, resMat, resProd, resOrders] = await Promise.all([
         apiGetFobHppList(),
         apiGetFobQuotations(),
         apiGetFobMaterials(),
         apiGetFobProducts(),
+        apiGetFobOrders(),
       ]);
 
       if (resHpp.data && Array.isArray(resHpp.data)) {
@@ -1736,6 +1761,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (resProd.data && Array.isArray(resProd.data) && resProd.data.length > 0) {
         setFobProducts(resProd.data);
         setCache('fob_products', resProd.data);
+      }
+      if (resOrders.data && Array.isArray(resOrders.data) && resOrders.data.length > 0) {
+        setFobOrders(resOrders.data);
+        setCache('fob_orders', resOrders.data);
       }
     } catch (err) {
       console.warn('[FOB-REFRESH-ERROR]', err);
@@ -1964,6 +1993,115 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: err?.message || 'Gagal menghapus produk.' };
     }
   };
+
+  const saveFobOrder = async (orderData: Partial<FobPurchaseOrder>): Promise<{ success: boolean; data?: FobPurchaseOrder; error?: string }> => {
+    try {
+      const res = await apiCreateFobOrder(orderData);
+      if (res.data) {
+        setFobOrders(prev => {
+          const updated = [res.data, ...prev.filter(o => o.id !== res.data.id)];
+          setCache('fob_orders', updated);
+          return updated;
+        });
+        return { success: true, data: res.data };
+      }
+      // Fallback optimistic
+      const fallback: FobPurchaseOrder = {
+        id: `fob-po-${Date.now()}`,
+        poNumber: orderData.poNumber || `PO-FOB-${Date.now()}`,
+        internalId: orderData.internalId || null,
+        tanggalPo: orderData.tanggalPo || new Date().toISOString().split('T')[0],
+        targetTiba: orderData.targetTiba || null,
+        deadlineDays: orderData.deadlineDays || 14,
+        brand: orderData.brand || 'MONTURE',
+        vendor: orderData.vendor || 'TRIKARSA',
+        pic: orderData.pic || null,
+        prioritas: orderData.prioritas || 'NORMAL',
+        status: orderData.status || 'DRAF',
+        skuInduk: orderData.skuInduk || '',
+        totalQty: orderData.totalQty || 0,
+        hargaRataRata: orderData.hargaRataRata || 0,
+        totalPembelian: orderData.totalPembelian || 0,
+        biayaLain: orderData.biayaLain || 0,
+        grandTotal: orderData.grandTotal || 0,
+        keterangan: orderData.keterangan || null,
+        persetujuanDibuat: orderData.persetujuanDibuat || null,
+        persetujuanDisetujui: orderData.persetujuanDisetujui || null,
+        persetujuanVendor: orderData.persetujuanVendor || null,
+        hppReferenceId: orderData.hppReferenceId || null,
+        quotationReferenceId: orderData.quotationReferenceId || null,
+        items: orderData.items || [],
+        createdAt: new Date().toISOString(),
+      };
+      setFobOrders(prev => {
+        const updated = [fallback, ...prev];
+        setCache('fob_orders', updated);
+        return updated;
+      });
+      return { success: true, data: fallback };
+    } catch (err: any) {
+      console.warn('[FOB-ORDER-SAVE-ERROR]', err);
+      return { success: false, error: err?.message || 'Gagal menyimpan PO Brand FOB' };
+    }
+  };
+
+  const updateFobOrder = async (id: string, orderData: Partial<FobPurchaseOrder>): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await apiUpdateFobOrder(id, orderData);
+      setFobOrders(prev => {
+        const updated = prev.map(o => o.id === id ? { ...o, ...orderData, updatedAt: new Date().toISOString() } : o);
+        setCache('fob_orders', updated);
+        return updated;
+      });
+      return { success: true };
+    } catch (err: any) {
+      setFobOrders(prev => {
+        const updated = prev.map(o => o.id === id ? { ...o, ...orderData, updatedAt: new Date().toISOString() } : o);
+        setCache('fob_orders', updated);
+        return updated;
+      });
+      return { success: true };
+    }
+  };
+
+  const updateFobOrderStatus = async (id: string, status: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await apiUpdateFobOrderStatus(id, status);
+      setFobOrders(prev => {
+        const updated = prev.map(o => o.id === id ? { ...o, status: status as any, updatedAt: new Date().toISOString() } : o);
+        setCache('fob_orders', updated);
+        return updated;
+      });
+      return { success: true };
+    } catch (err: any) {
+      setFobOrders(prev => {
+        const updated = prev.map(o => o.id === id ? { ...o, status: status as any, updatedAt: new Date().toISOString() } : o);
+        setCache('fob_orders', updated);
+        return updated;
+      });
+      return { success: true };
+    }
+  };
+
+  const deleteFobOrder = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await apiDeleteFobOrder(id);
+      setFobOrders(prev => {
+        const updated = prev.filter(o => o.id !== id);
+        setCache('fob_orders', updated);
+        return updated;
+      });
+      return { success: true };
+    } catch (err: any) {
+      setFobOrders(prev => {
+        const updated = prev.filter(o => o.id !== id);
+        setCache('fob_orders', updated);
+        return updated;
+      });
+      return { success: true };
+    }
+  };
+
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
@@ -3886,6 +4024,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fobQuotations,
         fobMaterials,
         fobProducts,
+        fobOrders,
         isLoadingFob,
         saveHppRecord,
         updateHppRecord,
@@ -3896,6 +4035,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteFobMaterial,
         saveFobProduct,
         deleteFobProduct,
+        saveFobOrder,
+        updateFobOrder,
+        updateFobOrderStatus,
+        deleteFobOrder,
         refreshFobData,
         isApprovalModalOpen,
         setIsApprovalModalOpen,

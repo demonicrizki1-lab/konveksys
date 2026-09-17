@@ -628,3 +628,178 @@ ${componentsList}`;
     return c.json({ error: 'Gagal menjalankan analisis AI: ' + err.message }, 500);
   }
 });
+
+// ============================================================
+// 5. FOB PURCHASE ORDERS (PO BRAND)
+// ============================================================
+
+// GET /api/fob/orders - List all FOB Brand POs
+fobRoutes.get('/orders', async (c) => {
+  try {
+    const brand = c.req.query('brand');
+    const status = c.req.query('status');
+    const search = c.req.query('search');
+
+    const where: any = {};
+    if (brand && brand !== 'ALL') {
+      where.brand = brand;
+    }
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { poNumber: { contains: q, mode: 'insensitive' } },
+        { internalId: { contains: q, mode: 'insensitive' } },
+        { skuInduk: { contains: q, mode: 'insensitive' } },
+        { brand: { contains: q, mode: 'insensitive' } },
+        { vendor: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const orders = await (prisma as any).fobPurchaseOrder.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return c.json(orders);
+  } catch (err: any) {
+    console.error('[FOB-ORDERS-GET-ERROR]', err);
+    return c.json({ error: 'Gagal mengambil data order FOB: ' + err.message }, 500);
+  }
+});
+
+// GET /api/fob/orders/:id - Detail 1 FOB PO
+fobRoutes.get('/orders/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const order = await (prisma as any).fobPurchaseOrder.findUnique({
+      where: { id },
+    });
+    if (!order) {
+      return c.json({ error: 'Order PO FOB tidak ditemukan' }, 404);
+    }
+    return c.json(order);
+  } catch (err: any) {
+    console.error('[FOB-ORDER-DETAIL-ERROR]', err);
+    return c.json({ error: 'Gagal mengambil detail order FOB: ' + err.message }, 500);
+  }
+});
+
+// POST /api/fob/orders - Create PO Brand FOB
+fobRoutes.post('/orders', async (c) => {
+  try {
+    const body = await c.req.json();
+    let poNumber = body.poNumber;
+    if (!poNumber) {
+      const count = await (prisma as any).fobPurchaseOrder.count();
+      poNumber = 'PO-FOB-' + new Date().getFullYear() + '-' + String(count + 1).padStart(4, '0');
+    }
+
+    const created = await (prisma as any).fobPurchaseOrder.create({
+      data: {
+        poNumber,
+        internalId: body.internalId || null,
+        tanggalPo: body.tanggalPo ? new Date(body.tanggalPo) : new Date(),
+        targetTiba: body.targetTiba ? new Date(body.targetTiba) : null,
+        deadlineDays: body.deadlineDays ? Number(body.deadlineDays) : 14,
+        brand: body.brand || 'MONTURE',
+        vendor: body.vendor || 'TRIKARSA',
+        pic: body.pic || null,
+        prioritas: body.prioritas || 'NORMAL',
+        status: body.status || 'DRAF',
+        skuInduk: body.skuInduk || '',
+        totalQty: Number(body.totalQty || 0),
+        hargaRataRata: Number(body.hargaRataRata || 0),
+        totalPembelian: Number(body.totalPembelian || 0),
+        biayaLain: Number(body.biayaLain || 0),
+        grandTotal: Number(body.grandTotal || 0),
+        keterangan: body.keterangan || null,
+        persetujuanDibuat: body.persetujuanDibuat || null,
+        persetujuanDisetujui: body.persetujuanDisetujui || null,
+        persetujuanVendor: body.persetujuanVendor || null,
+        hppReferenceId: body.hppReferenceId || null,
+        quotationReferenceId: body.quotationReferenceId || null,
+        items: body.items || [],
+      },
+    });
+
+    return c.json(created, 201);
+  } catch (err: any) {
+    console.error('[FOB-ORDER-POST-ERROR]', err);
+    return c.json({ error: 'Gagal menyimpan Order PO FOB: ' + err.message }, 500);
+  }
+});
+
+// PUT /api/fob/orders/:id - Update PO
+fobRoutes.put('/orders/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+
+    const updated = await (prisma as any).fobPurchaseOrder.update({
+      where: { id },
+      data: {
+        ...(body.poNumber ? { poNumber: body.poNumber } : {}),
+        internalId: body.internalId !== undefined ? body.internalId : undefined,
+        tanggalPo: body.tanggalPo ? new Date(body.tanggalPo) : undefined,
+        targetTiba: body.targetTiba ? new Date(body.targetTiba) : null,
+        deadlineDays: body.deadlineDays !== undefined ? Number(body.deadlineDays) : undefined,
+        brand: body.brand !== undefined ? body.brand : undefined,
+        vendor: body.vendor !== undefined ? body.vendor : undefined,
+        pic: body.pic !== undefined ? body.pic : undefined,
+        prioritas: body.prioritas !== undefined ? body.prioritas : undefined,
+        status: body.status !== undefined ? body.status : undefined,
+        skuInduk: body.skuInduk !== undefined ? body.skuInduk : undefined,
+        totalQty: body.totalQty !== undefined ? Number(body.totalQty) : undefined,
+        hargaRataRata: body.hargaRataRata !== undefined ? Number(body.hargaRataRata) : undefined,
+        totalPembelian: body.totalPembelian !== undefined ? Number(body.totalPembelian) : undefined,
+        biayaLain: body.biayaLain !== undefined ? Number(body.biayaLain) : undefined,
+        grandTotal: body.grandTotal !== undefined ? Number(body.grandTotal) : undefined,
+        keterangan: body.keterangan !== undefined ? body.keterangan : undefined,
+        persetujuanDibuat: body.persetujuanDibuat !== undefined ? body.persetujuanDibuat : undefined,
+        persetujuanDisetujui: body.persetujuanDisetujui !== undefined ? body.persetujuanDisetujui : undefined,
+        persetujuanVendor: body.persetujuanVendor !== undefined ? body.persetujuanVendor : undefined,
+        hppReferenceId: body.hppReferenceId !== undefined ? body.hppReferenceId : undefined,
+        quotationReferenceId: body.quotationReferenceId !== undefined ? body.quotationReferenceId : undefined,
+        items: body.items !== undefined ? body.items : undefined,
+      },
+    });
+
+    return c.json(updated);
+  } catch (err: any) {
+    console.error('[FOB-ORDER-PUT-ERROR]', err);
+    return c.json({ error: 'Gagal mengupdate Order PO FOB: ' + err.message }, 500);
+  }
+});
+
+// PATCH /api/fob/orders/:id/status - Quick status update
+fobRoutes.patch('/orders/:id/status', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const { status } = await c.req.json();
+    const updated = await (prisma as any).fobPurchaseOrder.update({
+      where: { id },
+      data: { status },
+    });
+    return c.json(updated);
+  } catch (err: any) {
+    console.error('[FOB-ORDER-STATUS-ERROR]', err);
+    return c.json({ error: 'Gagal mengupdate status Order FOB: ' + err.message }, 500);
+  }
+});
+
+// DELETE /api/fob/orders/:id - Delete PO
+fobRoutes.delete('/orders/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    await (prisma as any).fobPurchaseOrder.delete({
+      where: { id },
+    });
+    return c.json({ success: true, message: 'Order PO FOB berhasil dihapus' });
+  } catch (err: any) {
+    console.error('[FOB-ORDER-DELETE-ERROR]', err);
+    return c.json({ error: 'Gagal menghapus Order PO FOB: ' + err.message }, 500);
+  }
+});

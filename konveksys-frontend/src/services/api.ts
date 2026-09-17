@@ -981,3 +981,48 @@ export async function apiAnalyzeFobHpp(payload: { hppRecordId?: string; hppData?
   });
 }
 
+// ============================================================
+// FOB PURCHASE ORDERS (PO BRAND)
+// ============================================================
+
+export async function apiGetFobOrders(params?: { brand?: string; status?: string; search?: string }) {
+  const queryParts: string[] = [];
+  if (params?.brand && params.brand !== 'ALL') queryParts.push(`brand=${encodeURIComponent(params.brand)}`);
+  if (params?.status && params.status !== 'ALL') queryParts.push(`status=${encodeURIComponent(params.status)}`);
+  if (params?.search && params.search.trim()) queryParts.push(`search=${encodeURIComponent(params.search.trim())}`);
+  const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return apiFetch<any[]>(`/api/fob/orders${query}`);
+}
+
+export async function apiGetFobOrderDetail(id: string) {
+  return apiFetch<any>(`/api/fob/orders/${id}`);
+}
+
+export async function apiCreateFobOrder(data: any) {
+  return apiFetch<any>('/api/fob/orders', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateFobOrder(id: string, data: any) {
+  return apiFetch<any>(`/api/fob/orders/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateFobOrderStatus(id: string, status: string) {
+  return apiFetch<any>(`/api/fob/orders/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function apiDeleteFobOrder(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/fob/orders/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+

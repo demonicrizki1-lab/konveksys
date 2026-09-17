@@ -690,3 +690,52 @@ export interface FobAiAnalysisApiResponse {
   data: FobAiAnalysisResult;
   error?: string;
 }
+
+// ============================================================
+// FOB PURCHASE ORDER (PO BRAND)
+// ============================================================
+
+export interface FobOrderItem {
+  id: string;
+  no: number;
+  sku: string;
+  warna: string;
+  size: string;
+  qty: number;
+  hargaBeli: number;
+  subtotal: number;
+  catatan?: string | null;
+}
+
+export type FobOrderStatus = 'DRAF' | 'DISETUJUI' | 'PROSES' | 'SELESAI' | 'BATAL';
+export type FobOrderPriority = 'TINGGI' | 'NORMAL' | 'RENDAH';
+
+export interface FobPurchaseOrder {
+  id: string;
+  poNumber: string;               // e.g. PO-PH-0002
+  internalId?: string | null;     // e.g. PH-0002
+  tanggalPo: string;              // YYYY-MM-DD
+  targetTiba?: string | null;     // YYYY-MM-DD
+  deadlineDays: number;           // e.g. 14 hari
+  brand: string;                  // e.g. MONTURE
+  vendor: string;                 // e.g. TRIKARSA
+  pic?: string | null;            // e.g. CECEP
+  prioritas: FobOrderPriority;    // TINGGI / NORMAL / RENDAH
+  status: FobOrderStatus;         // DRAF / DISETUJUI / PROSES / SELESAI / BATAL
+  skuInduk: string;               // e.g. ROMPI HOODIE PUFFER
+  totalQty: number;               // e.g. 120
+  hargaRataRata: number;          // e.g. 78667
+  totalPembelian: number;         // e.g. 9440000
+  biayaLain: number;              // e.g. 0
+  grandTotal: number;             // e.g. 9440000
+  keterangan?: string | null;     // Klausul kesepakatan
+  persetujuanDibuat?: string | null;
+  persetujuanDisetujui?: string | null;
+  persetujuanVendor?: string | null;
+  hppReferenceId?: string | null;
+  quotationReferenceId?: string | null;
+  items: FobOrderItem[];
+  createdAt: string;
+  updatedAt?: string;
+}
+

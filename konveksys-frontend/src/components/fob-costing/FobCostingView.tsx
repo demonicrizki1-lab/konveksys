@@ -7,20 +7,24 @@ import {
   Layers,
   RefreshCw,
   Sparkles,
+  ShoppingBag,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { HPPCalculationRecord, FOBQuotation } from '../../types';
+import { HPPCalculationRecord, FOBQuotation, FobPurchaseOrder } from '../../types';
 import { FobDashboardTab } from './FobDashboardTab';
 import { FobCalculatorTab } from './FobCalculatorTab';
 import { FobDatabaseTab } from './FobDatabaseTab';
 import { FobQuotationTab } from './FobQuotationTab';
 import { FobMasterDataTab } from './FobMasterDataTab';
 import { FobAiAnalysisTab } from './FobAiAnalysisTab';
+import { FobOrdersTab } from './FobOrdersTab';
+import { FobOrderModal } from './FobOrderModal';
+import { FobOrderPrintModal } from './FobOrderPrintModal';
 import { FobHppPrintModal } from './FobHppPrintModal';
 import { FobQuotationPrintModal } from './FobQuotationPrintModal';
 import { FobRekapPrintModal } from './FobRekapPrintModal';
 
-export type FobSubTab = 'dashboard' | 'kalkulator' | 'database' | 'penawaran' | 'master-data' | 'ai-analysis';
+export type FobSubTab = 'dashboard' | 'order-brand' | 'kalkulator' | 'database' | 'penawaran' | 'master-data' | 'ai-analysis';
 
 export const FobCostingView: React.FC = () => {
   const {
@@ -28,6 +32,13 @@ export const FobCostingView: React.FC = () => {
     fobQuotations,
     fobMaterials,
     fobProducts,
+    fobOrders,
+    saveFobOrder,
+    updateFobOrder,
+    updateFobOrderStatus,
+    deleteFobOrder,
+    brands,
+    vendors,
     isLoadingFob,
     saveHppRecord,
     deleteHppRecord,
@@ -42,6 +53,11 @@ export const FobCostingView: React.FC = () => {
 
   const [activeSubTab, setActiveSubTab] = useState<FobSubTab>('dashboard');
   const [editingHpp, setEditingHpp] = useState<HPPCalculationRecord | null>(null);
+
+  // Modal FOB Order States
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<FobPurchaseOrder | null>(null);
+  const [printOrder, setPrintOrder] = useState<FobPurchaseOrder | null>(null);
 
   // Modal Print States
   const [printHppRecord, setPrintHppRecord] = useState<HPPCalculationRecord | null>(null);
@@ -60,6 +76,7 @@ export const FobCostingView: React.FC = () => {
 
   const navItems: { id: FobSubTab; label: string; icon: React.ElementType; count?: number; isAi?: boolean }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'order-brand', label: 'Order Masuk (PO Brand)', icon: ShoppingBag, count: fobOrders.length },
     { id: 'kalkulator', label: 'Kalkulator HPP', icon: Calculator },
     { id: 'database', label: 'Database Arsip HPP', icon: Database, count: hppRecords.length },
     { id: 'penawaran', label: 'Surat Penawaran (SPH)', icon: FileText, count: fobQuotations.length },
@@ -136,6 +153,23 @@ export const FobCostingView: React.FC = () => {
         />
       )}
 
+      {activeSubTab === 'order-brand' && (
+        <FobOrdersTab
+          orders={fobOrders}
+          onOpenCreate={() => {
+            setEditingOrder(null);
+            setIsOrderModalOpen(true);
+          }}
+          onEditOrder={(ord) => {
+            setEditingOrder(ord);
+            setIsOrderModalOpen(true);
+          }}
+          onDeleteOrder={deleteFobOrder}
+          onUpdateStatus={updateFobOrderStatus}
+          onPrintOrder={setPrintOrder}
+        />
+      )}
+
       {activeSubTab === 'kalkulator' && (
         <FobCalculatorTab
           initialRecord={editingHpp}
@@ -183,6 +217,35 @@ export const FobCostingView: React.FC = () => {
         <FobAiAnalysisTab
           records={hppRecords}
           onNavigateTab={setActiveSubTab}
+        />
+      )}
+
+      {/* FOB ORDER MODALS */}
+      {isOrderModalOpen && (
+        <FobOrderModal
+          initialOrder={editingOrder}
+          brands={brands}
+          vendors={vendors}
+          hppRecords={hppRecords}
+          fobQuotations={fobQuotations}
+          onSave={async (data) => {
+            if (editingOrder) {
+              await updateFobOrder(editingOrder.id, data);
+            } else {
+              await saveFobOrder(data);
+            }
+          }}
+          onClose={() => {
+            setIsOrderModalOpen(false);
+            setEditingOrder(null);
+          }}
+        />
+      )}
+
+      {printOrder && (
+        <FobOrderPrintModal
+          order={printOrder}
+          onClose={() => setPrintOrder(null)}
         />
       )}
 

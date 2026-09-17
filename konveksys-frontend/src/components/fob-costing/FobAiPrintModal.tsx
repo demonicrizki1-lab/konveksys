@@ -88,16 +88,23 @@ export const FobAiPrintModal: React.FC<FobAiPrintModalProps> = ({
           {/* Header Kop Surat Formal */}
           <div className="border-b-2 border-slate-900 pb-2.5 mb-3.5">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 pr-2">
-                <h1 className="text-lg font-black tracking-wider text-slate-900 uppercase leading-none">
-                  MAISON RAYYAN MANUFACTURING
-                </h1>
-                <p className="text-[10.5px] font-semibold text-slate-700 tracking-wide mt-1">
-                  Sistem Manufaktur FOB & Garment Costing Intelligence
-                </p>
-                <p className="text-[9.5px] text-slate-500 mt-0.5 leading-tight">
-                  Jl. Industri Makloon No. 88, Bandung • Telp: 0821-2822-4328 • Email: commercial@maisonmrm.co.id
-                </p>
+              <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                <img
+                  src="/logo-maison-rayyan.png"
+                  alt="Maison Rayyan Manufacturing"
+                  className="h-16 sm:h-20 w-auto object-contain shrink-0"
+                />
+                <div className="min-w-0">
+                  <h1 className="text-lg font-black tracking-wider text-slate-900 uppercase leading-none">
+                    MAISON RAYYAN MANUFACTURING
+                  </h1>
+                  <p className="text-[10.5px] font-semibold text-slate-700 tracking-wide mt-1">
+                    Sistem Manufaktur FOB & Garment Costing Intelligence
+                  </p>
+                  <p className="text-[9.5px] text-slate-500 mt-0.5 leading-tight">
+                    Jl. Industri Makloon No. 88, Bandung • Telp: 0821-2822-4328 • Email: commercial@maisonmrm.co.id
+                  </p>
+                </div>
               </div>
               <div className="text-right shrink-0">
                 <div className="inline-block px-3 py-1 border-2 border-slate-900 font-black text-[11px] uppercase tracking-wide rounded bg-slate-50 whitespace-nowrap">
