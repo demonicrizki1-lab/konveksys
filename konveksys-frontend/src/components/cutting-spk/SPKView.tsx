@@ -132,7 +132,11 @@ export const SPKView: React.FC = () => {
       spk.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (spk.depositInfo?.jenisKain && spk.depositInfo.jenisKain.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (spk.depositInfo?.sourceVendor && spk.depositInfo.sourceVendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (spk.items && spk.items.some((it) => it.produk.toLowerCase().includes(searchTerm.toLowerCase())));
+      (spk.items && spk.items.some((it) => it.produk.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+      (spk.rollIds && spk.rollIds.some((rId) => {
+        const r = inboundRolls.find((item) => item.id === rId || item.rollCode === rId);
+        return r?.jenisKain && r.jenisKain.toLowerCase().includes(searchTerm.toLowerCase());
+      }));
     return matchBrand && matchStatus && matchSearch;
   });
 
@@ -465,6 +469,25 @@ export const SPKView: React.FC = () => {
 
             const hasMultipleProducts = spk.items && spk.items.length > 1;
 
+            const fabricSummary = (() => {
+              if (spk.fabricSourceType === 'TITIPAN_VENDOR' && spk.depositInfo?.jenisKain) {
+                return spk.depositInfo.jenisKain;
+              }
+              if (spk.rollIds && spk.rollIds.length > 0) {
+                const kainList = spk.rollIds
+                  .map((id) => {
+                    const r = inboundRolls.find((item) => item.id === id || item.rollCode === id);
+                    return r?.jenisKain;
+                  })
+                  .filter(Boolean) as string[];
+                const uniqueKain = Array.from(new Set(kainList));
+                if (uniqueKain.length > 0) {
+                  return uniqueKain.join(', ');
+                }
+              }
+              return '';
+            })();
+
             return (
               <div
                 key={spk.id}
@@ -492,7 +515,21 @@ export const SPKView: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <h3 className="font-semibold text-slate-800 text-sm mt-1">{spk.produk}</h3>
+                    <div className="mt-1">
+                      <h3 className="font-bold text-slate-900 text-base leading-snug">{spk.produk}</h3>
+                      {fabricSummary ? (
+                        <div className="flex items-center gap-1.5 text-xs text-indigo-700 font-semibold mt-1">
+                          <span className="text-sm">🧵</span>
+                          <span className="bg-indigo-50 text-indigo-800 px-2 py-0.5 rounded-md border border-indigo-200/80 text-[11px] font-bold">
+                            {fabricSummary}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-slate-400 italic mt-0.5">
+                          Kain: Belum terhubung data rol kain
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <span
@@ -556,7 +593,16 @@ export const SPKView: React.FC = () => {
                         {spk.depositInfo ? `${spk.depositInfo.panjang} ${spk.depositInfo.satuan} ${spk.depositInfo.jenisKain}` : 'Sisa Kain Konveksi'}
                       </strong>
                     ) : (
-                      <strong className="text-slate-800">{spk.rollIds?.length || 0} Rol Kain</strong>
+                      <div>
+                        <strong className="text-slate-800 block leading-tight">
+                          {spk.rollIds?.length || 0} Rol Kain
+                        </strong>
+                        {fabricSummary && (
+                          <span className="text-[10px] text-indigo-600 font-semibold block truncate" title={fabricSummary}>
+                            {fabricSummary}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div>
