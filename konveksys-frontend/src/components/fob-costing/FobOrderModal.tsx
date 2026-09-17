@@ -48,7 +48,7 @@ interface FobOrderModalProps {
 
 // Preset ukuran standar
 const ALL_AVAILABLE_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
-const DEFAULT_SELECTED_SIZES = ['M', 'L', 'XL', '2XL', '3XL', '4XL'];
+const DEFAULT_SELECTED_SIZES = ['S', 'M', 'L', 'XL', '2XL'];
 
 // Preset warna cepat
 const QUICK_COLORS = ['HITAM', 'NAVY', 'ARMY', 'ABU', 'PUTIH', 'CREAM', 'MAROON', 'SAGE', 'COKSU', 'BEIGE'];
@@ -218,7 +218,13 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
   // Handle Import HPP (Mengikuti harga size yang sesuai dari kalkulator HPP)
   const handleSelectHpp = (hppId: string) => {
     setSelectedHppId(hppId);
-    if (!hppId) return;
+    if (!hppId) {
+      setRateRegular(0);
+      setRateLarge(0);
+      setRateJumbo(0);
+      setSelectedSizes([]);
+      return;
+    }
     const hpp = hppRecords.find((h) => h.id === hppId);
     if (hpp) {
       if (hpp.namaProduk) setSkuInduk(hpp.namaProduk);
@@ -272,11 +278,12 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
         jumboPrice = hpp.hargaJualRekomendasi;
       }
 
-      // 2. Jika tier ukuran lain belum diinput di kalkulator HPP, hitung proporsional dari HPP yang dipilih
+      // 2. Jika tier ukuran lain belum diinput di kalkulator HPP, hitung harga proporsional/acuan
       if (isSelectedLarge) {
         largePrice = hpp.hargaJualRekomendasi;
+        // Jika HPP acuan hanya ada XL, harga reguler disamakan dengan harga HPP acuan
         if (!regPrice) {
-          regPrice = Math.round((hpp.hargaJualRekomendasi / 1.07) / 1000) * 1000;
+          regPrice = hpp.hargaJualRekomendasi;
         }
         if (!jumboPrice) {
           jumboPrice = Math.round((hpp.hargaJualRekomendasi * 1.12) / 1000) * 1000;
@@ -284,20 +291,20 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
       } else if (isSelectedJumbo) {
         jumboPrice = hpp.hargaJualRekomendasi;
         if (!largePrice) {
-          largePrice = Math.round((hpp.hargaJualRekomendasi / 1.12) / 1000) * 1000;
+          largePrice = hpp.hargaJualRekomendasi;
         }
         if (!regPrice) {
-          regPrice = Math.round((hpp.hargaJualRekomendasi / 1.20) / 1000) * 1000;
+          regPrice = hpp.hargaJualRekomendasi;
         }
       } else {
-        // HPP terpilih adalah Reguler (M/L)
+        // HPP terpilih adalah Reguler (M/L) atau ALL SIZE
         if (hpp.hargaJualRekomendasi) {
           regPrice = regPrice || hpp.hargaJualRekomendasi;
           if (!largePrice) {
-            largePrice = Math.round((regPrice * 1.07) / 1000) * 1000;
+            largePrice = regPrice;
           }
           if (!jumboPrice) {
-            jumboPrice = Math.round((regPrice * 1.20) / 1000) * 1000;
+            jumboPrice = Math.round((regPrice * 1.12) / 1000) * 1000;
           }
         }
       }
@@ -305,6 +312,28 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
       setRateRegular(regPrice);
       setRateLarge(largePrice);
       setRateJumbo(jumboPrice);
+
+      // Otomatis aktifkan pilihan ukuran pada generator matriks (S, M, L, XL, 2XL + ukuran lain jika ada)
+      const foundSizes = Array.from(
+        new Set(
+          sameProductHpps
+            .map((h) => (h.size || '').trim().toUpperCase())
+            .map((s) => {
+              if (s === 'XXL') return '2XL';
+              if (s === 'XXXL') return '3XL';
+              if (s === 'XXXXL') return '4XL';
+              return s;
+            })
+            .filter((s) => ALL_AVAILABLE_SIZES.includes(s))
+        )
+      );
+
+      const defaultStandardSizes = ['S', 'M', 'L', 'XL', '2XL'];
+      const targetSizes = ALL_AVAILABLE_SIZES.filter(
+        (sz) => defaultStandardSizes.includes(sz) || foundSizes.includes(sz)
+      );
+
+      setSelectedSizes(targetSizes);
     }
   };
 
