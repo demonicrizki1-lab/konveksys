@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { MonthlyStatementModal, MarginReportItem } from './MonthlyStatementModal';
 import { formatRp, formatDateIndo } from '../../utils/formatters';
@@ -19,6 +19,7 @@ import {
   Calendar,
   Layers,
   ChevronRight,
+  ChevronLeft,
 } from 'lucide-react';
 
 export const MarginAnalyticsView: React.FC = () => {
@@ -166,6 +167,40 @@ export const MarginAnalyticsView: React.FC = () => {
       return true;
     });
   }, [allMarginItems, selectedMonth, selectedBrand, selectedVendor, statusFilter, searchTerm]);
+
+  // Pagination State (Default 10)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset pagination on filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMonth, selectedBrand, selectedVendor, statusFilter, searchTerm, itemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredItems.length);
+
+  const paginatedItems = useMemo(() => {
+    return filteredItems.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredItems, startIndex, itemsPerPage]);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   // KPI Calculations
   const kpi = useMemo(() => {
@@ -628,14 +663,14 @@ export const MarginAnalyticsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filteredItems.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="p-8 text-center text-slate-400">
                     Tidak ada transaksi pengiriman yang sesuai dengan filter.
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((item) => (
+                paginatedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition">
                     <td className="p-3 font-mono font-bold text-indigo-700 whitespace-nowrap">
                       <div>{item.noSuratJalan}</div>
@@ -703,6 +738,70 @@ export const MarginAnalyticsView: React.FC = () => {
               </tfoot>
             )}
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs">
+          <div className="flex items-center gap-3 text-slate-500 font-medium">
+            <span>
+              Menampilkan <strong className="text-slate-800">{filteredItems.length > 0 ? startIndex + 1 : 0}</strong> - <strong className="text-slate-800">{endIndex}</strong> dari <strong className="text-slate-800">{filteredItems.length}</strong> Transaksi
+            </span>
+            <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+              <span className="text-[11px] text-slate-400">Tampilkan:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-slate-50 border border-slate-200 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-500 cursor-pointer"
+              >
+                <option value={10}>10 per hal</option>
+                <option value={25}>25 per hal</option>
+                <option value={50}>50 per hal</option>
+                <option value={100}>100 per hal</option>
+              </select>
+            </div>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safeCurrentPage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {getPageNumbers().map((p, idx) =>
+                p === '...' ? (
+                  <span key={`dots-${idx}`} className="px-1 text-slate-400 font-medium">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={`page-${p}`}
+                    onClick={() => setCurrentPage(Number(p))}
+                    className={`min-w-[30px] h-7 px-2 text-xs font-bold rounded-lg transition ${
+                      safeCurrentPage === p
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safeCurrentPage === totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                title="Halaman Selanjutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
