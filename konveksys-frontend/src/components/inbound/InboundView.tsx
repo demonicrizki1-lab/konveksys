@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InboundRoll, RollStatus } from '../../types';
 import { formatRupiahInput, parseRupiahInput, formatDateIndo } from '../../utils/formatters';
@@ -16,6 +16,8 @@ import {
   Sparkles,
   Trash2,
   Banknote,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export const InboundView: React.FC = () => {
@@ -68,6 +70,40 @@ export const InboundView: React.FC = () => {
 
     return matchBrand && matchStatus && matchSearch;
   });
+
+  // Pagination State (Default 10 per halaman)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset pagination on filter or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, brandFilter, statusFilter, itemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRolls.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredRolls.length);
+
+  const paginatedRolls = useMemo(() => {
+    return filteredRolls.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredRolls, startIndex, itemsPerPage]);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   // Calculation Stats
   const totalMeters = filteredRolls.reduce((a, b) => a + b.meterLength, 0);
@@ -353,14 +389,14 @@ export const InboundView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {filteredRolls.length === 0 ? (
+              {paginatedRolls.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-slate-400">
                     Tidak ada data rol kain yang sesuai dengan filter.
                   </td>
                 </tr>
               ) : (
-                filteredRolls.map((roll) => (
+                paginatedRolls.map((roll) => (
                   <tr key={roll.id} className="hover:bg-slate-50 transition">
                     <td className="p-3.5 font-semibold text-indigo-600 font-mono">{roll.rollCode}</td>
                     <td className="p-3.5 text-center whitespace-nowrap">
@@ -405,6 +441,70 @@ export const InboundView: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs">
+          <div className="flex items-center gap-3 text-slate-500 font-medium">
+            <span>
+              Menampilkan <strong className="text-slate-800">{filteredRolls.length > 0 ? startIndex + 1 : 0}</strong> - <strong className="text-slate-800">{endIndex}</strong> dari <strong className="text-slate-800">{filteredRolls.length}</strong> Rol
+            </span>
+            <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+              <span className="text-[11px] text-slate-400">Tampilkan:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-slate-50 border border-slate-200 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 cursor-pointer"
+              >
+                <option value={10}>10 per hal</option>
+                <option value={25}>25 per hal</option>
+                <option value={50}>50 per hal</option>
+                <option value={100}>100 per hal</option>
+              </select>
+            </div>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safeCurrentPage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {getPageNumbers().map((p, idx) =>
+                p === '...' ? (
+                  <span key={`dots-${idx}`} className="px-1 text-slate-400 font-medium">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={`page-${p}`}
+                    onClick={() => setCurrentPage(Number(p))}
+                    className={`min-w-[30px] h-7 px-2 text-xs font-bold rounded-lg transition ${
+                      safeCurrentPage === p
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safeCurrentPage === totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                title="Halaman Selanjutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
