@@ -226,6 +226,7 @@ export const FobCostingView: React.FC = () => {
       {isOrderModalOpen && (
         <FobOrderModal
           initialOrder={editingOrder}
+          existingOrders={fobOrders}
           brands={brands}
           vendors={vendors}
           hppRecords={hppRecords}

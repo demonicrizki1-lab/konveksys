@@ -77,4 +77,26 @@ export function getSabtuanPeriod(offsetWeeks = 0, refDate = new Date()) {
     label: `Sabtu, ${formatDateIndo(startDate)} – Sabtu, ${formatDateIndo(endDate)}`,
   };
 }
+/**
+ * Konversi angka rupiah ke kalimat terbilang bahasa Indonesia
+ */
+export function angkaKeTerbilang(nilai: number): string {
+  if (isNaN(nilai) || nilai === 0) return 'Nol Rupiah';
+  const satuan = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
 
+  function pembilang(n: number): string {
+    if (n < 12) return satuan[n];
+    if (n < 20) return pembilang(n - 10) + ' Belas';
+    if (n < 100) return pembilang(Math.floor(n / 10)) + ' Puluh ' + pembilang(n % 10);
+    if (n < 200) return 'Seratus ' + pembilang(n - 100);
+    if (n < 1000) return pembilang(Math.floor(n / 100)) + ' Ratus ' + pembilang(n % 100);
+    if (n < 2000) return 'Seribu ' + pembilang(n - 1000);
+    if (n < 1000000) return pembilang(Math.floor(n / 1000)) + ' Ribu ' + pembilang(n % 1000);
+    if (n < 1000000000) return pembilang(Math.floor(n / 1000000)) + ' Juta ' + pembilang(n % 1000000);
+    if (n < 1000000000000) return pembilang(Math.floor(n / 1000000000)) + ' Miliar ' + pembilang(n % 1000000000);
+    return '';
+  }
+
+  const hasil = pembilang(Math.floor(Math.abs(nilai))).trim().replace(/\s+/g, ' ');
+  return hasil ? `${hasil} Rupiah` : 'Nol Rupiah';
+}
