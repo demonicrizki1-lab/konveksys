@@ -116,7 +116,7 @@ export const FobOrdersTab: React.FC<FobOrdersTabProps> = ({
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* 1. KPI SUMMARY CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Card 1: Total PO */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center justify-between">
           <div>
@@ -151,21 +151,6 @@ export const FobOrdersTab: React.FC<FobOrdersTabProps> = ({
           <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
             <Coins className="w-6 h-6" />
           </div>
-        </div>
-
-        {/* Card 4: Action Card */}
-        <div className="bg-linear-to-br from-indigo-600 to-indigo-800 rounded-2xl p-4 shadow-sm text-white flex flex-col justify-between">
-          <div>
-            <div className="text-indigo-200 text-xs font-semibold uppercase tracking-wider">Integrasi Alur Produksi</div>
-            <div className="text-sm font-bold mt-1 text-white">Deal PO Langsung Siap Cetak</div>
-          </div>
-          <button
-            onClick={onOpenCreate}
-            className="mt-3 w-full py-2 px-3 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Input PO Brand Baru</span>
-          </button>
         </div>
       </div>
 
