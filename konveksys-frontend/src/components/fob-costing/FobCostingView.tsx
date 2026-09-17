@@ -8,13 +8,15 @@ import {
   RefreshCw,
   Sparkles,
   ShoppingBag,
+  Calendar,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { HPPCalculationRecord, FOBQuotation, FobPurchaseOrder } from '../../types';
+import { HPPCalculationRecord, FOBQuotation, FobPurchaseOrder, ProductionTimeline } from '../../types';
 import { FobDashboardTab } from './FobDashboardTab';
 import { FobCalculatorTab } from './FobCalculatorTab';
 import { FobDatabaseTab } from './FobDatabaseTab';
 import { FobQuotationTab } from './FobQuotationTab';
+import { FobTimelineTab } from './FobTimelineTab';
 import { FobMasterDataTab } from './FobMasterDataTab';
 import { FobAiAnalysisTab } from './FobAiAnalysisTab';
 import { FobOrdersTab } from './FobOrdersTab';
@@ -22,9 +24,10 @@ import { FobOrderModal } from './FobOrderModal';
 import { FobOrderPrintModal } from './FobOrderPrintModal';
 import { FobHppPrintModal } from './FobHppPrintModal';
 import { FobQuotationPrintModal } from './FobQuotationPrintModal';
+import { FobTimelinePrintModal } from './FobTimelinePrintModal';
 import { FobRekapPrintModal } from './FobRekapPrintModal';
 
-export type FobSubTab = 'dashboard' | 'order-brand' | 'kalkulator' | 'database' | 'penawaran' | 'master-data' | 'ai-analysis';
+export type FobSubTab = 'dashboard' | 'order-brand' | 'kalkulator' | 'database' | 'penawaran' | 'timeline' | 'master-data' | 'ai-analysis';
 
 export const FobCostingView: React.FC = () => {
   const {
@@ -48,6 +51,10 @@ export const FobCostingView: React.FC = () => {
     deleteFobMaterial,
     saveFobProduct,
     deleteFobProduct,
+    productionTimelines,
+    saveProductionTimeline,
+    updateProductionTimeline,
+    deleteProductionTimeline,
     refreshFobData,
   } = useApp();
 
@@ -62,6 +69,7 @@ export const FobCostingView: React.FC = () => {
   // Modal Print States
   const [printHppRecord, setPrintHppRecord] = useState<HPPCalculationRecord | null>(null);
   const [printQuotation, setPrintQuotation] = useState<FOBQuotation | null>(null);
+  const [printTimeline, setPrintTimeline] = useState<ProductionTimeline | null>(null);
   const [isRekapPrintOpen, setIsRekapPrintOpen] = useState<boolean>(false);
 
   // Auto refresh on mount
@@ -80,6 +88,7 @@ export const FobCostingView: React.FC = () => {
     { id: 'kalkulator', label: 'Kalkulator HPP', icon: Calculator },
     { id: 'database', label: 'Database HPP', icon: Database, count: hppRecords.length },
     { id: 'penawaran', label: 'Surat Penawaran (SPH)', icon: FileText, count: fobQuotations.length },
+    { id: 'timeline', label: 'Timeline Produksi', icon: Calendar, count: productionTimelines.length },
     { id: 'master-data', label: 'Master Data', icon: Layers },
     { id: 'ai-analysis', label: 'Analisis AI', icon: Sparkles, isAi: true },
   ];
@@ -204,6 +213,17 @@ export const FobCostingView: React.FC = () => {
         />
       )}
 
+      {activeSubTab === 'timeline' && (
+        <FobTimelineTab
+          timelines={productionTimelines}
+          orders={fobOrders}
+          onSaveTimeline={saveProductionTimeline}
+          onUpdateTimeline={updateProductionTimeline}
+          onDeleteTimeline={deleteProductionTimeline}
+          onPrintTimeline={setPrintTimeline}
+        />
+      )}
+
       {activeSubTab === 'master-data' && (
         <FobMasterDataTab
           materials={fobMaterials}
@@ -264,6 +284,13 @@ export const FobCostingView: React.FC = () => {
         <FobQuotationPrintModal
           quotation={printQuotation}
           onClose={() => setPrintQuotation(null)}
+        />
+      )}
+
+      {printTimeline && (
+        <FobTimelinePrintModal
+          timeline={printTimeline}
+          onClose={() => setPrintTimeline(null)}
         />
       )}
 

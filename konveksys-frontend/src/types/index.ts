@@ -739,3 +739,52 @@ export interface FobPurchaseOrder {
   updatedAt?: string;
 }
 
+// ----------------------------------------------------
+// PRODUCTION TIMELINE & ACTIONS (T&A SCHEDULE)
+// ----------------------------------------------------
+export type ProductionStageCategory =
+  | 'PRE_PRODUCTION'  // PO, DP, Techpack, Sampel Approval
+  | 'FABRIC_TRIMS'    // Pengadaan Bahan Kain & Aksesoris
+  | 'CUTTING'         // Spreading & Pemotongan Kain
+  | 'DECORATION'      // Sablon, Bordir Komputer, Printing
+  | 'SEWING_CMT'      // Perakitan & Jahit (CMT)
+  | 'FINISHING_QC'    // Pembersihan Benang, Steam, QC, Packing
+  | 'DELIVERY';       // Final Inspection, Pelunasan, Pengiriman Ekspedisi
+
+export type ProductionStageStatus = 'MENUNGGU' | 'SEDANG_PROSES' | 'SELESAI' | 'TERLAMBAT';
+
+export interface ProductionStage {
+  id: string;
+  name: string;
+  category: ProductionStageCategory;
+  description?: string;
+  picVendor?: string;
+  startDate: string;              // YYYY-MM-DD
+  endDate: string;                // YYYY-MM-DD
+  durationDays: number;
+  progressPercent: number;        // 0 - 100
+  status: ProductionStageStatus;
+  notes?: string;
+}
+
+export type TimelineOverallStatus = 'DRAF' | 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'SELESAI';
+
+export interface ProductionTimeline {
+  id: string;
+  orderId?: string | null;
+  poNumber: string;
+  brand: string;
+  vendor: string;
+  productName: string;
+  totalQty: number;
+  startDate: string;              // YYYY-MM-DD
+  targetDeliveryDate: string;     // YYYY-MM-DD
+  totalDays: number;
+  stages: ProductionStage[];
+  overallProgress: number;        // 0 - 100%
+  status: TimelineOverallStatus;
+  notes?: string;
+  presetType?: string;
+  createdAt: string;
+  updatedAt?: string;
+}

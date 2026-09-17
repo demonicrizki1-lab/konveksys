@@ -129,6 +129,7 @@ import {
   FOBMaterialMaster,
   FOBProductMaster,
   FobPurchaseOrder,
+  ProductionTimeline,
 } from '../types';
 import {
   demoUsers,
@@ -146,6 +147,7 @@ import {
   initialFobMaterials,
   initialFobProducts,
   initialFobOrders,
+  initialProductionTimelines,
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
@@ -361,6 +363,10 @@ interface AppContextType {
   updateFobOrder: (id: string, order: Partial<FobPurchaseOrder>) => Promise<{ success: boolean; error?: string }>;
   updateFobOrderStatus: (id: string, status: string) => Promise<{ success: boolean; error?: string }>;
   deleteFobOrder: (id: string) => Promise<{ success: boolean; error?: string }>;
+  productionTimelines: ProductionTimeline[];
+  saveProductionTimeline: (timeline: Partial<ProductionTimeline>) => Promise<{ success: boolean; data?: ProductionTimeline; error?: string }>;
+  updateProductionTimeline: (id: string, timeline: Partial<ProductionTimeline>) => Promise<{ success: boolean; error?: string }>;
+  deleteProductionTimeline: (id: string) => Promise<{ success: boolean; error?: string }>;
   refreshFobData: () => Promise<void>;
 
   // Sidebar & Layout State
@@ -593,6 +599,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cached = getCache<FobPurchaseOrder[]>('fob_orders', []);
     if (cached && cached.length > 0) return cached;
     return initialFobOrders;
+  });
+  const [productionTimelines, setProductionTimelines] = useState<ProductionTimeline[]>(() => {
+    const cached = getCache<ProductionTimeline[]>('production_timelines', []);
+    if (cached && cached.length > 0) return cached;
+    return initialProductionTimelines;
   });
   const [isLoadingFob, setIsLoadingFob] = useState<boolean>(false);
 
@@ -2100,6 +2111,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return { success: true };
     }
+  };
+
+  const saveProductionTimeline = async (timelineData: Partial<ProductionTimeline>): Promise<{ success: boolean; data?: ProductionTimeline; error?: string }> => {
+    const newTimeline: ProductionTimeline = {
+      id: timelineData.id || `tl-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      orderId: timelineData.orderId || null,
+      poNumber: timelineData.poNumber || 'PO-DRAF',
+      brand: timelineData.brand || '',
+      vendor: timelineData.vendor || '',
+      productName: timelineData.productName || '',
+      totalQty: timelineData.totalQty || 0,
+      startDate: timelineData.startDate || new Date().toISOString().substring(0, 10),
+      targetDeliveryDate: timelineData.targetDeliveryDate || new Date(Date.now() + 14 * 86400000).toISOString().substring(0, 10),
+      totalDays: timelineData.totalDays || 14,
+      stages: timelineData.stages || [],
+      overallProgress: timelineData.overallProgress || 0,
+      status: timelineData.status || 'ON_TRACK',
+      notes: timelineData.notes || '',
+      presetType: timelineData.presetType || 'STANDAR_14',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setProductionTimelines(prev => {
+      const updated = [newTimeline, ...prev.filter(t => t.id !== newTimeline.id)];
+      setCache('production_timelines', updated);
+      return updated;
+    });
+    return { success: true, data: newTimeline };
+  };
+
+  const updateProductionTimeline = async (id: string, timelineData: Partial<ProductionTimeline>): Promise<{ success: boolean; error?: string }> => {
+    setProductionTimelines(prev => {
+      const updated = prev.map(t => t.id === id ? { ...t, ...timelineData, updatedAt: new Date().toISOString() } : t);
+      setCache('production_timelines', updated);
+      return updated;
+    });
+    return { success: true };
+  };
+
+  const deleteProductionTimeline = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    setProductionTimelines(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      setCache('production_timelines', updated);
+      return updated;
+    });
+    return { success: true };
   };
 
 
@@ -4039,6 +4096,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateFobOrder,
         updateFobOrderStatus,
         deleteFobOrder,
+        productionTimelines,
+        saveProductionTimeline,
+        updateProductionTimeline,
+        deleteProductionTimeline,
         refreshFobData,
         isApprovalModalOpen,
         setIsApprovalModalOpen,
