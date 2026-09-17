@@ -418,9 +418,16 @@ export const FobQuotationTab: React.FC<FobQuotationTabProps> = ({
               className="w-full py-1.5 px-2.5 rounded-lg border border-indigo-200 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">-- Pilih Ukuran --</option>
-              {['S', 'M', 'L', 'XL', 'XXL', '3XL', 'ALL SIZE'].map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
+              <optgroup label="Seri Huruf (Dewasa & Big Size)">
+                {['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL', 'ALL SIZE'].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Seri Angka (Ukuran 1 - 16)">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16'].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </optgroup>
             </select>
           </div>
 

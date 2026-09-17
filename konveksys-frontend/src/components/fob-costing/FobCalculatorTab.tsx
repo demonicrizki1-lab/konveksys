@@ -33,7 +33,9 @@ interface FobCalculatorTabProps {
   onClearInitial: () => void;
 }
 
-const AVAILABLE_SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL', 'ALL SIZE'];
+export const FOB_LETTER_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL', 'ALL SIZE'];
+export const FOB_NUMBER_SIZES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16'];
+export const AVAILABLE_SIZES = [...FOB_LETTER_SIZES, ...FOB_NUMBER_SIZES];
 const COMPONENT_TYPES: { key: HPPComponentType; label: string }[] = [
   { key: 'BAHAN_BAKU', label: 'Bahan Baku Utama' },
   { key: 'BAHAN_PENDUKUNG', label: 'Bahan Pendukung / Furing' },
@@ -541,33 +543,74 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
         </div>
 
         {/* DEDICATED SIZE SELECTOR WITH HIGHLIGHT */}
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Package className="w-4 h-4 text-indigo-600" />
-              Pilih Ukuran (Size):
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {AVAILABLE_SIZES.map(sz => (
-                <button
-                  key={sz}
-                  type="button"
-                  onClick={() => setSelectedSize(sz)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    selectedSize === sz
-                      ? 'bg-indigo-600 text-white shadow-xs scale-105'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                  }`}
-                >
-                  {sz}
-                </button>
-              ))}
+        <div className="pt-2 border-t border-slate-100 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Package className="w-4 h-4 text-indigo-600" />
+                Pilih Ukuran (Size):
+              </span>
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                Terpilih: {selectedSize}
+              </span>
+            </div>
+
+            <div className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
+              <span>Size Berbeda = Pemakaian Konsumsi Marker Berbeda</span>
             </div>
           </div>
 
-          <div className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full flex items-center gap-1.5">
-            <Info className="w-3.5 h-3.5" />
-            <span>Size Berbeda = Pemakaian Konsumsi Marker Berbeda</span>
+          {/* BARIS 1: SERI HURUF (STANDAR & BIG SIZE HINGGA 8XL) */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-50/70 p-2 rounded-xl border border-slate-200/80">
+            <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider px-2 py-1 bg-white rounded-md border border-slate-200 shrink-0">
+              Seri Huruf:
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {FOB_LETTER_SIZES.map((sz) => {
+                const isSelected = selectedSize === sz || (sz === '2XL' && selectedSize === 'XXL');
+                return (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => setSelectedSize(sz)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white shadow-xs scale-105 ring-2 ring-indigo-300'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {sz}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* BARIS 2: SERI ANGKA (UKURAN 1 - 16) */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-50/70 p-2 rounded-xl border border-slate-200/80">
+            <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider px-2 py-1 bg-white rounded-md border border-slate-200 shrink-0">
+              Seri Angka:
+            </span>
+            <div className="flex flex-wrap items-center gap-1">
+              {FOB_NUMBER_SIZES.map((num) => {
+                const isSelected = selectedSize === num;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setSelectedSize(num)}
+                    className={`min-w-[34px] px-2.5 py-1 text-center rounded-lg text-xs font-bold transition cursor-pointer ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white shadow-xs scale-105 ring-2 ring-indigo-300'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

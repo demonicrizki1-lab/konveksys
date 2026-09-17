@@ -47,7 +47,9 @@ interface FobOrderModalProps {
 }
 
 // Preset ukuran standar
-const ALL_AVAILABLE_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
+export const FOB_LETTER_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL'];
+export const FOB_NUMBER_SIZES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16'];
+const ALL_AVAILABLE_SIZES = [...FOB_LETTER_SIZES, ...FOB_NUMBER_SIZES];
 const DEFAULT_SELECTED_SIZES = ['S', 'M', 'L', 'XL', '2XL'];
 
 // Preset warna cepat
@@ -247,13 +249,13 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
         ['XL', '2XL', 'XXL'].includes((h.size || '').trim().toUpperCase())
       );
       const jumboHpp = sameProductHpps.find((h) =>
-        ['3XL', '4XL', '5XL', 'XXXL', 'JUMBO'].includes((h.size || '').trim().toUpperCase())
+        ['3XL', '4XL', '5XL', '6XL', '7XL', '8XL', 'XXXL', 'JUMBO'].includes((h.size || '').trim().toUpperCase())
       );
 
       const hppSizeUpper = (hpp.size || '').trim().toUpperCase();
       const isSelectedRegular = ['M', 'L', 'S', 'XS', 'ALL SIZE'].includes(hppSizeUpper);
       const isSelectedLarge = ['XL', '2XL', 'XXL'].includes(hppSizeUpper);
-      const isSelectedJumbo = ['3XL', '4XL', '5XL', 'XXXL', 'JUMBO'].includes(hppSizeUpper);
+      const isSelectedJumbo = ['3XL', '4XL', '5XL', '6XL', '7XL', '8XL', 'XXXL', 'JUMBO'].includes(hppSizeUpper);
 
       let regPrice = 0;
       let largePrice = 0;
@@ -398,6 +400,9 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
           upperSize === '3XL' ||
           upperSize === '4XL' ||
           upperSize === '5XL' ||
+          upperSize === '6XL' ||
+          upperSize === '7XL' ||
+          upperSize === '8XL' ||
           upperSize === 'JUMBO'
         ) {
           harga = rateJumbo;
@@ -992,36 +997,89 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                 </div>
 
                 {/* Interactive Size Pills */}
-                <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100/80 border border-slate-200 rounded-lg min-h-[42px]">
-                  {ALL_AVAILABLE_SIZES.map((sz) => {
-                    const isChecked = selectedSizes.includes(sz);
-                    return (
-                      <button
-                        key={sz}
-                        type="button"
-                        onClick={() => handleToggleSize(sz)}
-                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                          isChecked
-                            ? 'bg-slate-800 text-white shadow-2xs'
-                            : 'bg-white text-slate-600 border border-slate-200/70 hover:bg-slate-200/70'
-                        }`}
-                      >
-                        {isChecked && <Check className="w-3 h-3" />}
-                        <span>{sz}</span>
-                      </button>
-                    );
-                  })}
+                <div className="space-y-2 p-2.5 bg-slate-100/80 border border-slate-200 rounded-lg">
+                  {/* Seri Huruf */}
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Seri Huruf (Dewasa & Big Size hingga 8XL):
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {FOB_LETTER_SIZES.map((sz) => {
+                        const isChecked = selectedSizes.includes(sz);
+                        return (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() => handleToggleSize(sz)}
+                            className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                              isChecked
+                                ? 'bg-slate-800 text-white shadow-2xs'
+                                : 'bg-white text-slate-600 border border-slate-200/70 hover:bg-slate-200/70'
+                            }`}
+                          >
+                            {isChecked && <Check className="w-2.5 h-2.5" />}
+                            <span>{sz}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Seri Angka */}
+                  <div className="pt-2 border-t border-slate-200/70">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Seri Angka (Ukuran 1 - 16):
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {FOB_NUMBER_SIZES.map((num) => {
+                        const isChecked = selectedSizes.includes(num);
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => handleToggleSize(num)}
+                            className={`min-w-[28px] px-2 py-1 text-center rounded-md text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
+                              isChecked
+                                ? 'bg-slate-800 text-white shadow-2xs'
+                                : 'bg-white text-slate-600 border border-slate-200/70 hover:bg-slate-200/70'
+                            }`}
+                          >
+                            {isChecked && <Check className="w-2.5 h-2.5" />}
+                            <span>{num}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                <div className="flex flex-wrap items-center justify-between text-[10px] text-slate-400 gap-2 pt-0.5">
                   <span>Klik ukuran untuk mengaktifkan / menonaktifkan</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSizes(ALL_AVAILABLE_SIZES)}
-                    className="text-slate-600 hover:text-slate-900 underline cursor-pointer"
-                  >
-                    Pilih Semua
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSizes(DEFAULT_SELECTED_SIZES)}
+                      className="text-indigo-600 hover:text-indigo-800 font-semibold underline cursor-pointer"
+                    >
+                      Preset Standar (S-2XL)
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSizes(ALL_AVAILABLE_SIZES)}
+                      className="text-slate-600 hover:text-slate-900 underline cursor-pointer"
+                    >
+                      Pilih Semua
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSizes([])}
+                      className="text-rose-600 hover:text-rose-800 underline cursor-pointer"
+                    >
+                      Kosongkan
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
