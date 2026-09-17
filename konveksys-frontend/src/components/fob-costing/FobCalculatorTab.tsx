@@ -517,7 +517,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
             </select>
           </div>
 
-          <div>
+          <div className="sm:col-span-1 md:col-span-2 lg:col-span-3">
             <label className="block text-slate-500 font-semibold mb-1">Brand / Buyer</label>
             <input
               type="text"
@@ -528,7 +528,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
             />
           </div>
 
-          <div>
+          <div className="sm:col-span-1 md:col-span-2 lg:col-span-3">
             <label className="block text-slate-500 font-semibold mb-1">Vendor CMT Acuan</label>
             <input
               type="text"
@@ -536,17 +536,6 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
               onChange={e => setVendorCmt(e.target.value)}
               className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 text-slate-800 font-medium focus:ring-1 focus:ring-indigo-500"
               placeholder="Nama Konveksi"
-            />
-          </div>
-
-          <div>
-            <label className="block text-slate-500 font-semibold mb-1">Estimasi Batch (Pcs)</label>
-            <input
-              type="number"
-              min="1"
-              value={batchQty}
-              onChange={e => setBatchQty(parseInt(e.target.value, 10) || 100)}
-              className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 font-bold text-slate-900 tabular-nums focus:ring-1 focus:ring-indigo-500"
             />
           </div>
         </div>
@@ -598,18 +587,12 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => handleAddComponent('BAHAN_BAKU')}
-              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-base btn-press shrink-0 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Bahan Baku</span>
-            </button>
-            <button
-              onClick={() => handleAddComponent('JASA_CMT')}
-              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Jasa CMT / Bordir</span>
+              <Plus className="w-4 h-4" />
+              <span>Bahan Baku</span>
             </button>
           </div>
         </div>
@@ -889,7 +872,6 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
               </div>
               <div className="text-right">
                 <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-md">{noHpp}</span>
-                <span className="block text-[11px] text-slate-400 mt-1 font-medium">Batch: {batchQty} Pcs</span>
               </div>
             </div>
 
@@ -948,20 +930,6 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                     </span>
                   )}
                 </div>
-              </div>
-            </div>
-
-            {/* BATCH PROJECTION ACCORDION */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs flex justify-between items-center">
-              <div>
-                <span className="text-slate-500 text-[11px] block">Proyeksi Batch ({batchQty} Pcs):</span>
-                <span className="font-medium text-slate-700">
-                  Modal: <strong className="text-slate-900 font-bold tabular-nums">{formatRp(totalBiayaBatch)}</strong> • Omzet: <strong className="text-emerald-700 font-bold tabular-nums">{formatRp(totalOmzetBatch)}</strong>
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-slate-500 text-[11px] block">Potensi Laba Bersih:</span>
-                <span className="font-black text-emerald-700 text-sm tabular-nums">{formatRp(totalLabaBatch)}</span>
               </div>
             </div>
           </div>
