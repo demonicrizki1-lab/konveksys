@@ -74,14 +74,15 @@ const SIZE_DISPLAY_ORDER: { key: keyof SizeBreakdown; label: string }[] = [
 ];
 
 interface ArticleSummary {
+  key: string;
+  sjId: string;
+  noSuratJalan: string;
+  arrivalDate: string;
   produk: string;
   jenisKain: string;
   vendors: string[];
   totalPcs: number;
   sizeBreakdown: SizeBreakdown;
-  shipmentCount: number;
-  lastArrivalDate: string;
-  lastSJNumber: string;
   spkNumbers: string[];
 }
 
@@ -306,21 +307,30 @@ export const BarangMasukView: React.FC = () => {
     });
   }, [suratJalanList, currentBrand, startDate, endDate, searchTerm, filterProduct, getSuratJalanItems]);
 
-  // Aggregated Article Breakdown (Rekap per Artikel & Size)
+  // Aggregated Article Breakdown (Rekap per Surat Jalan, Artikel & Bahan)
   const articleSummaries = useMemo(() => {
     const map = new Map<string, ArticleSummary>();
 
     for (const sj of filteredSJs) {
       const items = getSuratJalanItems(sj);
       for (const it of items) {
-        const key = it.produk.trim().toUpperCase();
-        if (filterProduct !== 'ALL' && key !== filterProduct.trim().toUpperCase()) continue;
+        const prodName = (it.produk || '').trim();
+        if (filterProduct !== 'ALL' && prodName.toUpperCase() !== filterProduct.trim().toUpperCase()) continue;
+
+        const jenisKain = (it.jenisKain || '').trim();
+        const jenisKainKey = jenisKain.toUpperCase();
+        // Separate by Surat Jalan + Product + Fabric
+        const key = `${sj.id}__${prodName.toUpperCase()}__${jenisKainKey}`;
 
         if (!map.has(key)) {
           map.set(key, {
-            produk: it.produk,
-            jenisKain: it.jenisKain || 'Kain Standar',
-            vendors: it.vendor ? [it.vendor] : [],
+            key,
+            sjId: sj.id,
+            noSuratJalan: sj.noSuratJalan || '-',
+            arrivalDate: sj.tanggal,
+            produk: prodName,
+            jenisKain: jenisKain,
+            vendors: it.vendor ? [it.vendor] : (sj.vendor ? [sj.vendor] : []),
             totalPcs: 0,
             sizeBreakdown: {
               s: 0,
@@ -336,33 +346,21 @@ export const BarangMasukView: React.FC = () => {
               anak14: 0,
               anak16: 0,
             },
-            shipmentCount: 0,
-            lastArrivalDate: sj.tanggal,
-            lastSJNumber: sj.noSuratJalan,
             spkNumbers: it.spkNumber ? [it.spkNumber] : [],
           });
         }
 
         const curr = map.get(key)!;
         curr.totalPcs += it.totalPcs;
-        curr.shipmentCount += 1;
-
-        if (it.jenisKain && !curr.jenisKain.includes(it.jenisKain)) {
-          curr.jenisKain = curr.jenisKain ? `${curr.jenisKain}, ${it.jenisKain}` : it.jenisKain;
-        }
 
         if (it.vendor && !curr.vendors.includes(it.vendor)) {
           curr.vendors.push(it.vendor);
+        } else if (!it.vendor && sj.vendor && !curr.vendors.includes(sj.vendor)) {
+          curr.vendors.push(sj.vendor);
         }
 
         if (it.spkNumber && !curr.spkNumbers.includes(it.spkNumber)) {
           curr.spkNumbers.push(it.spkNumber);
-        }
-
-        // Keep most recent arrival date
-        if (new Date(sj.tanggal) > new Date(curr.lastArrivalDate)) {
-          curr.lastArrivalDate = sj.tanggal;
-          curr.lastSJNumber = sj.noSuratJalan;
         }
 
         // Sum size breakdown
@@ -373,7 +371,15 @@ export const BarangMasukView: React.FC = () => {
       }
     }
 
-    return Array.from(map.values()).sort((a, b) => b.totalPcs - a.totalPcs);
+    return Array.from(map.values()).sort((a, b) => {
+      // Sort by arrival date descending, then surat jalan, then product name
+      const dateA = new Date(a.arrivalDate).getTime();
+      const dateB = new Date(b.arrivalDate).getTime();
+      if (dateB !== dateA) return dateB - dateA;
+      const sjCompare = (b.noSuratJalan || '').localeCompare(a.noSuratJalan || '');
+      if (sjCompare !== 0) return sjCompare;
+      return a.produk.localeCompare(b.produk);
+    });
   }, [filteredSJs, filterProduct, getSuratJalanItems]);
 
   // Overall Totals
@@ -749,10 +755,17 @@ export const BarangMasukView: React.FC = () => {
                     </tr>
                   ) : (
                     articleSummaries.map((art, idx) => (
-                      <tr key={art.produk} className="hover:bg-slate-50/70 transition align-top">
+                      <tr key={art.key || `${art.noSuratJalan}-${art.produk}-${idx}`} className="hover:bg-slate-50/70 transition align-top">
                         <td className="p-3 text-center font-bold text-slate-400">{idx + 1}</td>
                         <td className="p-3 space-y-1">
-                          <strong className="font-bold text-slate-900 text-sm block">{art.produk}</strong>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <strong className="font-bold text-slate-900 text-sm">{art.produk}</strong>
+                            {art.noSuratJalan && (
+                              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                {art.noSuratJalan}
+                              </span>
+                            )}
+                          </div>
                           {art.jenisKain && (
                             <div className="text-[11px] text-slate-600 flex items-center gap-1 font-medium">
                               <span>🧵</span>
@@ -783,12 +796,9 @@ export const BarangMasukView: React.FC = () => {
                           </div>
                         </td>
                         <td className="p-3 text-center whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-full text-[10px] border border-indigo-100">
-                            {art.shipmentCount}x Kirim
+                          <span className="font-semibold text-slate-800 text-xs">
+                            {art.arrivalDate ? formatDateIndo(art.arrivalDate) : '-'}
                           </span>
-                          <div className="text-[10px] text-slate-400 mt-1 font-mono">
-                            {art.lastSJNumber} ({formatDateIndo(art.lastArrivalDate)})
-                          </div>
                         </td>
                         <td className="p-3 text-right font-black text-indigo-700 text-sm whitespace-nowrap">
                           {art.totalPcs} Pcs
@@ -1133,10 +1143,15 @@ export const BarangMasukView: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {articleSummaries.map((art, idx) => (
-                          <tr key={idx} className="align-top">
+                          <tr key={art.key || idx} className="align-top">
                             <td className="p-2 text-center font-bold text-slate-400">{idx + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">{art.produk}</td>
-                            <td className="p-2 text-slate-600 text-[11px]">{art.jenisKain}</td>
+                            <td className="p-2">
+                              <div className="font-bold text-slate-900">{art.produk}</div>
+                              {art.noSuratJalan && (
+                                <div className="font-mono text-[10px] text-indigo-700 font-semibold">{art.noSuratJalan}</div>
+                              )}
+                            </td>
+                            <td className="p-2 text-slate-600 text-[11px]">{art.jenisKain || '-'}</td>
                             <td className="p-2 text-[10px] text-slate-600 space-y-0.5">
                               {SIZE_DISPLAY_ORDER.map(({ key, label }) => {
                                 const qty = art.sizeBreakdown[key] || 0;
