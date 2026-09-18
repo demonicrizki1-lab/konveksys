@@ -114,6 +114,13 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                 <span className="badge-dark bg-slate-900 text-white text-[11px] font-bold px-3 py-1 rounded uppercase tracking-wider inline-block">
                   SLIP GAJI PENJAHIT
                 </span>
+                {payroll.packages && payroll.packages.length > 0 && payroll.packages.every((p) => p.isSettled) && (
+                  <div className="mt-1">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] font-black bg-emerald-600 text-white uppercase tracking-wider inline-block shadow-2xs">
+                      ✓ LUNAS (PAID)
+                    </span>
+                  </div>
+                )}
                 <div className="text-[11px] text-slate-600 font-bold mt-1.5">
                   {payroll.periodeLabel || new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </div>
@@ -127,11 +134,24 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                 <strong className="text-slate-900 text-sm font-bold">{payroll.vendor}</strong>
               </div>
               <div className="text-right flex flex-col justify-center">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Tanggal Pembayaran:</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                  {payroll.packages && payroll.packages.length > 0 && payroll.packages.every((p) => p.isSettled)
+                    ? 'Tanggal Lunas Dibayar:'
+                    : 'Tanggal Pembayaran:'}
+                </span>
                 <strong className="text-slate-900 text-xs font-bold">
-                  {payroll.periodeAkhir ? formatDateIndo(payroll.periodeAkhir) : formatDateIndo(new Date().toISOString())}
+                  {payroll.packages?.[0]?.settlementInfo?.tanggalBayar
+                    ? formatDateIndo(payroll.packages[0].settlementInfo.tanggalBayar)
+                    : payroll.periodeAkhir
+                    ? formatDateIndo(payroll.periodeAkhir)
+                    : formatDateIndo(new Date().toISOString())}
                 </strong>
-                <div className="text-[10px] text-slate-500 mt-0.5">Metode: Tunai / Transfer Bank</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">
+                  Metode: {payroll.packages?.[0]?.settlementInfo?.metodePembayaran || 'Tunai / Transfer Bank'}
+                  {payroll.packages?.[0]?.settlementInfo?.nomorReferensi
+                    ? ` (Ref: ${payroll.packages[0].settlementInfo.nomorReferensi})`
+                    : ''}
+                </div>
               </div>
             </div>
 
@@ -160,6 +180,16 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                         </td>
                         <td className="p-2">
                           <div className="font-bold text-slate-800">{item.produk}</div>
+                          {item.poNumber && (
+                            <div className="text-[9.5px] font-mono font-bold text-blue-700 flex items-center gap-1.5">
+                              <span>Ref PO: {item.poNumber}</span>
+                              {item.isSettled && (
+                                <span className="text-[8.5px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1 rounded">
+                                  Lunas
+                                </span>
+                              )}
+                            </div>
+                          )}
                           {item.jenisKain && (
                             <div className="text-[9px] text-slate-500 font-normal">{item.jenisKain}</div>
                           )}

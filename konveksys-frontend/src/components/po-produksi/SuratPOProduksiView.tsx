@@ -58,6 +58,8 @@ export const SuratPOProduksiView: React.FC = () => {
     deleteFabricDeposit,
     brands,
     vendors,
+    setActiveTab,
+    setPendingSpkPrefillFromPO,
   } = useApp();
 
   // Search & Filter State
@@ -758,6 +760,7 @@ export const SuratPOProduksiView: React.FC = () => {
                           {/* Actions */}
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
+
                               <button
                                 onClick={() => setPrintingPO(po)}
                                 title="Cetak / Download PDF"

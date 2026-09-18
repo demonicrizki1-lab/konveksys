@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { SPKCutting, SPKProductItem, SizeBreakdown, VendorFabricDeposit } from '../../types';
+import { SPKCutting, SPKProductItem, SizeBreakdown, VendorFabricDeposit, ProductionPO } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { buildSplitSpkItems } from '../../utils/spkHelper';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
   Scissors,
@@ -24,6 +25,9 @@ import {
   Clock,
   AlertTriangle,
   Truck,
+  Edit2,
+  Sparkles,
+  FileText,
 } from 'lucide-react';
 
 interface ProductFormItem {
@@ -31,6 +35,7 @@ interface ProductFormItem {
   produk: string;
   vendor: string;
   targetCut: SizeBreakdown;
+  deliveredQty?: SizeBreakdown;
 }
 
 const emptySizeBreakdown: SizeBreakdown = {
@@ -48,8 +53,37 @@ const emptySizeBreakdown: SizeBreakdown = {
   anak16: 0,
 };
 
+const parseSizeKey = (ukuranStr?: string | null): keyof SizeBreakdown | null => {
+  if (!ukuranStr) return null;
+  const cleaned = ukuranStr.toLowerCase().trim().replace(/[\s-_]/g, '');
+  if (['s', 'm', 'l', 'xl', 'xxl'].includes(cleaned)) return cleaned as keyof SizeBreakdown;
+  if (cleaned === 'anak4' || cleaned === '4' || cleaned === 'a4') return 'anak4';
+  if (cleaned === 'anak6' || cleaned === '6' || cleaned === 'a6') return 'anak6';
+  if (cleaned === 'anak8' || cleaned === '8' || cleaned === 'a8') return 'anak8';
+  if (cleaned === 'anak10' || cleaned === '10' || cleaned === 'a10') return 'anak10';
+  if (cleaned === 'anak12' || cleaned === '12' || cleaned === 'a12') return 'anak12';
+  if (cleaned === 'anak14' || cleaned === '14' || cleaned === 'a14') return 'anak14';
+  if (cleaned === 'anak16' || cleaned === '16' || cleaned === 'a16') return 'anak16';
+  return null;
+};
+
 export const SPKView: React.FC = () => {
-  const { spkList, createSPK, deleteSPK, inboundRolls, brands, vendors, getSPKRemainingQty, userRole, vendorFabricDeposits } = useApp();
+  const {
+    spkList,
+    createSPK,
+    updateSPK,
+    deleteSPK,
+    inboundRolls,
+    brands,
+    vendors,
+    getSPKRemainingQty,
+    userRole,
+    vendorFabricDeposits,
+    suratJalanList,
+    productionPOs,
+    pendingSpkPrefillFromPO,
+    setPendingSpkPrefillFromPO,
+  } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [brandFilter, setBrandFilter] = useState('ALL');
@@ -68,8 +102,9 @@ export const SPKView: React.FC = () => {
     }));
   };
 
-  // Modal State for New SPK
+  // Modal State for New / Edit SPK
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingSpk, setEditingSpk] = useState<SPKCutting | null>(null);
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     spk?: SPKCutting;
@@ -98,22 +133,29 @@ export const SPKView: React.FC = () => {
     new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
   const [catatan, setCatatan] = useState('');
+  const [sourcePOId, setSourcePOId] = useState<string | null>(null);
+  const [sourcePONumber, setSourcePONumber] = useState<string | null>(null);
+
+
 
   // Detail Modal State
   const [selectedSPKDetail, setSelectedSPKDetail] = useState<SPKCutting | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState(0);
 
-  // Available rolls in warehouse for selected Brand
+  // Available rolls in warehouse for selected Brand (termasuk rol yang sedang dipakai jika mode edit)
   const availableRolls = inboundRolls.filter(
-    (r) => r.brand === selectedBrand && r.status === 'DI_GUDANG'
+    (r) =>
+      r.brand === selectedBrand &&
+      (r.status === 'DI_GUDANG' || (editingSpk && editingSpk.rollIds && editingSpk.rollIds.includes(r.id)))
   );
 
-  // Available fabric deposits (filtered by vendor if selected)
+  // Available fabric deposits (filtered by vendor if selected, termasuk titipan yang sedang dipakai jika mode edit)
   const availableDeposits = vendorFabricDeposits.filter(
     (d) =>
-      d.status === 'TERSEDIA' &&
-      d.panjangSisa > 0 &&
-      (!depositVendorFilter || d.targetVendor === depositVendorFilter)
+      (d.status === 'TERSEDIA' &&
+        d.panjangSisa > 0 &&
+        (!depositVendorFilter || d.targetVendor === depositVendorFilter)) ||
+      (editingSpk && editingSpk.depositId === d.id)
   );
 
   const selectedDeposit = vendorFabricDeposits.find((d) => d.id === selectedDepositId);
@@ -151,6 +193,7 @@ export const SPKView: React.FC = () => {
       spk.spkNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       spk.produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
       spk.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (spk.sourcePONumber && spk.sourcePONumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (spk.depositInfo?.jenisKain && spk.depositInfo.jenisKain.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (spk.depositInfo?.sourceVendor && spk.depositInfo.sourceVendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (spk.items && spk.items.some((it) => it.produk.toLowerCase().includes(searchTerm.toLowerCase()))) ||
@@ -234,6 +277,7 @@ export const SPKView: React.FC = () => {
   };
 
   const handleOpenCreate = () => {
+    setEditingSpk(null);
     const initBrand = brands[0]?.name || 'GREYWOLF';
     const initVendor = vendors[0]?.name || 'SAHIRA';
     setFabricSourceType('ROLL_GUDANG');
@@ -251,8 +295,92 @@ export const SPKView: React.FC = () => {
     ]);
     setActiveProductTab(0);
     setCatatan('');
+    setSourcePOId(null);
+    setSourcePONumber(null);
     setTargetSelesai(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     setIsCreateModalOpen(true);
+  };
+
+  const getSpkItems = (spk: SPKCutting): SPKProductItem[] => {
+    return buildSplitSpkItems(
+      spk.id,
+      spk.spkNumber,
+      spk.produk,
+      spk.vendor,
+      spk.targetCutQty,
+      spk.deliveredQty,
+      spk.items,
+      suratJalanList
+    );
+  };
+
+  const handleOpenEdit = (spk: SPKCutting) => {
+    setEditingSpk(spk);
+    const sourceType = spk.fabricSourceType || (spk.depositId ? 'TITIPAN_VENDOR' : 'ROLL_GUDANG');
+    setFabricSourceType(sourceType);
+    setSelectedDepositId(spk.depositId || null);
+    setDepositVendorFilter(spk.depositInfo?.targetVendor || spk.vendor || (vendors[0]?.name || 'SAHIRA'));
+    setSelectedBrand(spk.brand);
+    setSelectedRollIds(spk.rollIds ? [...spk.rollIds] : []);
+
+    const splitItems = getSpkItems(spk);
+
+    setProductItems(
+      splitItems.map((it, idx) => ({
+        id: it.id || `prod-${Date.now()}-${idx + 1}`,
+        produk: it.produk,
+        vendor: it.vendor || spk.vendor,
+        targetCut: { ...it.targetCutQty },
+        deliveredQty: it.deliveredQty ? { ...it.deliveredQty } : undefined,
+      }))
+    );
+
+    setActiveProductTab(0);
+    setCatatan(spk.catatan || '');
+    setSourcePOId(spk.sourcePOId || null);
+    setSourcePONumber(spk.sourcePONumber || null);
+    setTargetSelesai(spk.targetSelesai ? spk.targetSelesai.split('T')[0] : '');
+    setIsCreateModalOpen(true);
+  };
+
+  const handleSplitCurrentProduct = (index: number) => {
+    const itemToSplit = productItems[index];
+    if (!itemToSplit || !itemToSplit.produk.includes('+')) return;
+
+    const names = itemToSplit.produk.split('+').map((s) => s.trim()).filter(Boolean);
+    if (names.length <= 1) return;
+
+    const otherItemsCount = productItems.length - 1;
+    if (otherItemsCount + names.length > 3) {
+      alert(`Maksimal 3 produk per SPK kain. Saat ini terdapat total ${otherItemsCount + names.length} produk.`);
+      return;
+    }
+
+    const resolved = buildSplitSpkItems(
+      editingSpk?.id || 'temp',
+      editingSpk?.spkNumber || 'SPK-NEW',
+      itemToSplit.produk,
+      itemToSplit.vendor,
+      itemToSplit.targetCut,
+      itemToSplit.deliveredQty,
+      undefined,
+      suratJalanList
+    );
+
+    const newItems: ProductFormItem[] = resolved.map((res, i) => ({
+      id: `prod-${Date.now()}-${i + 1}`,
+      produk: res.produk,
+      vendor: res.vendor || itemToSplit.vendor,
+      targetCut: { ...res.targetCutQty },
+      deliveredQty: res.deliveredQty ? { ...res.deliveredQty } : undefined,
+    }));
+
+    setProductItems((prev) => {
+      const copy = [...prev];
+      copy.splice(index, 1, ...newItems);
+      return copy;
+    });
+    setActiveProductTab(index);
   };
 
   const handleSelectDeposit = (deposit: VendorFabricDeposit) => {
@@ -364,6 +492,24 @@ export const SPKView: React.FC = () => {
         setActiveProductTab(i);
         return;
       }
+
+      // Guardrail kuantiti terkirim jika sedang mode edit
+      if (editingSpk) {
+        const existingItem = editingSpk.items?.find(
+          (ex) => ex.id === item.id || ex.produk.trim().toUpperCase() === item.produk.trim().toUpperCase()
+        );
+        const deliv = item.deliveredQty || existingItem?.deliveredQty || (editingSpk.items && editingSpk.items.length > 1 ? emptySizeBreakdown : (editingSpk.deliveredQty || emptySizeBreakdown));
+        for (const sz of Object.keys(emptySizeBreakdown) as (keyof SizeBreakdown)[]) {
+          const alreadyDelivered = deliv[sz] || 0;
+          if (item.targetCut[sz] < alreadyDelivered) {
+            alert(
+              `Target potong ukuran ${sz.toUpperCase()} untuk produk "${item.produk}" tidak boleh kurang dari kuantiti yang sudah dikirim via Surat Jalan (${alreadyDelivered} Pcs)!`
+            );
+            setActiveProductTab(i);
+            return;
+          }
+        }
+      }
     }
 
     // Bangun kombinasi targetCutQty
@@ -382,13 +528,29 @@ export const SPKView: React.FC = () => {
       new Set(productItems.map((it) => it.vendor))
     ).join(', ');
 
-    const itemsPayload: SPKProductItem[] = productItems.map((it, idx) => ({
-      id: `item-${Date.now()}-${idx + 1}`,
-      produk: it.produk.trim().toUpperCase(),
-      vendor: it.vendor,
-      targetCutQty: { ...it.targetCut },
-      deliveredQty: { ...emptySizeBreakdown },
-    }));
+    const freshSplitItems = editingSpk ? getSpkItems(editingSpk) : [];
+
+    const itemsPayload: SPKProductItem[] = productItems.map((it, idx) => {
+      const freshItem = freshSplitItems.find(
+        (ex) => ex.id === it.id || ex.produk.trim().toUpperCase() === it.produk.trim().toUpperCase()
+      );
+      const existingItem = editingSpk?.items?.find(
+        (ex) => ex.id === it.id || ex.produk.trim().toUpperCase() === it.produk.trim().toUpperCase()
+      );
+      return {
+        id: it.id || existingItem?.id || `item-${Date.now()}-${idx + 1}`,
+        produk: it.produk.trim().toUpperCase(),
+        vendor: it.vendor,
+        targetCutQty: { ...it.targetCut },
+        deliveredQty: freshItem?.deliveredQty
+          ? { ...freshItem.deliveredQty }
+          : existingItem?.deliveredQty
+          ? { ...existingItem.deliveredQty }
+          : it.deliveredQty
+          ? { ...it.deliveredQty }
+          : { ...emptySizeBreakdown },
+      };
+    });
 
     const chosenDep = fabricSourceType === 'TITIPAN_VENDOR' ? selectedDeposit : null;
 
@@ -416,13 +578,27 @@ export const SPKView: React.FC = () => {
             sourcePONumber: chosenDep.sourcePONumber,
           }
         : null,
+      sourcePOId: sourcePOId || (editingSpk?.sourcePOId ?? null),
+      sourcePONumber: sourcePONumber || (editingSpk?.sourcePONumber ?? null),
     };
 
     try {
-      await createSPK(payload);
+      if (editingSpk) {
+        const res = await updateSPK(editingSpk.id, {
+          ...payload,
+          tanggalSPK: editingSpk.tanggalSPK,
+        });
+        if (res && !res.success) {
+          alert(res.message || 'Gagal memperbarui SPK');
+          return;
+        }
+      } else {
+        await createSPK(payload);
+      }
       setIsCreateModalOpen(false);
+      setEditingSpk(null);
     } catch (err: any) {
-      alert(err?.message || 'Gagal membuat SPK');
+      alert(err?.message || (editingSpk ? 'Gagal memperbarui SPK' : 'Gagal membuat SPK'));
     }
   };
 
@@ -712,7 +888,8 @@ export const SPKView: React.FC = () => {
                     ? 'PARTIAL_DELIVERED'
                     : spk.status;
 
-                  const hasMultipleProducts = spk.items && spk.items.length > 1;
+                  const spkItems = getSpkItems(spk);
+                  const hasMultipleProducts = spkItems.length > 1;
 
                   const fabricSummary = (() => {
                     if (spk.fabricSourceType === 'TITIPAN_VENDOR' && spk.depositInfo?.jenisKain) {
@@ -734,7 +911,7 @@ export const SPKView: React.FC = () => {
                   })();
 
                   const activeSubIndex = expandedDetailTabs[spk.id] || 0;
-                  const activeSubProduct = spk.items ? spk.items[activeSubIndex] || spk.items[0] : null;
+                  const activeSubProduct = spkItems[activeSubIndex] || spkItems[0];
 
                   return (
                     <React.Fragment key={spk.id}>
@@ -781,7 +958,12 @@ export const SPKView: React.FC = () => {
                             )}
                             {hasMultipleProducts && (
                               <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 font-bold rounded text-[9.5px] border border-purple-200">
-                                Combo ({spk.items?.length})
+                                Combo ({spkItems.length})
+                              </span>
+                            )}
+                            {spk.sourcePONumber && (
+                              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[9.5px] border border-blue-200">
+                                PO: {spk.sourcePONumber}
                               </span>
                             )}
                           </div>
@@ -876,13 +1058,22 @@ export const SPKView: React.FC = () => {
                               <Eye className="w-3.5 h-3.5" />
                             </button>
                             {userRole === 'ADMIN' && (
-                              <button
-                                onClick={() => handleDeleteSPK(spk)}
-                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition border border-rose-200/80"
-                                title="Hapus SPK ini"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleOpenEdit(spk)}
+                                  className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition border border-amber-200/80"
+                                  title="Edit SPK ini"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSPK(spk)}
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition border border-rose-200/80"
+                                  title="Hapus SPK ini"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -916,12 +1107,12 @@ export const SPKView: React.FC = () => {
                               </div>
 
                               {/* Multi-product sub-tabs if combo */}
-                              {hasMultipleProducts && spk.items && (
+                              {hasMultipleProducts && (
                                 <div className="flex items-center gap-1.5 border-b border-slate-100 pb-2 overflow-x-auto no-scrollbar">
                                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
                                     Pilih Artikel:
                                   </span>
-                                  {spk.items.map((it, idx) => (
+                                  {spkItems.map((it, idx) => (
                                     <button
                                       key={it.id || idx}
                                       onClick={() =>
@@ -1167,6 +1358,17 @@ export const SPKView: React.FC = () => {
                         <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded text-[9.5px]">
                           {spk.brand}
                         </span>
+                        {(() => {
+                          const cardItems = getSpkItems(spk);
+                          if (cardItems.length > 1) {
+                            return (
+                              <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 font-bold rounded text-[9.5px] border border-purple-200">
+                                Combo ({cardItems.length})
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                       <h3 className="font-bold text-slate-900 text-xs sm:text-sm mt-1 leading-snug">{spk.produk}</h3>
                       {fabricSummary && (
@@ -1225,13 +1427,24 @@ export const SPKView: React.FC = () => {
 
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                     {userRole === 'ADMIN' ? (
-                      <button
-                        onClick={() => handleDeleteSPK(spk)}
-                        className="px-2 py-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold rounded-lg text-xs flex items-center gap-1 transition"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        Hapus
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(spk)}
+                          className="px-2 py-1 text-amber-700 hover:text-amber-800 hover:bg-amber-50 font-semibold rounded-lg text-xs flex items-center gap-1 transition"
+                          title="Edit SPK ini"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSPK(spk)}
+                          className="px-2 py-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold rounded-lg text-xs flex items-center gap-1 transition"
+                          title="Hapus SPK ini"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Hapus
+                        </button>
+                      </div>
                     ) : (
                       <div></div>
                     )}
@@ -1284,26 +1497,90 @@ export const SPKView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: Tambah SPK Baru (Multi-Product Combo) */}
+      {/* MODAL: Tambah / Edit SPK (Multi-Product Combo) */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-3xl w-full p-6 max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-100 space-y-5 animate-slideUp">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Terbitkan SPK Cutting Baru</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-base">
+                    {editingSpk ? `Edit SPK Cutting - ${editingSpk.spkNumber}` : 'Terbitkan SPK Cutting Baru'}
+                  </h3>
+                  {editingSpk && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      Mode Edit
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-400">
-                  Smart Pooling Rol Kain & Alokasi Multi-Produk (Maksimal 3 Produk dari 1 Kain)
+                  {editingSpk
+                    ? 'Perbarui Alokasi Rol Kain, Target Deadline, Vendor, dan Rincian Ukuran Potong'
+                    : 'Smart Pooling Rol Kain & Alokasi Multi-Produk (Maksimal 3 Produk dari 1 Kain)'}
                 </p>
               </div>
               <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setEditingSpk(null);
+                }}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* Warning Banner if SPK has delivered items */}
+            {editingSpk && Object.values(editingSpk.deliveredQty || {}).some((v) => v > 0) && (
+              <div className="bg-amber-50 border border-amber-200/90 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-900">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">SPK ini sudah memiliki riwayat pengiriman Surat Jalan.</span>
+                  <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                    Target potong tiap ukuran tidak dapat diubah menjadi lebih kecil dari kuantiti yang sudah terkirim ke buyer (ditandai dengan label pengiriman di kolom ukuran).
+                  </p>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSaveSPK} className="space-y-5 text-xs">
+              {/* Referensi Nomor PO Produksi (Opsional) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex-1">
+                  <label className="block font-bold text-slate-700 text-xs flex items-center gap-1.5 mb-1">
+                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                    Referensi Nomor PO Produksi (Opsional):
+                  </label>
+                  <select
+                    value={sourcePONumber || (editingSpk?.sourcePONumber ?? '')}
+                    onChange={(e) => setSourcePONumber(e.target.value || null)}
+                    className="w-full p-2 bg-white border border-slate-200 rounded-lg font-medium text-slate-800 outline-none text-xs cursor-pointer"
+                  >
+                    <option value="">-- Tanpa Referensi PO (SPK Mandiri) --</option>
+                    {productionPOs.map((po) => (
+                      <option key={po.id} value={po.noPO}>
+                        {po.noPO} • {po.brand} • Vendor: {po.vendorTujuan || 'Semua'} ({po.totalPcs || 0} Pcs)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {(sourcePONumber || editingSpk?.sourcePONumber) && (
+                  <div className="shrink-0 flex items-center gap-2">
+                    <span className="text-[10px] font-bold px-2.5 py-1 bg-indigo-100 text-indigo-800 rounded-md font-mono border border-indigo-200">
+                      Terkoneksi: {sourcePONumber || editingSpk?.sourcePONumber}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSourcePONumber(null)}
+                      className="text-[10px] text-slate-500 hover:text-rose-600 font-semibold cursor-pointer underline"
+                      title="Lepas koneksi PO"
+                    >
+                      Lepas PO
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Pilihan Sumber Bahan Kain */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1.5">
@@ -1639,9 +1916,22 @@ export const SPKView: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-bold text-slate-600 mb-1">
-                        Nama Produk / Artikel #{activeProductTab + 1}:
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-bold text-slate-600">
+                          Nama Produk / Artikel #{activeProductTab + 1}:
+                        </label>
+                        {currentActiveProduct.produk && currentActiveProduct.produk.includes('+') && (
+                          <button
+                            type="button"
+                            onClick={() => handleSplitCurrentProduct(activeProductTab)}
+                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded border border-indigo-200 transition flex items-center gap-1 cursor-pointer"
+                            title="Pisahkan produk gabungan (+) menjadi tab artikel terpisah"
+                          >
+                            <ArrowRightLeft className="w-3 h-3" />
+                            Pisahkan Jadi {currentActiveProduct.produk.split('+').filter(Boolean).length} Produk
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="text"
                         value={currentActiveProduct.produk}
@@ -1688,23 +1978,35 @@ export const SPKView: React.FC = () => {
                         Ukuran Anak - Seri Huruf (S - 2XL):
                       </span>
                       <div className="grid grid-cols-5 gap-2">
-                        {(['s', 'm', 'l', 'xl', 'xxl'] as (keyof SizeBreakdown)[]).map((sz) => (
-                          <div key={sz}>
-                            <label className="text-[10px] font-bold text-slate-500 block text-center uppercase">
-                              {sz}
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={currentActiveProduct.targetCut[sz]}
-                              onFocus={(e) => e.target.select()}
-                              onChange={(e) =>
-                                updateProductSize(activeProductTab, sz, Number(e.target.value))
-                              }
-                              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                            />
-                          </div>
-                        ))}
+                        {(['s', 'm', 'l', 'xl', 'xxl'] as (keyof SizeBreakdown)[]).map((sz) => {
+                          const delivQty = currentActiveProduct.deliveredQty?.[sz] || 0;
+                          return (
+                            <div key={sz}>
+                              <div className="flex items-center justify-between mb-0.5 px-0.5">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase">
+                                  {sz}
+                                </label>
+                                {delivQty > 0 && (
+                                  <span className="text-[8.5px] font-bold text-emerald-600" title={`Sudah terkirim: ${delivQty} Pcs`}>
+                                    ✓{delivQty}
+                                  </span>
+                                )}
+                              </div>
+                              <input
+                                type="number"
+                                min={delivQty > 0 ? delivQty : 0}
+                                value={currentActiveProduct.targetCut[sz]}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) =>
+                                  updateProductSize(activeProductTab, sz, Number(e.target.value))
+                                }
+                                className={`w-full p-2 bg-slate-50 border rounded-xl font-bold text-center focus:border-indigo-400 outline-none ${
+                                  delivQty > 0 ? 'border-emerald-300' : 'border-slate-200'
+                                }`}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -1715,23 +2017,35 @@ export const SPKView: React.FC = () => {
                       </span>
                       <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                         {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
-                          (sz) => (
-                            <div key={sz}>
-                              <label className="text-[10px] font-bold text-slate-500 block text-center">
-                                {sz.replace('anak', 'Anak ')}
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={currentActiveProduct.targetCut[sz]}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) =>
-                                  updateProductSize(activeProductTab, sz, Number(e.target.value))
-                                }
-                                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center focus:border-indigo-400 outline-none"
-                              />
-                            </div>
-                          )
+                          (sz) => {
+                            const delivQty = currentActiveProduct.deliveredQty?.[sz] || 0;
+                            return (
+                              <div key={sz}>
+                                <div className="flex items-center justify-between mb-0.5 px-0.5">
+                                  <label className="text-[10px] font-bold text-slate-500">
+                                    {sz.replace('anak', 'A')}
+                                  </label>
+                                  {delivQty > 0 && (
+                                    <span className="text-[8.5px] font-bold text-emerald-600" title={`Sudah terkirim: ${delivQty} Pcs`}>
+                                      ✓{delivQty}
+                                    </span>
+                                  )}
+                                </div>
+                                <input
+                                  type="number"
+                                  min={delivQty > 0 ? delivQty : 0}
+                                  value={currentActiveProduct.targetCut[sz]}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) =>
+                                    updateProductSize(activeProductTab, sz, Number(e.target.value))
+                                  }
+                                  className={`w-full p-2 bg-slate-50 border rounded-xl font-bold text-center focus:border-indigo-400 outline-none ${
+                                    delivQty > 0 ? 'border-emerald-300' : 'border-slate-200'
+                                  }`}
+                                />
+                              </div>
+                            );
+                          }
                         )}
                       </div>
                     </div>
@@ -1776,16 +2090,23 @@ export const SPKView: React.FC = () => {
               <div className="flex gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
+                  onClick={() => {
+                    setIsCreateModalOpen(false);
+                    setEditingSpk(null);
+                  }}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer"
+                  className={`flex-1 py-2.5 font-bold rounded-xl transition cursor-pointer text-white shadow-xs ${
+                    editingSpk ? 'bg-amber-600 hover:bg-amber-500' : 'bg-indigo-600 hover:bg-indigo-500'
+                  }`}
                 >
-                  Simpan & Terbitkan SPK ({grandTotalPcs} Pcs)
+                  {editingSpk
+                    ? `Simpan Perubahan SPK (${grandTotalPcs} Pcs)`
+                    : `Simpan & Terbitkan SPK (${grandTotalPcs} Pcs)`}
                 </button>
               </div>
             </form>
@@ -1799,7 +2120,14 @@ export const SPKView: React.FC = () => {
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-slideUp max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-bold text-slate-900 text-base">{selectedSPKDetail.spkNumber}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-base">{selectedSPKDetail.spkNumber}</h3>
+                  {selectedSPKDetail.sourcePONumber && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                      PO: {selectedSPKDetail.sourcePONumber}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-slate-500">
                   {selectedSPKDetail.produk} ({selectedSPKDetail.brand})
                 </span>
@@ -1873,33 +2201,34 @@ export const SPKView: React.FC = () => {
               )}
 
               {/* Multi-product tab or table */}
-              {selectedSPKDetail.items && selectedSPKDetail.items.length > 1 ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
-                    {selectedSPKDetail.items.map((item, idx) => (
-                      <button
-                        key={item.id || idx}
-                        onClick={() => setActiveDetailTab(idx)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
-                          activeDetailTab === idx
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {item.produk} ({item.vendor})
-                      </button>
-                    ))}
-                  </div>
+              {(() => {
+                const detailItems = getSpkItems(selectedSPKDetail);
+                if (detailItems && detailItems.length > 1) {
+                  const currentDetailItem =
+                    detailItems[activeDetailTab] || detailItems[0];
+                  const itemRemaining = getSPKRemainingQty(
+                    selectedSPKDetail,
+                    currentDetailItem.id
+                  );
 
-                  {(() => {
-                    const currentDetailItem =
-                      selectedSPKDetail.items[activeDetailTab] || selectedSPKDetail.items[0];
-                    const itemRemaining = getSPKRemainingQty(
-                      selectedSPKDetail,
-                      currentDetailItem.id
-                    );
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+                        {detailItems.map((item, idx) => (
+                          <button
+                            key={item.id || idx}
+                            onClick={() => setActiveDetailTab(idx)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                              activeDetailTab === idx
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {item.produk} ({item.vendor})
+                          </button>
+                        ))}
+                      </div>
 
-                    return (
                       <div className="border border-slate-200 rounded-xl overflow-hidden">
                         <div className="bg-slate-100 px-3 py-2 font-bold text-slate-800 flex justify-between">
                           <span>
@@ -1939,52 +2268,69 @@ export const SPKView: React.FC = () => {
                           </tbody>
                         </table>
                       </div>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-center text-xs">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                      <tr>
-                        <th className="p-2 text-left pl-3">Size</th>
-                        <th className="p-2">Target Potong</th>
-                        <th className="p-2">Terkirim (SJ)</th>
-                        <th className="p-2 text-indigo-600">Sisa di Vendor</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {(['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
-                        (sz) => {
-                          const target = selectedSPKDetail.targetCutQty[sz] || 0;
-                          const deliv = selectedSPKDetail.deliveredQty[sz] || 0;
-                          const rem = Math.max(0, target - deliv);
-                          if (target === 0 && deliv === 0) return null;
+                    </div>
+                  );
+                }
 
-                          return (
-                            <tr key={sz}>
-                              <td className="p-2 text-left pl-3 font-bold uppercase">
-                                {sz.replace('anak', 'Anak ')}
-                              </td>
-                              <td className="p-2 font-semibold text-slate-700">{target} Pcs</td>
-                              <td className="p-2 font-bold text-emerald-600">{deliv} Pcs</td>
-                              <td className="p-2 font-bold text-indigo-600">{rem} Pcs</td>
-                            </tr>
-                          );
-                        }
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                return (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-center text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                        <tr>
+                          <th className="p-2 text-left pl-3">Size</th>
+                          <th className="p-2">Target Potong</th>
+                          <th className="p-2">Terkirim (SJ)</th>
+                          <th className="p-2 text-indigo-600">Sisa di Vendor</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                          (sz) => {
+                            const target = selectedSPKDetail.targetCutQty[sz] || 0;
+                            const deliv = selectedSPKDetail.deliveredQty[sz] || 0;
+                            const rem = Math.max(0, target - deliv);
+                            if (target === 0 && deliv === 0) return null;
+
+                            return (
+                              <tr key={sz}>
+                                <td className="p-2 text-left pl-3 font-bold uppercase">
+                                  {sz.replace('anak', 'Anak ')}
+                                </td>
+                                <td className="p-2 font-semibold text-slate-700">{target} Pcs</td>
+                                <td className="p-2 font-bold text-emerald-600">{deliv} Pcs</td>
+                                <td className="p-2 font-bold text-indigo-600">{rem} Pcs</td>
+                              </tr>
+                            );
+                          }
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
 
-            <button
-              onClick={() => setSelectedSPKDetail(null)}
-              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs hover:bg-slate-800 transition cursor-pointer"
-            >
-              Tutup
-            </button>
+            <div className="flex gap-2">
+              {userRole === 'ADMIN' && (
+                <button
+                  onClick={() => {
+                    const spk = selectedSPKDetail;
+                    setSelectedSPKDetail(null);
+                    handleOpenEdit(spk);
+                  }}
+                  className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Edit SPK Ini
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedSPKDetail(null)}
+                className="flex-1 py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs hover:bg-slate-800 transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}

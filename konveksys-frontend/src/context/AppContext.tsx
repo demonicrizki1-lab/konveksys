@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getCache, setCache, clearAllCache } from '../utils/cacheManager';
+import { buildSplitSpkItems } from '../utils/spkHelper';
 import {
   apiLogin,
   saveToken,
@@ -30,6 +31,7 @@ import {
   apiDeletePembayaran,
   apiGetSpk,
   apiCreateSpk,
+  apiUpdateSpk,
   apiDeleteSpk,
   apiGetSuratJalan,
   apiCreateSuratJalan,
@@ -108,6 +110,8 @@ import {
   KasbonTransaction,
   SizeBreakdown,
   VendorPayrollSummary,
+  VendorPOPayrollPackage,
+  VendorPayrollSettlement,
   BuyerInvoiceSummary,
   PembayaranBrand,
   ArusKasSummary,
@@ -313,6 +317,8 @@ interface AppContextType {
   ) => Promise<{ success: boolean; message: string; data?: ProductionPO }>;
   updateProductionPOStatus: (id: string, status: string) => Promise<{ success: boolean; message: string }>;
   deleteProductionPO: (id: string) => Promise<{ success: boolean; message: string }>;
+  pendingSpkPrefillFromPO: ProductionPO | null;
+  setPendingSpkPrefillFromPO: (po: ProductionPO | null) => void;
 
   // Vendor Fabric Deposits (Saldo Titipan & Transfer Bahan Antar-Vendor)
   vendorFabricDeposits: VendorFabricDeposit[];
@@ -407,6 +413,7 @@ interface AppContextType {
 
   spkList: SPKCutting[];
   createSPK: (spk: Omit<SPKCutting, 'id' | 'spkNumber' | 'deliveredQty' | 'status'>) => Promise<void> | void;
+  updateSPK: (id: string, spkData: Partial<SPKCutting> & { rollIds?: string[]; depositId?: string | null }) => Promise<{ success: boolean; message?: string }>;
   deleteSPK: (id: string) => Promise<{ success: boolean; message?: string }>;
 
   suratJalanList: SuratJalan[];
@@ -496,7 +503,16 @@ interface AppContextType {
     rateAnak16: number;
   };
   getSPKRemainingQty: (spk: SPKCutting, spkItemId?: string) => SizeBreakdown & { totalRemaining: number };
-  calculateVendorPayroll: (vendorName: string, startDate?: string, endDate?: string) => VendorPayrollSummary;
+  vendorSettlements: VendorPayrollSettlement[];
+  settleVendorPO: (settlement: Omit<VendorPayrollSettlement, 'id' | 'createdAt'>) => Promise<void>;
+  unsettleVendorPO: (settlementId: string) => Promise<void>;
+  calculateVendorPayroll: (
+    vendorName: string,
+    startDate?: string,
+    endDate?: string,
+    allowPartialPayment?: boolean,
+    settlementFilter?: 'UNPAID' | 'SETTLED' | 'ALL'
+  ) => VendorPayrollSummary;
   calculateBuyerInvoice: (brandName: string, startDate?: string, endDate?: string) => BuyerInvoiceSummary;
   resetToDefaultData: () => void;
 }
@@ -580,8 +596,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [brandSales, setBrandSales] = useState<BrandSale[]>(() => getCache('brand_sales', []));
   const [brandStockExits, setBrandStockExits] = useState<BrandStockExit[]>(() => getCache('brand_stock_exits', []));
   const [productionPOs, setProductionPOs] = useState<ProductionPO[]>(() => getCache('production_pos', []));
+  const [pendingSpkPrefillFromPO, setPendingSpkPrefillFromPO] = useState<ProductionPO | null>(null);
   const [vendorFabricDeposits, setVendorFabricDeposits] = useState<VendorFabricDeposit[]>(() => getCache('vendor_fabric_deposits', []));
   const [fabricTransferNotes, setFabricTransferNotes] = useState<FabricTransferNote[]>(() => getCache('fabric_transfer_notes', []));
+  const [vendorSettlements, setVendorSettlements] = useState<VendorPayrollSettlement[]>(() => {
+    try {
+      const saved = localStorage.getItem('konvek_vendor_settlements');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const settleVendorPO = async (
+    data: Omit<VendorPayrollSettlement, 'id' | 'createdAt'>
+  ) => {
+    const newSettlement: VendorPayrollSettlement = {
+      ...data,
+      id: `settle-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: new Date().toISOString(),
+    };
+    setVendorSettlements((prev) => {
+      const updated = [
+        newSettlement,
+        ...prev.filter(
+          (s) => !(s.vendor === data.vendor && s.poNumber.trim().toUpperCase() === data.poNumber.trim().toUpperCase())
+        ),
+      ];
+      localStorage.setItem('konvek_vendor_settlements', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const unsettleVendorPO = async (settlementId: string) => {
+    setVendorSettlements((prev) => {
+      const updated = prev.filter((s) => s.id !== settlementId);
+      localStorage.setItem('konvek_vendor_settlements', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // FOB Costing & SPH State
   const [hppRecords, setHppRecords] = useState<HPPCalculationRecord[]>(() => {
@@ -765,6 +818,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const cachedSpks = getCache<SPKCutting[]>('spk_list', []);
         const mapped = results[6].value.data.map((s: any) => {
           const cached = cachedSpks.find((e) => e.id === s.id || e.spkNumber === s.spkNumber);
+          const targetCutQty = {
+            s: s.targetS || 0,
+            m: s.targetM || 0,
+            l: s.targetL || 0,
+            xl: s.targetXL || 0,
+            xxl: s.targetXXL || 0,
+            anak4: s.targetAnak4 || 0,
+            anak6: s.targetAnak6 || 0,
+            anak8: s.targetAnak8 || 0,
+            anak10: s.targetAnak10 || 0,
+            anak12: s.targetAnak12 || 0,
+            anak14: s.targetAnak14 || 0,
+            anak16: s.targetAnak16 || 0,
+          };
+          const deliveredQty = {
+            s: s.deliveredS || 0,
+            m: s.deliveredM || 0,
+            l: s.deliveredL || 0,
+            xl: s.deliveredXL || 0,
+            xxl: s.deliveredXXL || 0,
+            anak4: s.deliveredAnak4 || 0,
+            anak6: s.deliveredAnak6 || 0,
+            anak8: s.deliveredAnak8 || 0,
+            anak10: s.deliveredAnak10 || 0,
+            anak12: s.deliveredAnak12 || 0,
+            anak14: s.deliveredAnak14 || 0,
+            anak16: s.deliveredAnak16 || 0,
+          };
+
+          const rawSJs = results[7].status === 'fulfilled' && Array.isArray(results[7].value.data) ? results[7].value.data : [];
+          const resolvedItems = buildSplitSpkItems(
+            s.id,
+            s.spkNumber,
+            s.produk,
+            s.vendor,
+            targetCutQty,
+            deliveredQty,
+            s.items || cached?.items,
+            rawSJs
+          );
+
           return {
             id: s.id,
             spkNumber: s.spkNumber,
@@ -772,42 +866,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             produk: s.produk,
             vendor: s.vendor,
             rollIds: s.rolsDigunakan ? s.rolsDigunakan.map((r: any) => r.rolId) : (cached?.rollIds || []),
-            targetCutQty: {
-              s: s.targetS || 0,
-              m: s.targetM || 0,
-              l: s.targetL || 0,
-              xl: s.targetXL || 0,
-              xxl: s.targetXXL || 0,
-              anak4: s.targetAnak4 || 0,
-              anak6: s.targetAnak6 || 0,
-              anak8: s.targetAnak8 || 0,
-              anak10: s.targetAnak10 || 0,
-              anak12: s.targetAnak12 || 0,
-              anak14: s.targetAnak14 || 0,
-              anak16: s.targetAnak16 || 0,
-            },
-            deliveredQty: {
-              s: s.deliveredS || 0,
-              m: s.deliveredM || 0,
-              l: s.deliveredL || 0,
-              xl: s.deliveredXL || 0,
-              xxl: s.deliveredXXL || 0,
-              anak4: s.deliveredAnak4 || 0,
-              anak6: s.deliveredAnak6 || 0,
-              anak8: s.deliveredAnak8 || 0,
-              anak10: s.deliveredAnak10 || 0,
-              anak12: s.deliveredAnak12 || 0,
-              anak14: s.deliveredAnak14 || 0,
-              anak16: s.deliveredAnak16 || 0,
-            },
+            targetCutQty,
+            deliveredQty,
             tanggalSPK: s.tanggalSPK,
             targetSelesai: s.targetSelesai || '',
             status: s.status,
             catatan: s.catatan || '',
-            items: s.items || cached?.items,
+            items: resolvedItems,
             fabricSourceType: s.fabricSourceType || cached?.fabricSourceType || (s.rolsDigunakan?.length ? 'ROLL_GUDANG' : undefined),
             depositId: s.depositId || cached?.depositId,
             depositInfo: s.depositInfo || cached?.depositInfo,
+            sourcePONumber: s.sourcePONumber || cached?.sourcePONumber || null,
           };
         });
         setSpkList(mapped);
@@ -2568,6 +2637,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetAnak14: spkData.targetCutQty.anak14 || 0,
         targetAnak16: spkData.targetCutQty.anak16 || 0,
         rollIds: spkData.rollIds || [],
+        sourcePONumber: spkData.sourcePONumber || null,
       });
 
       if (error) {
@@ -2630,6 +2700,153 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
       throw err;
+    }
+  };
+
+  const updateSPK = async (
+    id: string,
+    spkData: Partial<SPKCutting> & { rollIds?: string[]; depositId?: string | null }
+  ): Promise<{ success: boolean; message?: string }> => {
+    const existingSpk = spkList.find((s) => s.id === id);
+    if (!existingSpk) {
+      return { success: false, message: 'SPK tidak ditemukan.' };
+    }
+
+    const previousSpkList = [...spkList];
+    const previousInboundRolls = [...inboundRolls];
+    const previousDeposits = [...vendorFabricDeposits];
+
+    // Compute updated targetCutQty
+    const updatedTargetCutQty: SizeBreakdown = {
+      ...existingSpk.targetCutQty,
+      ...(spkData.targetCutQty || {}),
+    };
+
+    // Calculate total targets and delivered
+    const targetTotal = Object.values(updatedTargetCutQty).reduce((a, b) => a + b, 0);
+    const delivTotal = Object.values(existingSpk.deliveredQty || {}).reduce((a, b) => a + b, 0);
+
+    let newStatus = existingSpk.status;
+    if (delivTotal > 0) {
+      if (delivTotal > targetTotal) {
+        newStatus = 'OVER_DELIVERY';
+      } else if (delivTotal >= targetTotal && targetTotal > 0) {
+        newStatus = 'COMPLETED';
+      } else {
+        newStatus = 'PARTIAL_DELIVERED';
+      }
+    } else if (newStatus !== 'DRAFT') {
+      newStatus = 'IN_PRODUCTION';
+    }
+
+    const newRollIds = spkData.rollIds !== undefined ? spkData.rollIds : (existingSpk.rollIds || []);
+
+    // Build updated SPK object
+    const updatedSPK: SPKCutting = {
+      ...existingSpk,
+      ...spkData,
+      targetCutQty: updatedTargetCutQty,
+      status: newStatus,
+      rollIds: newRollIds,
+    };
+
+    // 1. Sync rolls state
+    if (spkData.rollIds !== undefined) {
+      const oldRollIds = existingSpk.rollIds || [];
+      const toRelease = oldRollIds.filter((rId) => !newRollIds.includes(rId));
+      const toClaim = newRollIds.filter((rId) => !oldRollIds.includes(rId));
+
+      if (toRelease.length > 0 || toClaim.length > 0) {
+        setInboundRolls((prev) => {
+          const updated = prev.map((roll) => {
+            if (toRelease.includes(roll.id)) {
+              return { ...roll, status: 'DI_GUDANG' as RollStatus, meterUsed: 0 };
+            }
+            if (toClaim.includes(roll.id)) {
+              return { ...roll, status: 'DIPROSES' as RollStatus, meterUsed: roll.meterLength };
+            }
+            return roll;
+          });
+          setCache('inbound_rolls', updated);
+          return updated;
+        });
+      }
+    }
+
+    // 2. Sync fabric deposit if switched
+    if (spkData.depositId !== undefined && spkData.depositId !== existingSpk.depositId) {
+      setVendorFabricDeposits((prev) => {
+        const updated = prev.map((dep) => {
+          if (existingSpk.depositId && dep.id === existingSpk.depositId) {
+            return {
+              ...dep,
+              status: 'TERSEDIA' as FabricDepositStatus,
+              allocatedSPKId: undefined,
+              allocatedSPKNumber: undefined,
+            };
+          }
+          if (spkData.depositId && dep.id === spkData.depositId) {
+            return {
+              ...dep,
+              status: 'TERPAKAI' as FabricDepositStatus,
+              allocatedSPKId: id,
+              allocatedSPKNumber: existingSpk.spkNumber,
+            };
+          }
+          return dep;
+        });
+        setCache('vendor_fabric_deposits', updated);
+        return updated;
+      });
+    }
+
+    // 3. Optimistic local update
+    setSpkList((prev) => {
+      const updated = prev.map((s) => (s.id === id ? updatedSPK : s));
+      setCache('spk_list', updated);
+      return updated;
+    });
+
+    // 4. Send PUT to backend
+    try {
+      const { data, error } = await apiUpdateSpk(id, {
+        brand: updatedSPK.brand,
+        produk: updatedSPK.produk,
+        vendor: updatedSPK.vendor,
+        status: updatedSPK.status,
+        tanggalSPK: updatedSPK.tanggalSPK,
+        targetSelesai: updatedSPK.targetSelesai ? new Date(updatedSPK.targetSelesai).toISOString() : null,
+        catatan: updatedSPK.catatan || '',
+        targetS: updatedTargetCutQty.s || 0,
+        targetM: updatedTargetCutQty.m || 0,
+        targetL: updatedTargetCutQty.l || 0,
+        targetXL: updatedTargetCutQty.xl || 0,
+        targetXXL: updatedTargetCutQty.xxl || 0,
+        targetAnak4: updatedTargetCutQty.anak4 || 0,
+        targetAnak6: updatedTargetCutQty.anak6 || 0,
+        targetAnak8: updatedTargetCutQty.anak8 || 0,
+        targetAnak10: updatedTargetCutQty.anak10 || 0,
+        targetAnak12: updatedTargetCutQty.anak12 || 0,
+        targetAnak14: updatedTargetCutQty.anak14 || 0,
+        targetAnak16: updatedTargetCutQty.anak16 || 0,
+        rollIds: newRollIds,
+        sourcePONumber: updatedSPK.sourcePONumber || null,
+      });
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Backend sync update SPK failed, rolling back:', err);
+      setSpkList(previousSpkList);
+      setCache('spk_list', previousSpkList);
+      setInboundRolls(previousInboundRolls);
+      setCache('inbound_rolls', previousInboundRolls);
+      setVendorFabricDeposits(previousDeposits);
+      setCache('vendor_fabric_deposits', previousDeposits);
+      return { success: false, message: err?.message || 'Gagal menyimpan perubahan SPK ke server.' };
     }
   };
 
@@ -3194,9 +3411,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           let updatedItems = spk.items;
           if (updatedItems && updatedItems.length > 0) {
             updatedItems = updatedItems.map(it => {
-              const isTargetItem = item.spkItemId
-                ? it.id === item.spkItemId
-                : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
+              const isTargetItem =
+                (item.spkItemId && it.id === item.spkItemId) ||
+                (it.produk && item.produk && it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase());
 
               if (isTargetItem && it.deliveredQty) {
                 return {
@@ -3257,10 +3474,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }
       }
+      setCache('spk_list', updatedList);
       return updatedList;
     });
 
-    setSuratJalanList(prev => prev.filter(sj => sj.id !== id));
+    setSuratJalanList(prev => {
+      const filtered = prev.filter(sj => sj.id !== id);
+      setCache('surat_jalan', filtered);
+      return filtered;
+    });
     return { success: true, message: `Surat Jalan ${targetSJ.noSuratJalan} berhasil dihapus.` };
   };
 
@@ -3443,7 +3665,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     // 4. Update data Surat Jalan di local state
-    const firstItem = newItems[0] || {};
+    const firstItem: Partial<SuratJalanItem> = newItems[0] || {};
     const distinctBrands = Array.from(new Set(newItems.map(i => i.brand).filter(Boolean)));
     const sjBrand = updatedData.brand || (distinctBrands.length === 1 ? distinctBrands[0] : distinctBrands.join(', ') || targetSJ.brand);
 
@@ -3593,13 +3815,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const getSPKRemainingQty = (spk: SPKCutting, spkItemId?: string): SizeBreakdown & { totalRemaining: number } => {
     let target: SizeBreakdown = spk.targetCutQty;
-    let deliv: SizeBreakdown = spk.deliveredQty;
+    let deliv: SizeBreakdown = { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
 
-    if (spkItemId && spk.items && spk.items.length > 0) {
-      const matchedItem = spk.items.find(it => it.id === spkItemId || it.produk.trim().toUpperCase() === spkItemId.trim().toUpperCase());
-      if (matchedItem) {
-        target = matchedItem.targetCutQty;
-        deliv = matchedItem.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+    const matchedItem = spkItemId && spk.items && spk.items.length > 0
+      ? spk.items.find(it => it.id === spkItemId || it.produk.trim().toUpperCase() === spkItemId.trim().toUpperCase())
+      : undefined;
+
+    if (matchedItem) {
+      target = matchedItem.targetCutQty;
+    }
+
+    // Hitung akumulasi terkirim secara dinamis dari daftar Surat Jalan aktif
+    const matchedSJs = Array.isArray(suratJalanList)
+      ? suratJalanList.filter(
+          sj =>
+            sj.spkId === spk.id ||
+            (sj as any).spkNumber === spk.spkNumber ||
+            getSuratJalanItems(sj).some(it => it.spkId === spk.id || it.spkNumber === spk.spkNumber)
+        )
+      : [];
+
+    if (matchedSJs.length > 0) {
+      const targetProductName = matchedItem ? matchedItem.produk.trim().toUpperCase() : spk.produk.trim().toUpperCase();
+      for (const sj of matchedSJs) {
+        const sjItems = getSuratJalanItems(sj);
+        if (sjItems.length > 0) {
+          for (const item of sjItems) {
+            if (item.spkId === spk.id || item.spkNumber === spk.spkNumber) {
+              const itemProd = (item.produk || '').trim().toUpperCase();
+              if (matchedItem) {
+                if (itemProd === targetProductName || (item.spkItemId && item.spkItemId === matchedItem.id)) {
+                  deliv.s += Number(item.qtyDelivered?.s) || 0;
+                  deliv.m += Number(item.qtyDelivered?.m) || 0;
+                  deliv.l += Number(item.qtyDelivered?.l) || 0;
+                  deliv.xl += Number(item.qtyDelivered?.xl) || 0;
+                  deliv.xxl += Number(item.qtyDelivered?.xxl) || 0;
+                  deliv.anak4 += Number(item.qtyDelivered?.anak4) || 0;
+                  deliv.anak6 += Number(item.qtyDelivered?.anak6) || 0;
+                  deliv.anak8 += Number(item.qtyDelivered?.anak8) || 0;
+                  deliv.anak10 += Number(item.qtyDelivered?.anak10) || 0;
+                  deliv.anak12 += Number(item.qtyDelivered?.anak12) || 0;
+                  deliv.anak14 += Number(item.qtyDelivered?.anak14) || 0;
+                  deliv.anak16 += Number(item.qtyDelivered?.anak16) || 0;
+                }
+              } else {
+                deliv.s += Number(item.qtyDelivered?.s) || 0;
+                deliv.m += Number(item.qtyDelivered?.m) || 0;
+                deliv.l += Number(item.qtyDelivered?.l) || 0;
+                deliv.xl += Number(item.qtyDelivered?.xl) || 0;
+                deliv.xxl += Number(item.qtyDelivered?.xxl) || 0;
+                deliv.anak4 += Number(item.qtyDelivered?.anak4) || 0;
+                deliv.anak6 += Number(item.qtyDelivered?.anak6) || 0;
+                deliv.anak8 += Number(item.qtyDelivered?.anak8) || 0;
+                deliv.anak10 += Number(item.qtyDelivered?.anak10) || 0;
+                deliv.anak12 += Number(item.qtyDelivered?.anak12) || 0;
+                deliv.anak14 += Number(item.qtyDelivered?.anak14) || 0;
+                deliv.anak16 += Number(item.qtyDelivered?.anak16) || 0;
+              }
+            }
+          }
+        }
+      }
+    } else {
+      if (matchedItem && matchedItem.deliveredQty) {
+        deliv = matchedItem.deliveredQty;
+      } else {
+        deliv = spk.deliveredQty || deliv;
       }
     }
 
@@ -3620,12 +3901,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { s, m, l, xl, xxl, anak4, anak6, anak8, anak10, anak12, anak14, anak16, totalRemaining };
   };
 
-  // Payroll Calculation Engine
+  // Payroll Calculation Engine (Support Payment by Completed PO)
   const calculateVendorPayroll = (
     vendorName: string,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    allowPartialPayment: boolean = false
   ): VendorPayrollSummary => {
+    // 1. Akumulasi total kuantiti terkirim per nomor PO secara global (seluruh SJ aktif) untuk vendor ini
+    const poTotalDeliveredMap = new Map<string, number>();
+    for (const sj of suratJalanList) {
+      const sjItems = getSuratJalanItems(sj);
+      for (const it of sjItems) {
+        if (it.vendor === vendorName) {
+          const linkedSPK = spkList.find(s => s.id === it.spkId || s.spkNumber === it.spkId || s.spkNumber === it.spkNumber);
+          const poKey = it.sourcePONumber || linkedSPK?.sourcePONumber || it.spkNumber || it.legacyPoNumber || 'NON-PO';
+          poTotalDeliveredMap.set(poKey, (poTotalDeliveredMap.get(poKey) || 0) + (it.totalPcs || 0));
+        }
+      }
+    }
+
+    // 2. Tentukan target pcs dan info untuk setiap PO
+    const poTargetMap = new Map<string, { targetPcs: number; poId?: string; brand: string; produk: string }>();
+    for (const po of productionPOs) {
+      if (!po.vendorTujuan || po.vendorTujuan === vendorName) {
+        const targetTotal = po.totalPcs || (po.items ? po.items.reduce((s, it) => s + (it.qty || 0), 0) : 0);
+        const prod = po.items && po.items.length > 0 ? Array.from(new Set(po.items.map(i => i.namaProduk))).join(' + ') : 'PRODUK';
+        poTargetMap.set(po.noPO, { targetPcs: targetTotal, poId: po.id, brand: po.brand, produk: prod });
+      }
+    }
+    for (const spk of spkList) {
+      if (spk.vendor === vendorName || (spk.items && spk.items.some(it => it.vendor === vendorName))) {
+        const key = spk.sourcePONumber || spk.spkNumber;
+        if (!poTargetMap.has(key)) {
+          const targetTotal = Object.values(spk.targetCutQty || {}).reduce((a, b) => a + b, 0);
+          poTargetMap.set(key, { targetPcs: targetTotal, brand: spk.brand, produk: spk.produk });
+        }
+      }
+    }
+
     const matchedSJs = suratJalanList.filter(sj => {
       const sjDate = sj.tanggal.split('T')[0];
       if (startDate && sjDate < startDate) return false;
@@ -3638,16 +3952,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let totalPcs = 0;
     let totalGrossPay = 0;
+    let totalPendingPcs = 0;
+    let totalPendingPay = 0;
+
     const items: VendorPayrollSummary['items'] = [];
+    const packagesMap = new Map<string, VendorPOPayrollPackage>();
 
     for (const sj of matchedSJs) {
       const sjItems = getSuratJalanItems(sj);
       for (const it of sjItems) {
         if (it.vendor === vendorName) {
+          const linkedSPK = spkList.find(s => s.id === it.spkId || s.spkNumber === it.spkId || s.spkNumber === it.spkNumber);
+          const poKey = it.sourcePONumber || linkedSPK?.sourcePONumber || it.spkNumber || it.legacyPoNumber || 'NON-PO';
           const rate = getVendorRate(it.vendor, it.produk, it.brand);
           const subtotal = it.totalPcs * rate;
-          totalPcs += it.totalPcs;
-          totalGrossPay += subtotal;
+
+          // Cek kelengkapan PO
+          const targetInfo = poTargetMap.get(poKey);
+          const globalDelivered = poTotalDeliveredMap.get(poKey) || it.totalPcs;
+          const targetPcs = targetInfo ? targetInfo.targetPcs : globalDelivered;
+          const isCompleted = targetPcs > 0 ? globalDelivered >= targetPcs : true;
+
+          // Build Paket PO
+          if (!packagesMap.has(poKey)) {
+            const remainingPcs = Math.max(0, targetPcs - globalDelivered);
+            const percent = targetPcs > 0 ? Math.min(100, Math.round((globalDelivered / targetPcs) * 100)) : 100;
+            const settlement = vendorSettlements.find(
+              (s) => s.vendor === vendorName && s.poNumber.trim().toUpperCase() === poKey.trim().toUpperCase()
+            );
+            const isSettled = !!settlement;
+
+            packagesMap.set(poKey, {
+              poId: targetInfo?.poId,
+              poNumber: poKey,
+              brand: it.brand,
+              produk: targetInfo?.produk || it.produk,
+              targetPcs,
+              deliveredPcs: globalDelivered,
+              remainingPcs,
+              percent,
+              rate,
+              subtotal: 0,
+              totalPay: 0,
+              isComplete: isCompleted,
+              isSettled,
+              settlementInfo: settlement,
+              status: isCompleted ? 'COMPLETED' : 'PENDING_DELIVERY',
+              suratJalanList: [],
+            });
+          }
+
+          const pkg = packagesMap.get(poKey)!;
+          pkg.subtotal += subtotal;
+          pkg.totalPay += subtotal;
+          pkg.suratJalanList.push({
+            noSuratJalan: sj.noSuratJalan,
+            tanggal: sj.tanggal,
+            pcs: it.totalPcs,
+          });
+
+          const itemIsSettled = !!pkg.isSettled;
 
           items.push({
             suratJalanNo: sj.noSuratJalan,
@@ -3658,7 +4022,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             pcs: it.totalPcs,
             rate,
             subtotal,
+            poNumber: poKey,
+            isCompletedPO: isCompleted,
+            isSettled: itemIsSettled,
           });
+
+          // Akumulasi payroll aktif (hanya mengakumulasi yang BELUM lunas / unpaid)
+          if (!itemIsSettled) {
+            if (isCompleted || allowPartialPayment) {
+              totalPcs += it.totalPcs;
+              totalGrossPay += subtotal;
+            } else {
+              totalPendingPcs += it.totalPcs;
+              totalPendingPay += subtotal;
+            }
+          }
         }
       }
     }
@@ -3676,9 +4054,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       totalGrossPay,
       kasbonDeduction: kasbon,
       netPay,
+      totalPendingPcs,
+      totalPendingPay,
       periodeAwal: startDate,
       periodeAkhir: endDate,
       periodeLabel,
+      packages: Array.from(packagesMap.values()),
       items,
     };
   };
@@ -4315,6 +4696,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProductionPO,
         updateProductionPOStatus,
         deleteProductionPO,
+        pendingSpkPrefillFromPO,
+        setPendingSpkPrefillFromPO,
         vendorFabricDeposits,
         fabricTransferNotes,
         createFabricTransfer,
@@ -4376,6 +4759,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteInboundRoll,
         spkList,
         createSPK,
+        updateSPK,
         deleteSPK,
         suratJalanList,
         createSuratJalan,
@@ -4405,6 +4789,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getVendorRate,
         getBuyerRates,
         getSPKRemainingQty,
+        vendorSettlements,
+        settleVendorPO,
+        unsettleVendorPO,
         calculateVendorPayroll,
         calculateBuyerInvoice,
         resetToDefaultData,

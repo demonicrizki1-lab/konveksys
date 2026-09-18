@@ -200,9 +200,17 @@ export const OutboundView: React.FC = () => {
     (it) => it.id === selectedSpkItemId || it.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase()
   )?.targetCutQty || currentSPK?.targetCutQty || null;
 
-  const currentDelivered = currentSPK?.items?.find(
-    (it) => it.id === selectedSpkItemId || it.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase()
-  )?.deliveredQty || currentSPK?.deliveredQty || null;
+  const currentDelivered: SizeBreakdown | null = currentTargetCut && currentRemaining
+    ? (['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).reduce<SizeBreakdown>(
+        (acc, sz) => {
+          acc[sz] = Math.max(0, (currentTargetCut[sz] || 0) - (currentRemaining[sz] || 0));
+          return acc;
+        },
+        emptySizeBreakdown()
+      )
+    : currentSPK?.items?.find(
+        (it) => it.id === selectedSpkItemId || it.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase()
+      )?.deliveredQty || currentSPK?.deliveredQty || null;
 
   const currentSendingPcs = calculateTotalPcs(qtySend);
 
@@ -393,6 +401,8 @@ export const OutboundView: React.FC = () => {
       jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
       qtyDelivered: { ...qtySend },
       totalPcs: currentSendingPcs,
+      sourcePOId: currentSPK.sourcePOId || undefined,
+      sourcePONumber: currentSPK.sourcePONumber || undefined,
     };
 
     if (editingDraftIndex !== null) {
@@ -524,6 +534,8 @@ export const OutboundView: React.FC = () => {
           jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
           qtyDelivered: { ...qtySend },
           totalPcs: currentSendingPcs,
+          sourcePOId: currentSPK.sourcePOId || undefined,
+          sourcePONumber: currentSPK.sourcePONumber || undefined,
         });
       }
     }
@@ -741,6 +753,12 @@ export const OutboundView: React.FC = () => {
                               <span className="font-bold text-slate-900">{it.produk}</span>
                               <span className="font-bold text-indigo-600 shrink-0">{it.totalPcs} Pcs</span>
                             </div>
+                            {it.sourcePONumber && (
+                              <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1">
+                                <span>📋</span>
+                                <span>PO: {it.sourcePONumber}</span>
+                              </div>
+                            )}
                             {it.jenisKain && (
                               <div className="text-[10px] text-slate-500 flex items-center gap-1 font-medium">
                                 <span>🧵</span>
@@ -1274,7 +1292,8 @@ export const OutboundView: React.FC = () => {
                               : '';
                           return (
                             <option key={spk.id} value={spk.id}>
-                              {spk.spkNumber} - {spk.produk}
+                              {spk.spkNumber}
+                              {spk.sourcePONumber ? ` [PO: ${spk.sourcePONumber}]` : ''} - {spk.produk}
                               {fabricLabel}
                               {multiLabel}
                             </option>
@@ -1368,7 +1387,7 @@ export const OutboundView: React.FC = () => {
                           <span className="text-slate-400 block text-[10px] font-medium">Sudah Terkirim</span>
                           <span className="text-indigo-600 font-bold">
                             {currentDelivered
-                              ? Object.values(currentDelivered).reduce((a, b) => a + b, 0)
+                              ? Object.values(currentDelivered).reduce((a: number, b: any) => a + (Number(b) || 0), 0)
                               : 0}{' '}
                             Pcs
                           </span>
@@ -1730,6 +1749,11 @@ export const OutboundView: React.FC = () => {
                                 {!item.isManual && item.spkNumber && (
                                   <span className="text-[9px] text-slate-400 font-mono">
                                     [{item.spkNumber}]
+                                  </span>
+                                )}
+                                {item.sourcePONumber && (
+                                  <span className="px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded text-[9px] font-bold uppercase border border-blue-200 font-mono">
+                                    PO: {item.sourcePONumber}
                                   </span>
                                 )}
                               </div>

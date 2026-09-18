@@ -15,7 +15,12 @@ import {
   UserCheck,
   CheckCircle,
   Calendar,
-  Filter,
+  Package,
+  CheckCircle2,
+  RotateCcw,
+  CheckSquare,
+  Square,
+  Clock,
   X,
 } from 'lucide-react';
 
@@ -29,6 +34,9 @@ export const FinanceView: React.FC = () => {
     calculateBuyerInvoice,
     userRole,
     activeBrand,
+    vendorSettlements,
+    settleVendorPO,
+    unsettleVendorPO,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'payroll' | 'invoice' | 'kasbon'>(
@@ -95,8 +103,106 @@ export const FinanceView: React.FC = () => {
 
   const formatRp = (amount: number) => 'Rp ' + amount.toLocaleString('id-ID');
 
+  const [allowPartialPayment, setAllowPartialPayment] = useState(false);
+  const [poSettlementFilter, setPoSettlementFilter] = useState<'UNPAID' | 'SETTLED' | 'ALL'>('UNPAID');
+  const [selectedPOKeys, setSelectedPOKeys] = useState<string[]>([]);
+
+  // Modal Pelunasan PO
+  const [settleModal, setSettleModal] = useState<{
+    isOpen: boolean;
+    pkg?: any;
+  }>({ isOpen: false });
+
+  const [settleForm, setSettleForm] = useState({
+    tanggalBayar: new Date().toISOString().split('T')[0],
+    metodePembayaran: 'TRANSFER' as 'TRANSFER' | 'TUNAI' | 'LAINNYA',
+    nomorReferensi: '',
+    catatan: '',
+  });
+
   // Live Payroll Data for selected vendor with active period
-  const currentPayroll = calculateVendorPayroll(selectedVendorName, activeStartDate, activeEndDate);
+  const currentPayroll = calculateVendorPayroll(
+    selectedVendorName,
+    activeStartDate,
+    activeEndDate,
+    allowPartialPayment,
+    poSettlementFilter
+  );
+
+  const displayedPackages = (currentPayroll.packages || []).filter((pkg) => {
+    if (poSettlementFilter === 'UNPAID') return !pkg.isSettled;
+    if (poSettlementFilter === 'SETTLED') return pkg.isSettled;
+    return true;
+  });
+
+  const displayedTableItems = currentPayroll.items.filter((it) => {
+    if (poSettlementFilter === 'UNPAID') return !it.isSettled;
+    if (poSettlementFilter === 'SETTLED') return it.isSettled;
+    return true;
+  });
+
+  // Data subset untuk cetak Slip Gaji (berdasarkan PO yang dicentang atau seluruh PO yang tampil)
+  const selectedPayrollToPrint = (() => {
+    const targetPackages = displayedPackages.filter((pkg) => {
+      if (selectedPOKeys.length > 0) {
+        return selectedPOKeys.includes(pkg.poNumber);
+      }
+      return true;
+    });
+
+    const targetPONumbers = new Set(targetPackages.map((p) => p.poNumber));
+    const targetItems = currentPayroll.items.filter((it) => {
+      if (selectedPOKeys.length > 0) {
+        return it.poNumber && targetPONumbers.has(it.poNumber);
+      }
+      return it.poNumber ? targetPONumbers.has(it.poNumber) : true;
+    });
+
+    const totalPcs = targetItems.reduce((s, it) => s + it.pcs, 0);
+    const totalGrossPay = targetItems.reduce((s, it) => s + it.subtotal, 0);
+    const kasbonDeduction = currentPayroll.kasbonDeduction;
+    const netPay = Math.max(0, totalGrossPay - kasbonDeduction);
+
+    return {
+      vendor: currentPayroll.vendor,
+      totalPcs,
+      totalGrossPay,
+      kasbonDeduction,
+      netPay,
+      periodeAwal: currentPayroll.periodeAwal,
+      periodeAkhir: currentPayroll.periodeAkhir,
+      periodeLabel: currentPayroll.periodeLabel,
+      packages: targetPackages,
+      items: targetItems,
+    };
+  })();
+
+  const handleConfirmSettle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!settleModal.pkg) return;
+
+    const sjNos = (settleModal.pkg.suratJalanList || []).map((s: any) => s.noSuratJalan);
+    await settleVendorPO({
+      vendor: selectedVendorName,
+      poNumber: settleModal.pkg.poNumber,
+      tanggalBayar: settleForm.tanggalBayar,
+      totalPcs: settleModal.pkg.deliveredPcs,
+      totalAmount: settleModal.pkg.totalPay,
+      metodePembayaran: settleForm.metodePembayaran,
+      nomorReferensi: settleForm.nomorReferensi.trim() || undefined,
+      catatan: settleForm.catatan.trim() || undefined,
+      suratJalanNos: sjNos,
+    });
+
+    setSettleModal({ isOpen: false });
+    setSelectedPOKeys((prev) => prev.filter((k) => k !== settleModal.pkg?.poNumber));
+  };
+
+  const handleUnsettle = async (settlementId: string, poNumber: string) => {
+    if (window.confirm(`Batalkan status lunas untuk PO ${poNumber}? PO ini akan kembali menjadi tagihan berjalan (Outstanding).`)) {
+      await unsettleVendorPO(settlementId);
+    }
+  };
 
   // Live Invoice Data for selected brand with active period
   const currentInvoice = calculateBuyerInvoice(
@@ -291,14 +397,38 @@ export const FinanceView: React.FC = () => {
               })}
             </div>
 
+            {/* Emergency Override Toggle */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-xs">
+              <label className="flex items-center justify-between font-bold text-slate-800 cursor-pointer">
+                <span className="text-[11px]">Override: Bayar Sebagian (Partial)</span>
+                <input
+                  type="checkbox"
+                  checked={allowPartialPayment}
+                  onChange={(e) => setAllowPartialPayment(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded cursor-pointer accent-indigo-600"
+                />
+              </label>
+              <p className="text-[10.5px] text-slate-500 leading-tight">
+                {allowPartialPayment
+                  ? 'Mode darurat aktif: Seluruh kiriman surat jalan akan dihitung meskipun PO belum 100% tuntas.'
+                  : 'Aturan standar aktif: Gaji hanya dicairkan untuk paket PO yang sudah 100% tuntas terkirim.'}
+              </p>
+            </div>
+
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
               <span className="font-bold text-slate-700 block border-b border-slate-200 pb-1">
                 Kalkulasi Bersih Siap Bayar:
               </span>
               <div className="flex justify-between text-slate-600">
-                <span>Gaji Kotor (Pcs x Tarif):</span>
-                <span className="font-bold">{formatRp(currentPayroll.totalGrossPay)}</span>
+                <span>Gaji Siap Cair (PO Tuntas):</span>
+                <span className="font-bold text-emerald-700">{formatRp(currentPayroll.totalGrossPay)}</span>
               </div>
+              {(currentPayroll.totalPendingPay ?? 0) > 0 && (
+                <div className="flex justify-between text-amber-800 bg-amber-50 px-2 py-1.5 rounded-lg border border-amber-200/80">
+                  <span>Gaji Ditahan (PO Belum Tuntas):</span>
+                  <span className="font-bold">{formatRp(currentPayroll.totalPendingPay || 0)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-rose-600">
                 <span>Potongan Kasbon:</span>
                 <span className="font-bold">- {formatRp(currentPayroll.kasbonDeduction)}</span>
@@ -311,7 +441,7 @@ export const FinanceView: React.FC = () => {
 
             <button
               onClick={() => setIsSlipModalOpen(true)}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               Preview & Cetak Slip Gaji
@@ -319,7 +449,7 @@ export const FinanceView: React.FC = () => {
           </div>
 
           {/* Right Table: Surat Jalan Items for Selected Vendor */}
-          <div className="lg:col-span-8 bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <div className="lg:col-span-8 bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">
@@ -327,10 +457,254 @@ export const FinanceView: React.FC = () => {
                 </h3>
                 <span className="text-xs text-slate-400">Total {currentPayroll.items.length} transaksi kirim</span>
               </div>
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                Total {currentPayroll.totalPcs} Pcs
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                  Total {currentPayroll.totalPcs} Pcs
+                </span>
+              </div>
             </div>
+
+            {/* PO Packages Status & Settlement Header */}
+            {currentPayroll.packages && currentPayroll.packages.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-indigo-600" />
+                    Status Pemenuhan PO Produksi & Kelayakan Cair (Vendor Payroll)
+                  </h4>
+
+                  {/* Filter Status Pelunasan */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setPoSettlementFilter('UNPAID')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                        poSettlementFilter === 'UNPAID'
+                          ? 'bg-white text-indigo-700 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Belum Lunas ({currentPayroll.packages.filter((p) => !p.isSettled).length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPoSettlementFilter('SETTLED')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        poSettlementFilter === 'SETTLED'
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <span>Riwayat Lunas</span>
+                      {currentPayroll.packages.filter((p) => p.isSettled).length > 0 && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-bold ${
+                            poSettlementFilter === 'SETTLED'
+                              ? 'bg-white text-emerald-800'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {currentPayroll.packages.filter((p) => p.isSettled).length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPoSettlementFilter('ALL')}
+                      className={`px-2.5 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                        poSettlementFilter === 'ALL'
+                          ? 'bg-white text-indigo-700 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Semua
+                    </button>
+                  </div>
+                </div>
+
+                {/* Seleksi Checkbox PO untuk Cetak Slip Gaji */}
+                {displayedPackages.length > 0 && (
+                  <div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80 text-xs">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedPOKeys.length === displayedPackages.length) {
+                            setSelectedPOKeys([]);
+                          } else {
+                            setSelectedPOKeys(displayedPackages.map((p) => p.poNumber));
+                          }
+                        }}
+                        className="font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 cursor-pointer text-xs"
+                      >
+                        {selectedPOKeys.length > 0 && selectedPOKeys.length === displayedPackages.length ? (
+                          <CheckSquare className="w-4 h-4 text-indigo-600" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-400" />
+                        )}
+                        <span>
+                          {selectedPOKeys.length > 0 && selectedPOKeys.length === displayedPackages.length
+                            ? 'Batalkan Semua Pilihan'
+                            : 'Pilih Semua PO untuk Dicetak'}
+                        </span>
+                      </button>
+                      {selectedPOKeys.length > 0 && (
+                        <span className="text-[11px] font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-md">
+                          {selectedPOKeys.length} PO Terpilih
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-slate-500">
+                      Menampilkan {displayedPackages.length} paket PO
+                    </span>
+                  </div>
+                )}
+
+                {displayedPackages.length === 0 ? (
+                  <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 text-center text-slate-500 text-xs">
+                    {poSettlementFilter === 'UNPAID'
+                      ? 'Tidak ada PO belum lunas untuk vendor ini pada periode ini.'
+                      : poSettlementFilter === 'SETTLED'
+                      ? 'Belum ada riwayat PO yang dilunaskan untuk vendor ini.'
+                      : 'Belum ada data PO untuk vendor ini.'}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {displayedPackages.map((pkg, pIdx) => {
+                      const isSelected = selectedPOKeys.includes(pkg.poNumber);
+                      return (
+                        <div
+                          key={pIdx}
+                          className={`p-3.5 rounded-xl border transition space-y-2.5 ${
+                            pkg.isSettled
+                              ? 'bg-emerald-50/50 border-emerald-300 shadow-2xs'
+                              : pkg.isComplete
+                              ? isSelected
+                                ? 'bg-indigo-50/60 border-indigo-400 shadow-xs ring-1 ring-indigo-400'
+                                : 'bg-emerald-50/70 border-emerald-200 shadow-2xs'
+                              : 'bg-amber-50/70 border-amber-200 shadow-2xs'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2">
+                              {!pkg.isSettled && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedPOKeys((prev) => [...prev, pkg.poNumber]);
+                                    } else {
+                                      setSelectedPOKeys((prev) => prev.filter((k) => k !== pkg.poNumber));
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded text-indigo-600 accent-indigo-600 cursor-pointer mt-0.5"
+                                  title="Centang untuk menyertakan PO ini pada Slip Gaji"
+                                />
+                              )}
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-mono font-bold text-xs text-slate-900">{pkg.poNumber}</span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 bg-white rounded border border-slate-200 text-slate-700 uppercase">
+                                    {pkg.brand}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-700 font-bold mt-0.5">{pkg.produk}</div>
+                              </div>
+                            </div>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                                pkg.isSettled
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : pkg.isComplete
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : 'bg-amber-100 text-amber-800 border border-amber-300'
+                              }`}
+                            >
+                              {pkg.isSettled ? '✓ LUNAS (PAID)' : pkg.isComplete ? '✓ SIAP CAIR (100%)' : '⏳ MENUNGGU PELUNASAN'}
+                            </span>
+                          </div>
+
+                          <div className="text-[11px] space-y-1.5">
+                            <div className="flex justify-between text-slate-600">
+                              <span>Progres Kirim:</span>
+                              <strong className="text-slate-800">
+                                {pkg.deliveredPcs} / {pkg.targetPcs} Pcs ({pkg.percent}%)
+                              </strong>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  pkg.isSettled ? 'bg-emerald-600' : pkg.isComplete ? 'bg-emerald-500' : 'bg-amber-500'
+                                }`}
+                                style={{ width: `${Math.min(100, pkg.percent)}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between pt-1 border-t border-slate-200/70 text-xs">
+                              <span className="text-slate-500">Nilai Gaji:</span>
+                              <strong className={pkg.isSettled ? 'text-emerald-800 font-bold' : pkg.isComplete ? 'text-emerald-700 font-bold' : 'text-amber-800 font-bold'}>
+                                {formatRp(pkg.totalPay)}
+                              </strong>
+                            </div>
+                            {!pkg.isComplete && !allowPartialPayment && !pkg.isSettled && (
+                              <div className="text-[10px] text-amber-700 mt-1 leading-tight">
+                                *Kurang {pkg.remainingPcs} pcs untuk membuka pencairan gaji PO ini.
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action Bar per Kartu PO */}
+                          {pkg.isSettled ? (
+                            <div className="pt-2 border-t border-emerald-200/80 flex items-center justify-between text-xs">
+                              <div>
+                                <span className="text-[10px] text-emerald-900 font-bold block">
+                                  Lunas: {formatDateIndo(pkg.settlementInfo?.tanggalBayar)} ({pkg.settlementInfo?.metodePembayaran})
+                                </span>
+                                {pkg.settlementInfo?.nomorReferensi && (
+                                  <span className="text-[9.5px] text-slate-600 font-mono block">
+                                    Ref: {pkg.settlementInfo.nomorReferensi}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleUnsettle(pkg.settlementInfo!.id, pkg.poNumber)}
+                                className="text-[10px] text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 bg-white border border-rose-200 px-2 py-1 rounded-md transition hover:bg-rose-50 cursor-pointer shadow-2xs"
+                                title="Batalkan status lunas (kembalikan ke tagihan berjalan)"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Batal Lunas
+                              </button>
+                            </div>
+                          ) : (
+                            (pkg.isComplete || allowPartialPayment) && (
+                              <div className="pt-2 border-t border-slate-200/70 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSettleForm({
+                                      tanggalBayar: new Date().toISOString().split('T')[0],
+                                      metodePembayaran: 'TRANSFER',
+                                      nomorReferensi: '',
+                                      catatan: '',
+                                    });
+                                    setSettleModal({ isOpen: true, pkg });
+                                  }}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Tandai Sudah Dibayar
+                                </button>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs text-slate-700">
@@ -338,25 +712,56 @@ export const FinanceView: React.FC = () => {
                   <tr>
                     <th className="p-3">No Surat Jalan</th>
                     <th className="p-3">Produk (Brand)</th>
+                    <th className="p-3 text-center">Status PO</th>
                     <th className="p-3 text-center">Qty Pcs</th>
                     <th className="p-3 text-right">Tarif Auto-Lookup</th>
                     <th className="p-3 text-right">Subtotal</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
-                  {currentPayroll.items.length === 0 ? (
+                  {displayedTableItems.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-400">
-                        Belum ada riwayat surat jalan untuk vendor ini.
+                      <td colSpan={6} className="p-8 text-center text-slate-400">
+                        {poSettlementFilter === 'UNPAID'
+                          ? 'Tidak ada item kiriman yang belum lunas.'
+                          : poSettlementFilter === 'SETTLED'
+                          ? 'Belum ada item kiriman pada riwayat lunas.'
+                          : 'Belum ada riwayat surat jalan untuk vendor ini.'}
                       </td>
                     </tr>
                   ) : (
-                    currentPayroll.items.map((item, idx) => (
+                    displayedTableItems.map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-50 transition">
                         <td className="p-3 font-mono font-bold text-indigo-600">{item.suratJalanNo}</td>
                         <td className="p-3">
                           <div className="font-bold text-slate-900">{item.produk}</div>
-                          <span className="text-[10px] text-slate-400">{item.brand}</span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-slate-400">{item.brand}</span>
+                            {item.poNumber && (
+                              <span className="text-[9.5px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded">
+                                PO: {item.poNumber}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          {item.isSettled ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-600 text-white shadow-2xs">
+                              ✓ Lunas (Paid)
+                            </span>
+                          ) : item.isCompletedPO ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              Siap Cair
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold ${
+                              allowPartialPayment
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                            }`}>
+                              {allowPartialPayment ? 'Cair (Override)' : 'Ditahan'}
+                            </span>
+                          )}
                         </td>
                         <td className="p-3 text-center font-bold text-slate-800">{item.pcs} Pcs</td>
                         <td className="p-3 text-right font-medium text-slate-600">{formatRp(item.rate)}</td>
@@ -693,7 +1098,128 @@ export const FinanceView: React.FC = () => {
 
       {/* Printable Modals */}
       {isSlipModalOpen && (
-        <SlipGajiModal payroll={currentPayroll} onClose={() => setIsSlipModalOpen(false)} />
+        <SlipGajiModal payroll={selectedPayrollToPrint} onClose={() => setIsSlipModalOpen(false)} />
+      )}
+
+      {/* MODAL PELUNASAN GAJI VENDOR (SETTLE PO) */}
+      {settleModal.isOpen && settleModal.pkg && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-slideUp">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  Konfirmasi Pelunasan Gaji PO
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Tandai PO ini telah lunas dibayarkan ke mitra penjahit
+                </p>
+              </div>
+              <button
+                onClick={() => setSettleModal({ isOpen: false })}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSettle} className="space-y-3.5 text-xs">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-semibold">Vendor Penjahit:</span>
+                  <strong className="text-slate-900">{selectedVendorName}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-semibold">Nomor PO:</span>
+                  <span className="font-mono font-bold text-indigo-700">{settleModal.pkg.poNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-semibold">Artikel Produk:</span>
+                  <strong className="text-slate-800">{settleModal.pkg.produk} ({settleModal.pkg.brand})</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-semibold">Total Kuantiti:</span>
+                  <strong className="text-slate-800">{settleModal.pkg.deliveredPcs} Pcs</strong>
+                </div>
+                <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1 font-bold text-sm">
+                  <span className="text-slate-700">Nominal Gaji Dicairkan:</span>
+                  <span className="text-emerald-600 font-black">{formatRp(settleModal.pkg.totalPay)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Tanggal Pembayaran: <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={settleForm.tanggalBayar}
+                  onChange={(e) => setSettleForm({ ...settleForm, tanggalBayar: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Metode Pembayaran: <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={settleForm.metodePembayaran}
+                  onChange={(e) => setSettleForm({ ...settleForm, metodePembayaran: e.target.value as any })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none text-xs cursor-pointer"
+                  required
+                >
+                  <option value="TRANSFER">Transfer Bank (BCA / Mandiri / BNI)</option>
+                  <option value="TUNAI">Tunai / Cash</option>
+                  <option value="LAINNYA">Lainnya / Cek</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nomor Referensi / Bukti Transfer:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: TRF-BCA-202609-01 atau No Kwitansi"
+                  value={settleForm.nomorReferensi}
+                  onChange={(e) => setSettleForm({ ...settleForm, nomorReferensi: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium outline-none text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Catatan Pembayaran:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Keterangan tambahan (opsional)..."
+                  value={settleForm.catatan}
+                  onChange={(e) => setSettleForm({ ...settleForm, catatan: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium outline-none text-xs"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSettleModal({ isOpen: false })}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-xs cursor-pointer"
+                >
+                  Konfirmasi & Simpan Lunas
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {isInvoiceModalOpen && (

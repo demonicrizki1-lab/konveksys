@@ -146,12 +146,16 @@ export interface SPKCutting {
     satuan: string;
     sourcePONumber?: string;
   } | null;
+  sourcePOId?: string | null;
+  sourcePONumber?: string | null;
 }
 
 export interface SuratJalanItem {
   id?: string;
   spkId?: string;
   spkNumber?: string;
+  sourcePOId?: string;
+  sourcePONumber?: string;
   isManual?: boolean;
   legacyPoNumber?: string;
   spkItemId?: string;
@@ -163,9 +167,13 @@ export interface SuratJalanItem {
   totalPcs: number;
   catatan?: string;
   // Audit verifikasi fisik penerimaan
+  verifiedPcs?: number;
+  discrepancyPcs?: number;
+  itemDiscrepancyPcs?: number;
   originalQtyDelivered?: SizeBreakdown;
   originalTotalPcs?: number;
-  itemDiscrepancyPcs?: number;
+  verificationNote?: string;
+  isVerified?: boolean;
 }
 
 export interface SuratJalan {
@@ -204,15 +212,55 @@ export interface KasbonTransaction {
   keterangan: string;
 }
 
+export interface VendorPayrollSettlement {
+  id: string;
+  vendor: string;
+  poNumber: string;
+  tanggalBayar: string;
+  totalPcs: number;
+  totalAmount: number;
+  metodePembayaran: 'TRANSFER' | 'TUNAI' | 'LAINNYA';
+  nomorReferensi?: string;
+  catatan?: string;
+  suratJalanNos: string[];
+  createdAt: string;
+}
+
+export interface VendorPOPayrollPackage {
+  poId?: string;
+  poNumber: string;
+  brand: string;
+  produk: string;
+  targetPcs: number;
+  deliveredPcs: number;
+  remainingPcs: number;
+  percent: number;
+  rate: number;
+  subtotal: number;
+  totalPay: number;
+  isComplete: boolean;
+  isSettled?: boolean;
+  settlementInfo?: VendorPayrollSettlement;
+  status: 'COMPLETED' | 'PENDING_DELIVERY';
+  suratJalanList: {
+    noSuratJalan: string;
+    tanggal: string;
+    pcs: number;
+  }[];
+}
+
 export interface VendorPayrollSummary {
   vendor: string;
   totalPcs: number;
   totalGrossPay: number;
   kasbonDeduction: number;
   netPay: number;
+  totalPendingPcs?: number;
+  totalPendingPay?: number;
   periodeAwal?: string;
   periodeAkhir?: string;
   periodeLabel?: string;
+  packages?: VendorPOPayrollPackage[];
   items: {
     suratJalanNo: string;
     tanggal: string;
@@ -222,6 +270,9 @@ export interface VendorPayrollSummary {
     pcs: number;
     rate: number;
     subtotal: number;
+    poNumber?: string;
+    isCompletedPO?: boolean;
+    isSettled?: boolean;
   }[];
 }
 

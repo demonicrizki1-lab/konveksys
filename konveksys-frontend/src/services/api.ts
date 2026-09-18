@@ -388,6 +388,13 @@ export async function apiCreateSpk(data: unknown) {
   });
 }
 
+export async function apiUpdateSpk(id: string, data: unknown) {
+  return apiFetch<unknown>(`/api/spk/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function apiDeleteSpk(id: string) {
   return apiFetch<{ success: boolean; message?: string }>(`/api/spk/${id}`, {
     method: 'DELETE',
