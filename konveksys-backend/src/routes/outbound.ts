@@ -271,7 +271,14 @@ outboundRoutes.put('/:id', async (c) => {
   }
 
   const newItems = body.items || [];
-  const oldItems = (Array.isArray(sj.items) ? sj.items : []) as any[];
+  let oldItems: any[] = [];
+  if (typeof sj.items === 'string') {
+    try {
+      oldItems = JSON.parse(sj.items);
+    } catch {}
+  } else if (Array.isArray(sj.items)) {
+    oldItems = sj.items as any[];
+  }
 
   // 1. Calculate SPK deltas (newQty - oldQty per size)
   const affectedSpkIds = new Set<string>();
@@ -429,8 +436,17 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
   await prisma.suratJalan.delete({ where: { id } });
 
   // Revert delivered qty on linked SPK (support Multi-Item & single item)
-  const itemsToRevert = Array.isArray(sj.items) && (sj.items as any[]).length > 0
-    ? (sj.items as any[])
+  let parsedItems: any[] = [];
+  if (typeof sj.items === 'string') {
+    try {
+      parsedItems = JSON.parse(sj.items);
+    } catch {}
+  } else if (Array.isArray(sj.items)) {
+    parsedItems = sj.items as any[];
+  }
+
+  const itemsToRevert = Array.isArray(parsedItems) && parsedItems.length > 0
+    ? parsedItems
     : [
         {
           spkId: sj.spkId,
@@ -454,27 +470,36 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
   const affectedSpkIds = new Set<string>();
 
   for (const it of itemsToRevert) {
-    if (!it.spkId) continue;
-    affectedSpkIds.add(it.spkId);
+    const spkIdentifier = it.spkId || it.spkNumber || sj.spkId;
+    if (!spkIdentifier) continue;
+
+    const targetSpk = await prisma.spkCutting.findFirst({
+      where: {
+        OR: [{ id: spkIdentifier }, { spkNumber: spkIdentifier }],
+      },
+    });
+    if (!targetSpk) continue;
+
+    affectedSpkIds.add(targetSpk.id);
     const deliv = it.qtyDelivered || {};
 
     await prisma.spkCutting.update({
-      where: { id: it.spkId },
+      where: { id: targetSpk.id },
       data: {
-        deliveredS: { decrement: (deliv.s || 0) + (deliv.qtySML || 0) },
-        deliveredM: { decrement: deliv.m || 0 },
-        deliveredL: { decrement: deliv.l || 0 },
-        deliveredXL: { decrement: deliv.xl || 0 },
-        deliveredXXL: { decrement: deliv.xxl || 0 },
-        deliveredAnak4: { decrement: deliv.anak4 || 0 },
-        deliveredAnak6: { decrement: deliv.anak6 || 0 },
-        deliveredAnak8: { decrement: deliv.anak8 || 0 },
-        deliveredAnak10: { decrement: deliv.anak10 || 0 },
-        deliveredAnak12: { decrement: deliv.anak12 || 0 },
-        deliveredAnak14: { decrement: deliv.anak14 || 0 },
-        deliveredAnak16: { decrement: deliv.anak16 || 0 },
+        deliveredS: Math.max(0, (targetSpk.deliveredS || 0) - ((deliv.s || 0) + (deliv.qtySML || 0))),
+        deliveredM: Math.max(0, (targetSpk.deliveredM || 0) - (deliv.m || 0)),
+        deliveredL: Math.max(0, (targetSpk.deliveredL || 0) - (deliv.l || 0)),
+        deliveredXL: Math.max(0, (targetSpk.deliveredXL || 0) - (deliv.xl || 0)),
+        deliveredXXL: Math.max(0, (targetSpk.deliveredXXL || 0) - (deliv.xxl || 0)),
+        deliveredAnak4: Math.max(0, (targetSpk.deliveredAnak4 || 0) - (deliv.anak4 || 0)),
+        deliveredAnak6: Math.max(0, (targetSpk.deliveredAnak6 || 0) - (deliv.anak6 || 0)),
+        deliveredAnak8: Math.max(0, (targetSpk.deliveredAnak8 || 0) - (deliv.anak8 || 0)),
+        deliveredAnak10: Math.max(0, (targetSpk.deliveredAnak10 || 0) - (deliv.anak10 || 0)),
+        deliveredAnak12: Math.max(0, (targetSpk.deliveredAnak12 || 0) - (deliv.anak12 || 0)),
+        deliveredAnak14: Math.max(0, (targetSpk.deliveredAnak14 || 0) - (deliv.anak14 || 0)),
+        deliveredAnak16: Math.max(0, (targetSpk.deliveredAnak16 || 0) - (deliv.anak16 || 0)),
       },
-    }).catch((err: any) => console.warn(`Failed reverting SPK ${it.spkId}:`, err));
+    }).catch((err: any) => console.warn(`Failed reverting SPK ${targetSpk.id}:`, err));
   }
 
   // Recalculate status of all affected SPKs

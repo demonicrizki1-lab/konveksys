@@ -160,6 +160,7 @@ model SpkCutting {
   tanggalSPK    DateTime
   targetSelesai DateTime?
   catatan       String?
+  sourcePONumber String?
 
   targetS       Int @default(0)
   targetM       Int @default(0)
