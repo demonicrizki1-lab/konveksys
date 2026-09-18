@@ -2638,6 +2638,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetAnak16: spkData.targetCutQty.anak16 || 0,
         rollIds: spkData.rollIds || [],
         sourcePONumber: spkData.sourcePONumber || null,
+        items: items || null,
       });
 
       if (error) {
@@ -2831,6 +2832,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetAnak16: updatedTargetCutQty.anak16 || 0,
         rollIds: newRollIds,
         sourcePONumber: updatedSPK.sourcePONumber || null,
+        items: updatedSPK.items || null,
       });
 
       if (error) {

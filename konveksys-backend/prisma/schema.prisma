@@ -161,6 +161,7 @@ model SpkCutting {
   targetSelesai DateTime?
   catatan       String?
   sourcePONumber String?
+  items          Json?   // Per-product breakdown untuk combo SPK (e.g. GOLDIE + MINIBELLE)
 
   targetS       Int @default(0)
   targetM       Int @default(0)

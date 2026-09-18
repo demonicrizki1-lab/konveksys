@@ -254,12 +254,14 @@ spkRoutes.put('/:id', async (c) => {
         targetAnak14,
         targetAnak16,
         status,
+        ...(spkData.sourcePONumber !== undefined ? { sourcePONumber: spkData.sourcePONumber } : {}),
+        ...(spkData.items !== undefined ? { items: spkData.items } : {}),
       },
       include: { rolsDigunakan: { include: { rol: true } }, suratJalanList: true },
     });
 
     return c.json(updatedSpk);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating SPK:', error);
     return c.json({ error: error?.message || 'Terjadi kesalahan saat memperbarui SPK.' }, 500);
   }
