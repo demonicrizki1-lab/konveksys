@@ -676,7 +676,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [fobDeposits, setFobDeposits] = useState<FobDownPayment[]>(() => {
     const cached = getCache<FobDownPayment[]>('fob_deposits', null as any);
-    if (cached !== null && Array.isArray(cached)) return cached;
+    if (cached !== null && Array.isArray(cached)) {
+      return cached.map((d: any) => ({
+        ...d,
+        nominalTotalOrder: Number(d.nominalTotalOrder || d.totalNilaiPo || 0),
+        totalNilaiPo: Number(d.totalNilaiPo || d.nominalTotalOrder || 0),
+        nominalDp: Number(d.nominalDp || 0),
+        persentaseDp: Number(d.persentaseDp || 0),
+      }));
+    }
     return [];
   });
   const [isLoadingFob, setIsLoadingFob] = useState<boolean>(false);
@@ -2600,16 +2608,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const res = await apiCreateFobDeposit({
         ...depositData,
+        totalNilaiPo: depositData.nominalTotalOrder,
         depositNumber,
       });
       if (res.data) {
         newDeposit = {
           ...res.data,
-          nominalDp: Number(res.data.nominalDp || 0),
-          totalNilaiPo: Number(res.data.totalNilaiPo || 0),
-          persentaseDp: Number(res.data.persentaseDp || 0),
+          nominalDp: Number(res.data.nominalDp || depositData.nominalDp || 0),
+          totalNilaiPo: Number(res.data.totalNilaiPo || depositData.nominalTotalOrder || 0),
+          nominalTotalOrder: Number(res.data.totalNilaiPo || depositData.nominalTotalOrder || 0),
+          persentaseDp: Number(res.data.persentaseDp || depositData.persentaseDp || 0),
           tanggalBayar: typeof res.data.tanggalBayar === 'string' ? res.data.tanggalBayar.split('T')[0] : res.data.tanggalBayar,
           alokasiKain: res.data.alokasiKain ? (typeof res.data.alokasiKain === 'string' ? JSON.parse(res.data.alokasiKain) : res.data.alokasiKain) : undefined,
+          buktiBayarUrl: res.data.buktiBayarUrl || depositData.buktiBayarUrl,
         };
       }
     } catch (apiErr) {

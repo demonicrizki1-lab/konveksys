@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SlipGajiModal } from './SlipGajiModal';
 import { InvoiceModal } from './InvoiceModal';
+import { BuyerInvoiceSummary } from '../../types';
 import { formatRupiahInput, parseRupiahInput, formatDateIndo, getSabtuanPeriod } from '../../utils/formatters';
 import {
   ReceiptText,
@@ -22,6 +23,9 @@ import {
   Square,
   Clock,
   X,
+  Scissors,
+  Layers,
+  Info,
 } from 'lucide-react';
 
 export const FinanceView: React.FC = () => {
@@ -37,6 +41,11 @@ export const FinanceView: React.FC = () => {
     vendorSettlements,
     settleVendorPO,
     unsettleVendorPO,
+    productionPOs,
+    inboundRolls,
+    suratJalanList,
+    getSuratJalanItems,
+    getBuyerRates,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'payroll' | 'invoice' | 'kasbon'>(
@@ -204,12 +213,279 @@ export const FinanceView: React.FC = () => {
     }
   };
 
-  // Live Invoice Data for selected brand with active period
-  const currentInvoice = calculateBuyerInvoice(
-    userRole === 'BRAND' ? activeBrand : selectedBrandName,
+  // ============================================================
+  // PO-BASED BUYER INVOICE ENGINE (DENGAN PEMOTONGAN NILAI KAIN)
+  // ============================================================
+  const effectiveBrand = userRole === 'BRAND'
+    ? (activeBrand === 'CREADIVE' ? 'NAMI' : activeBrand)
+    : (selectedBrandName === 'CREADIVE' ? 'NAMI' : selectedBrandName);
+
+  const [selectedPoNumber, setSelectedPoNumber] = useState<string>('');
+  const [selectedSjRowKeys, setSelectedSjRowKeys] = useState<string[]>([]);
+  const [selectedRollIds, setSelectedRollIds] = useState<string[]>([]);
+  const [activeInvoiceTab, setActiveInvoiceTab] = useState<'surat_jalan' | 'kain'>('surat_jalan');
+
+  // Available Production POs for this Brand
+  const brandPOs = useMemo(() => {
+    return productionPOs.filter(
+      po => !effectiveBrand || (po.brand && po.brand.toLowerCase() === effectiveBrand.toLowerCase())
+    );
+  }, [productionPOs, effectiveBrand]);
+
+  // Current Selected PO Object
+  const currentPO = useMemo(() => {
+    return productionPOs.find(p => p.noPO === selectedPoNumber);
+  }, [productionPOs, selectedPoNumber]);
+
+  // Auto-switch selectedPoNumber when brand or brandPOs change
+  useEffect(() => {
+    if (brandPOs.length > 0) {
+      if (!selectedPoNumber || !brandPOs.some(p => p.noPO === selectedPoNumber)) {
+        setSelectedPoNumber(brandPOs[0].noPO);
+      }
+    } else {
+      setSelectedPoNumber('');
+    }
+  }, [effectiveBrand, brandPOs]);
+
+  // All Surat Jalan items for this Brand
+  const availableSjItems = useMemo(() => {
+    const matchedSJs = suratJalanList.filter(sj => {
+      const sjItems = getSuratJalanItems(sj);
+      const matchBrand =
+        sj.brand === effectiveBrand ||
+        (sj.brand && sj.brand.split(',').map(b => b.trim()).includes(effectiveBrand)) ||
+        sjItems.some(it => it.brand === effectiveBrand);
+      if (!matchBrand) return false;
+      const sjDate = sj.tanggal.split('T')[0];
+      if (activeStartDate && sjDate < activeStartDate) return false;
+      if (activeEndDate && sjDate > activeEndDate) return false;
+      return true;
+    });
+
+    const list: Array<BuyerInvoiceSummary['items'][0] & { rowKey: string; itemPo?: string }> = [];
+    matchedSJs.forEach((sj) => {
+      const sjItems = getSuratJalanItems(sj);
+      sjItems.forEach((it, itIdx) => {
+        const itBrand = it.brand || sj.brand;
+        if (itBrand !== effectiveBrand && (!itBrand || !itBrand.split(',').map(b => b.trim()).includes(effectiveBrand))) {
+          return;
+        }
+
+        const rates = getBuyerRates(effectiveBrand, it.produk);
+        const qtyS = it.qtyDelivered?.s || 0;
+        const qtyM = it.qtyDelivered?.m || 0;
+        const qtyL = it.qtyDelivered?.l || 0;
+        const qtyXL = it.qtyDelivered?.xl || 0;
+        const qtyXXL = it.qtyDelivered?.xxl || 0;
+        const qtySML = qtyS + qtyM + qtyL;
+        const qtyAnak4 = it.qtyDelivered?.anak4 || 0;
+        const qtyAnak6 = it.qtyDelivered?.anak6 || 0;
+        const qtyAnak8 = it.qtyDelivered?.anak8 || 0;
+        const qtyAnak10 = it.qtyDelivered?.anak10 || 0;
+        const qtyAnak12 = it.qtyDelivered?.anak12 || 0;
+        const qtyAnak14 = it.qtyDelivered?.anak14 || 0;
+        const qtyAnak16 = it.qtyDelivered?.anak16 || 0;
+
+        const subS = qtyS * rates.rateS;
+        const subM = qtyM * rates.rateM;
+        const subL = qtyL * rates.rateL;
+        const subXL = qtyXL * rates.rateXL;
+        const subXXL = qtyXXL * rates.rateXXL;
+        const subAnak4 = qtyAnak4 * rates.rateAnak4;
+        const subAnak6 = qtyAnak6 * rates.rateAnak6;
+        const subAnak8 = qtyAnak8 * rates.rateAnak8;
+        const subAnak10 = qtyAnak10 * rates.rateAnak10;
+        const subAnak12 = qtyAnak12 * rates.rateAnak12;
+        const subAnak14 = qtyAnak14 * rates.rateAnak14;
+        const subAnak16 = qtyAnak16 * rates.rateAnak16;
+
+        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        const rowKey = `${sj.id || sj.noSuratJalan}_${itIdx}_${it.produk}`;
+
+        list.push({
+          rowKey,
+          suratJalanNo: sj.noSuratJalan,
+          tanggal: sj.tanggal,
+          produk: it.produk,
+          jenisKain: it.jenisKain,
+          qtyS,
+          rateS: rates.rateS,
+          qtyM,
+          rateM: rates.rateM,
+          qtyL,
+          rateL: rates.rateL,
+          qtyXL,
+          rateXL: rates.rateXL,
+          qtyXXL,
+          rateXXL: rates.rateXXL,
+          qtySML,
+          rateSML: rates.rateSML,
+          qtyAnak4,
+          rateAnak4: rates.rateAnak4,
+          qtyAnak6,
+          rateAnak6: rates.rateAnak6,
+          qtyAnak8,
+          rateAnak8: rates.rateAnak8,
+          qtyAnak10,
+          rateAnak10: rates.rateAnak10,
+          qtyAnak12,
+          rateAnak12: rates.rateAnak12,
+          qtyAnak14,
+          rateAnak14: rates.rateAnak14,
+          qtyAnak16,
+          rateAnak16: rates.rateAnak16,
+          totalPcs: it.totalPcs,
+          totalAmount,
+          itemPo: it.sourcePONumber || sj.items?.[0]?.sourcePONumber,
+        });
+      });
+    });
+    return list;
+  }, [suratJalanList, effectiveBrand, activeStartDate, activeEndDate, getSuratJalanItems, getBuyerRates]);
+
+  // Available Fabric Rolls for this Brand
+  const availableRolls = useMemo(() => {
+    return inboundRolls.filter(r => {
+      const matchBrand = !effectiveBrand || (r.brand && r.brand.toLowerCase() === effectiveBrand.toLowerCase());
+      return matchBrand;
+    });
+  }, [inboundRolls, effectiveBrand]);
+
+  // Auto initialize selection when PO or Brand changes
+  useEffect(() => {
+    if (availableSjItems.length > 0) {
+      if (selectedPoNumber) {
+        const matchingSJs = availableSjItems.filter(it => it.itemPo === selectedPoNumber).map(it => it.rowKey);
+        setSelectedSjRowKeys(matchingSJs.length > 0 ? matchingSJs : availableSjItems.map(it => it.rowKey));
+      } else {
+        setSelectedSjRowKeys(availableSjItems.map(it => it.rowKey));
+      }
+    } else {
+      setSelectedSjRowKeys([]);
+    }
+
+    if (availableRolls.length > 0) {
+      if (selectedPoNumber) {
+        const matchingRolls = availableRolls.filter(r => r.sourcePONumber === selectedPoNumber).map(r => r.id);
+        setSelectedRollIds(matchingRolls);
+      } else {
+        setSelectedRollIds([]);
+      }
+    } else {
+      setSelectedRollIds([]);
+    }
+  }, [selectedPoNumber, effectiveBrand, availableSjItems.length, availableRolls.length]);
+
+  // Checked items calculations
+  const checkedSjItems = useMemo(() => {
+    return availableSjItems.filter(it => selectedSjRowKeys.includes(it.rowKey));
+  }, [availableSjItems, selectedSjRowKeys]);
+
+  const totalDeliveredPcs = useMemo(() => {
+    return checkedSjItems.reduce((sum, it) => sum + (it.totalPcs || 0), 0);
+  }, [checkedSjItems]);
+
+  const totalGrossTagihan = useMemo(() => {
+    return checkedSjItems.reduce((sum, it) => sum + (it.totalAmount || 0), 0);
+  }, [checkedSjItems]);
+
+  const checkedRolls = useMemo(() => {
+    return availableRolls
+      .filter(r => selectedRollIds.includes(r.id))
+      .map(r => {
+        const meterUsed = r.meterUsed > 0 ? r.meterUsed : r.meterLength;
+        const totalNilaiKain = meterUsed * (r.hargaModalMeter || 0);
+        return {
+          id: r.id,
+          rollCode: r.rollCode,
+          jenisKain: r.jenisKain,
+          tanggalMasuk: r.tanggalMasuk,
+          meterUsed,
+          meterLength: r.meterLength,
+          hargaModalMeter: r.hargaModalMeter || 0,
+          totalNilaiKain,
+        };
+      });
+  }, [availableRolls, selectedRollIds]);
+
+  const totalFabricMeters = useMemo(() => {
+    return checkedRolls.reduce((sum, r) => sum + r.meterUsed, 0);
+  }, [checkedRolls]);
+
+  const totalFabricDeduction = useMemo(() => {
+    return checkedRolls.reduce((sum, r) => sum + r.totalNilaiKain, 0);
+  }, [checkedRolls]);
+
+  const grandTotalNet = useMemo(() => {
+    return Math.max(0, totalGrossTagihan - totalFabricDeduction);
+  }, [totalGrossTagihan, totalFabricDeduction]);
+
+  // Full composite invoice data for Preview & PDF Export
+  const compositeInvoice = useMemo((): BuyerInvoiceSummary => {
+    const now = new Date();
+    const invoiceNo = `INV/${(effectiveBrand || 'BRAND').toUpperCase()}/${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}/01`;
+
+    let jatuhTempoDate: Date;
+    if (activeEndDate) {
+      jatuhTempoDate = new Date(activeEndDate);
+      jatuhTempoDate.setDate(jatuhTempoDate.getDate() + 7);
+    } else {
+      jatuhTempoDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    }
+
+    return {
+      brand: effectiveBrand,
+      invoiceNo,
+      tanggal: now.toISOString().split('T')[0],
+      jatuhTempo: jatuhTempoDate.toISOString().split('T')[0],
+      periodeAwal: activeStartDate,
+      periodeAkhir: activeEndDate,
+      periodeLabel: activePeriodLabel,
+      poInfo: currentPO ? {
+        id: currentPO.id,
+        noPO: currentPO.noPO,
+        brand: currentPO.brand,
+        vendorTujuan: currentPO.vendorTujuan,
+        tanggalPO: currentPO.tanggalPO,
+        targetDeadline: currentPO.targetDeadline,
+        targetPcs: currentPO.totalPcs || currentPO.items?.reduce((s, it) => s + (it.qty || 0), 0) || 0,
+        catatan: currentPO.catatan,
+        items: currentPO.items?.map(it => ({
+          namaProduk: it.namaProduk,
+          warna: it.warna,
+          ukuran: it.ukuran,
+          qty: it.qty,
+          bahanKain: it.bahanKain,
+          catatan: it.catatan,
+        })),
+      } : selectedPoNumber ? {
+        noPO: selectedPoNumber,
+        brand: effectiveBrand,
+      } : undefined,
+      items: checkedSjItems,
+      totalPcs: totalDeliveredPcs,
+      subtotalGross: totalGrossTagihan,
+      fabricItems: checkedRolls,
+      totalFabricMeters,
+      totalFabricDeduction,
+      grandTotal: grandTotalNet,
+    };
+  }, [
+    effectiveBrand,
+    selectedPoNumber,
+    currentPO,
+    checkedSjItems,
+    totalDeliveredPcs,
+    totalGrossTagihan,
+    checkedRolls,
+    totalFabricMeters,
+    totalFabricDeduction,
+    grandTotalNet,
     activeStartDate,
-    activeEndDate
-  );
+    activeEndDate,
+    activePeriodLabel,
+  ]);
 
   const handleSaveKasbon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -777,189 +1053,497 @@ export const FinanceView: React.FC = () => {
         </div>
       )}
 
-      {/* 2. BUYER INVOICE VIEW */}
+      {/* 2. BUYER INVOICE VIEW (PO-BASED & MANUAL SELECTION WITH FABRIC DEDUCTION) */}
       {activeSubTab === 'invoice' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Left Controls: Select Brand */}
-          <div className="lg:col-span-4 bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-emerald-600" />
-              {userRole === 'ADMIN' ? 'Pilih Brand Buyer' : 'Brand Client'}
-            </h3>
+          {/* Left Controls: Select Brand, Select PO, PO Detail Card, Billing Calculation Card */}
+          <div className="lg:col-span-4 space-y-4">
+            
+            {/* 1. Pilih Brand */}
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-3">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                {userRole === 'ADMIN' ? '1. Pilih Brand Buyer' : 'Brand Client'}
+              </h3>
 
-            {userRole === 'ADMIN' ? (
-              <div className="space-y-2">
-                {brands.map((b) => {
-                  const isSelected = selectedBrandName === b.name;
-                  return (
-                    <div
-                      key={b.id}
-                      onClick={() => setSelectedBrandName(b.name)}
-                      className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
-                        isSelected
-                          ? 'bg-emerald-50/80 border-emerald-500 shadow-sm'
-                          : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div>
-                        <div className="font-semibold text-xs text-slate-900">{b.name}</div>
-                        <div className="text-[10px] text-slate-500">Kontak: {b.contactPerson}</div>
+              {userRole === 'ADMIN' ? (
+                <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                  {brands.map((b) => {
+                    const isSelected = effectiveBrand === b.name;
+                    return (
+                      <div
+                        key={b.id}
+                        onClick={() => setSelectedBrandName(b.name)}
+                        className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-emerald-50/80 border-emerald-500 shadow-xs'
+                            : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-semibold text-xs text-slate-900">{b.name}</div>
+                          <div className="text-[10px] text-slate-500">Kontak: {b.contactPerson}</div>
+                        </div>
+                        <span className="text-[10.5px] font-mono font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                          {b.code}
+                        </span>
                       </div>
-                      <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                        {b.code}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-                <div className="font-bold text-emerald-900 text-base">{activeBrand}</div>
-                <div className="text-xs text-emerald-700 mt-1">Portal Invoice Resmi</div>
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <div className="font-bold text-emerald-900 text-sm">{effectiveBrand}</div>
+                  <div className="text-[10px] text-emerald-700">Portal Invoice Tagihan Resmi</div>
+                </div>
+              )}
+            </div>
 
-            {/* Total Billing Card */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
-              <span className="font-bold text-slate-700 block border-b border-slate-200 pb-1">
-                Kalkulasi Invoice Multi-Size:
+            {/* 2. Dropdown Pilih PO Produksi */}
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                  <Package className="w-4 h-4 text-indigo-600" />
+                  2. Rujukan PO Produksi
+                </h3>
+                <span className="text-[10px] font-semibold text-slate-500">
+                  {brandPOs.length} PO Terdaftar
+                </span>
+              </div>
+
+              <select
+                value={selectedPoNumber}
+                onChange={(e) => setSelectedPoNumber(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 rounded-xl border border-slate-300 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                <option value="">-- Semua / Non-PO (Pilih Bebas) --</option>
+                {brandPOs.map((po) => (
+                  <option key={po.id || po.noPO} value={po.noPO}>
+                    {po.noPO} • {po.vendorTujuan || 'Workshop'} ({po.totalPcs} pcs) - {po.status}
+                  </option>
+                ))}
+              </select>
+
+              {/* Detail Kartu PO Terpilih */}
+              {currentPO ? (
+                <div className="bg-indigo-50/60 border border-indigo-200/80 rounded-xl p-3 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-indigo-950 text-xs">
+                      {currentPO.noPO}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                      currentPO.status === 'SELESAI'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-indigo-100 text-indigo-800'
+                    }`}>
+                      {currentPO.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-indigo-100">
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Vendor Workshop:</span>
+                      <span className="font-semibold text-slate-800">{currentPO.vendorTujuan || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Target Deadline:</span>
+                      <span className="font-semibold text-slate-800">{formatDateIndo(currentPO.targetDeadline)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Target PO:</span>
+                      <span className="font-bold text-indigo-900 font-mono">{currentPO.totalPcs.toLocaleString('id-ID')} Pcs</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Terkirim via SJ:</span>
+                      <span className="font-bold text-emerald-700 font-mono">{totalDeliveredPcs.toLocaleString('id-ID')} Pcs</span>
+                    </div>
+                  </div>
+
+                  {currentPO.items && currentPO.items.length > 0 && (
+                    <div className="pt-2 border-t border-indigo-100 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-indigo-950 uppercase tracking-wider">
+                        <span>Rincian Item Pesanan PO:</span>
+                        <span className="text-indigo-600 font-mono font-semibold">{currentPO.items.length} Item</span>
+                      </div>
+                      <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                        {currentPO.items.map((it, idx) => (
+                          <div key={idx} className="bg-white/80 p-1.5 rounded-lg border border-indigo-100 text-[10.5px] flex items-center justify-between">
+                            <div>
+                              <div className="font-bold text-slate-900">{it.namaProduk}</div>
+                              <div className="text-slate-500 text-[9.5px]">
+                                {it.warna ? `${it.warna} • ` : ''}{it.ukuran ? `Size ${it.ukuran}` : ''}{it.bahanKain ? ` • ${it.bahanKain}` : ''}
+                              </div>
+                            </div>
+                            <span className="font-mono font-bold text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                              {Number(it.qty).toLocaleString('id-ID')} Pcs
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                  <span>Mode Bebas: Anda dapat memilih Surat Jalan dan Rol Kain secara manual di tabel sebelah kanan.</span>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Kartu Kalkulasi Tagihan Bersih */}
+            <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-2.5 text-xs shadow-xs">
+              <span className="font-bold text-slate-800 block border-b border-slate-200 pb-1.5 text-xs uppercase tracking-wider">
+                Kalkulasi Tagihan Buyer:
               </span>
+              
               <div className="flex justify-between text-slate-600">
                 <span>Total Pcs Terkirim:</span>
-                <span className="font-bold text-slate-900">{currentInvoice.totalPcs} Pcs</span>
+                <span className="font-bold text-slate-900 font-mono">{totalDeliveredPcs.toLocaleString('id-ID')} Pcs</span>
               </div>
+
               <div className="flex justify-between text-slate-600">
-                <span>Jatuh Tempo:</span>
-                <span className="font-bold text-rose-600">{currentInvoice.jatuhTempo}</span>
+                <span>Tagihan Kiriman ({checkedSjItems.length} SJ):</span>
+                <span className="font-bold text-slate-900 font-mono">{formatRp(totalGrossTagihan)}</span>
               </div>
+
+              <div className="flex justify-between text-rose-700 bg-rose-50 px-2 py-1.5 rounded-lg border border-rose-200/80">
+                <span className="flex items-center gap-1">
+                  <Scissors className="w-3.5 h-3.5" />
+                  Potongan Kain ({totalFabricMeters} m):
+                </span>
+                <span className="font-bold font-mono">- {formatRp(totalFabricDeduction)}</span>
+              </div>
+
+              <div className="flex justify-between text-slate-600 pt-1">
+                <span>Jatuh Tempo:</span>
+                <span className="font-bold text-rose-600">{compositeInvoice.jatuhTempo}</span>
+              </div>
+
               <div className="flex justify-between text-slate-900 border-t border-slate-200 pt-2 font-bold text-sm">
-                <span>Total Tagihan:</span>
-                <span className="text-emerald-700 text-base">{formatRp(currentInvoice.grandTotal)}</span>
+                <span>Total Tagihan Bersih:</span>
+                <span className="text-emerald-700 text-base font-mono">{formatRp(grandTotalNet)}</span>
               </div>
             </div>
 
             <button
               onClick={() => setIsInvoiceModalOpen(true)}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition btn-press cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               Preview & Cetak Invoice Resmi (PDF)
             </button>
           </div>
 
-          {/* Right Table: Multi-size invoice items */}
+          {/* Right Area: Interactive Tabs (Surat Jalan & Pemakaian Kain) */}
           <div className="lg:col-span-8 bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            
+            {/* Header Toolbar & Tab Switcher */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">
-                  Rincian Tagihan Surat Jalan: {userRole === 'BRAND' ? activeBrand : selectedBrandName}
+                  Rekapan & Pemilihan Item Invoice: {effectiveBrand}
                 </h3>
-                <span className="text-xs text-slate-400">Pencocokan tarif berdasarkan kelompok Size</span>
+                <span className="text-xs text-slate-400">
+                  {selectedPoNumber ? `Terkoneksi ke ${selectedPoNumber} • Centang item yang masuk tagihan` : 'Pilih surat jalan & kain yang akan dimasukkan ke invoice'}
+                </span>
               </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">
-                {currentInvoice.invoiceNo}
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full self-start sm:self-auto">
+                {compositeInvoice.invoiceNo}
               </span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="p-3">No Surat Jalan</th>
-                    <th className="p-3">Artikel Produk</th>
-                    <th className="p-3">Rincian Multi-Size</th>
-                    <th className="p-3 text-center">Total Pcs</th>
-                    <th className="p-3 text-right">Total Tagihan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {currentInvoice.items.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-400">
-                        Belum ada kiriman barang untuk Brand ini.
-                      </td>
-                    </tr>
-                  ) : (
-                    currentInvoice.items.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 transition align-top">
-                        <td className="p-3 font-mono font-bold text-indigo-600">{item.suratJalanNo}</td>
-                        <td className="p-3 font-bold text-slate-900">{item.produk}</td>
-                        <td className="p-3 text-[11px] space-y-0.5">
-                          {item.qtyS > 0 && (
-                            <div className="text-slate-600">
-                              Size S: <strong className="text-slate-800">{item.qtyS} pcs</strong> @ {formatRp(item.rateS)}
-                            </div>
-                          )}
-                          {item.qtyM > 0 && (
-                            <div className="text-slate-600">
-                              Size M: <strong className="text-slate-800">{item.qtyM} pcs</strong> @ {formatRp(item.rateM)}
-                            </div>
-                          )}
-                          {item.qtyL > 0 && (
-                            <div className="text-slate-600">
-                              Size L: <strong className="text-slate-800">{item.qtyL} pcs</strong> @ {formatRp(item.rateL)}
-                            </div>
-                          )}
-                          {item.qtyXL > 0 && (
-                            <div className="text-slate-600">
-                              Size XL: <strong className="text-slate-800">{item.qtyXL} pcs</strong> @ {formatRp(item.rateXL)}
-                            </div>
-                          )}
-                          {item.qtyXXL > 0 && (
-                            <div className="text-slate-600">
-                              Size 2XL: <strong className="text-slate-800">{item.qtyXXL} pcs</strong> @ {formatRp(item.rateXXL)}
-                            </div>
-                          )}
-                          {!item.qtyS && !item.qtyM && !item.qtyL && (item.qtySML || 0) > 0 && (
-                            <div className="text-slate-600">
-                              Size Huruf: <strong className="text-slate-800">{item.qtySML} pcs</strong> @ {formatRp(item.rateSML || 0)}
-                            </div>
-                          )}
-                          {item.qtyAnak4 > 0 && (
-                            <div className="text-slate-600">
-                              Anak 4: <strong className="text-slate-800">{item.qtyAnak4} pcs</strong> @ {formatRp(item.rateAnak4)}
-                            </div>
-                          )}
-                          {item.qtyAnak6 > 0 && (
-                            <div className="text-slate-600">
-                              Anak 6: <strong className="text-slate-800">{item.qtyAnak6} pcs</strong> @ {formatRp(item.rateAnak6)}
-                            </div>
-                          )}
-                          {item.qtyAnak8 > 0 && (
-                            <div className="text-slate-600">
-                              Anak 8: <strong className="text-slate-800">{item.qtyAnak8} pcs</strong> @ {formatRp(item.rateAnak8)}
-                            </div>
-                          )}
-                          {item.qtyAnak10 > 0 && (
-                            <div className="text-slate-600">
-                              Anak 10: <strong className="text-slate-800">{item.qtyAnak10} pcs</strong> @ {formatRp(item.rateAnak10)}
-                            </div>
-                          )}
-                          {item.qtyAnak12 > 0 && (
-                            <div className="text-slate-600">
-                              Anak 12: <strong className="text-slate-800">{item.qtyAnak12} pcs</strong> @ {formatRp(item.rateAnak12)}
-                            </div>
-                          )}
-                          {item.qtyAnak14 > 0 && (
-                            <div className="text-slate-600">
-                              Anak 14: <strong className="text-slate-800">{item.qtyAnak14} pcs</strong> @ {formatRp(item.rateAnak14)}
-                            </div>
-                          )}
-                          {item.qtyAnak16 > 0 && (
-                            <div className="text-slate-600">
-                              Anak 16: <strong className="text-slate-800">{item.qtyAnak16} pcs</strong> @ {formatRp(item.rateAnak16)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-3 text-center font-bold text-slate-800">{item.totalPcs}</td>
-                        <td className="p-3 text-right font-bold text-slate-900">{formatRp(item.totalAmount)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            {/* Sub Tabs: 1. Surat Jalan, 2. Pemakaian Kain */}
+            <div className="flex gap-2 border-b border-slate-200 pb-2">
+              <button
+                onClick={() => setActiveInvoiceTab('surat_jalan')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  activeInvoiceTab === 'surat_jalan'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                <span>1. Surat Jalan Pengiriman</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  activeInvoiceTab === 'surat_jalan' ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {checkedSjItems.length}/{availableSjItems.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveInvoiceTab('kain')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  activeInvoiceTab === 'kain'
+                    ? 'bg-rose-700 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <Scissors className="w-4 h-4" />
+                <span>2. List Kain Terpakai (Potongan)</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  activeInvoiceTab === 'kain' ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {checkedRolls.length}/{availableRolls.length}
+                </span>
+              </button>
             </div>
+
+            {/* TAB 1 CONTENT: SURAT JALAN */}
+            {activeInvoiceTab === 'surat_jalan' && (
+              <div className="space-y-3">
+                {/* Batch Action Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedSjRowKeys(availableSjItems.map(it => it.rowKey))}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg font-semibold text-slate-700 text-[11px] transition cursor-pointer"
+                    >
+                      Pilih Semua ({availableSjItems.length})
+                    </button>
+                    <button
+                      onClick={() => setSelectedSjRowKeys([])}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg font-semibold text-slate-700 text-[11px] transition cursor-pointer"
+                    >
+                      Batal Semua
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-slate-600 font-medium">
+                    Terpilih: <strong className="text-slate-900">{checkedSjItems.length}</strong> Item • <strong className="text-emerald-700">{totalDeliveredPcs} Pcs</strong> ({formatRp(totalGrossTagihan)})
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="p-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={availableSjItems.length > 0 && selectedSjRowKeys.length === availableSjItems.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSjRowKeys(availableSjItems.map(it => it.rowKey));
+                              } else {
+                                setSelectedSjRowKeys([]);
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-indigo-600 cursor-pointer accent-indigo-600"
+                          />
+                        </th>
+                        <th className="p-3">No Surat Jalan</th>
+                        <th className="p-3">Artikel Produk</th>
+                        <th className="p-3">Rincian Multi-Size</th>
+                        <th className="p-3 text-center">Total Pcs</th>
+                        <th className="p-3 text-right">Subtotal Tagihan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {availableSjItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-slate-400">
+                            Belum ada kiriman barang untuk Brand ini pada periode terpilih.
+                          </td>
+                        </tr>
+                      ) : (
+                        availableSjItems.map((item) => {
+                          const isChecked = selectedSjRowKeys.includes(item.rowKey);
+                          return (
+                            <tr
+                              key={item.rowKey}
+                              onClick={() => {
+                                setSelectedSjRowKeys(prev =>
+                                  prev.includes(item.rowKey)
+                                    ? prev.filter(k => k !== item.rowKey)
+                                    : [...prev, item.rowKey]
+                                );
+                              }}
+                              className={`transition align-top cursor-pointer ${
+                                isChecked ? 'bg-indigo-50/30 hover:bg-indigo-50/50' : 'hover:bg-slate-50 opacity-75'
+                              }`}
+                            >
+                              <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setSelectedSjRowKeys(prev =>
+                                      prev.includes(item.rowKey)
+                                        ? prev.filter(k => k !== item.rowKey)
+                                        : [...prev, item.rowKey]
+                                    );
+                                  }}
+                                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer accent-indigo-600"
+                                />
+                              </td>
+                              <td className="p-3">
+                                <div className="font-mono font-bold text-indigo-600">{item.suratJalanNo}</div>
+                                <span className="text-[10px] text-slate-400 block mt-0.5">{formatDateIndo(item.tanggal)}</span>
+                                {item.itemPo && (
+                                  <span className="text-[9.5px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1 py-0.2 rounded mt-0.5 inline-block">
+                                    PO: {item.itemPo}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 font-bold text-slate-900">{item.produk}</td>
+                              <td className="p-3 text-[11px] space-y-0.5">
+                                {item.qtyS > 0 && <div className="text-slate-600">Size S: <strong>{item.qtyS} pcs</strong> @ {formatRp(item.rateS)}</div>}
+                                {item.qtyM > 0 && <div className="text-slate-600">Size M: <strong>{item.qtyM} pcs</strong> @ {formatRp(item.rateM)}</div>}
+                                {item.qtyL > 0 && <div className="text-slate-600">Size L: <strong>{item.qtyL} pcs</strong> @ {formatRp(item.rateL)}</div>}
+                                {item.qtyXL > 0 && <div className="text-slate-600">Size XL: <strong>{item.qtyXL} pcs</strong> @ {formatRp(item.rateXL)}</div>}
+                                {item.qtyXXL > 0 && <div className="text-slate-600">Size 2XL: <strong>{item.qtyXXL} pcs</strong> @ {formatRp(item.rateXXL)}</div>}
+                                {!item.qtyS && !item.qtyM && !item.qtyL && (item.qtySML || 0) > 0 && (
+                                  <div className="text-slate-600">Size Huruf: <strong>{item.qtySML} pcs</strong> @ {formatRp(item.rateSML || 0)}</div>
+                                )}
+                                {item.qtyAnak4 > 0 && <div className="text-slate-600">Anak 4: <strong>{item.qtyAnak4} pcs</strong> @ {formatRp(item.rateAnak4)}</div>}
+                                {item.qtyAnak6 > 0 && <div className="text-slate-600">Anak 6: <strong>{item.qtyAnak6} pcs</strong> @ {formatRp(item.rateAnak6)}</div>}
+                                {item.qtyAnak8 > 0 && <div className="text-slate-600">Anak 8: <strong>{item.qtyAnak8} pcs</strong> @ {formatRp(item.rateAnak8)}</div>}
+                                {item.qtyAnak10 > 0 && <div className="text-slate-600">Anak 10: <strong>{item.qtyAnak10} pcs</strong> @ {formatRp(item.rateAnak10)}</div>}
+                                {item.qtyAnak12 > 0 && <div className="text-slate-600">Anak 12: <strong>{item.qtyAnak12} pcs</strong> @ {formatRp(item.rateAnak12)}</div>}
+                                {item.qtyAnak14 > 0 && <div className="text-slate-600">Anak 14: <strong>{item.qtyAnak14} pcs</strong> @ {formatRp(item.rateAnak14)}</div>}
+                                {item.qtyAnak16 > 0 && <div className="text-slate-600">Anak 16: <strong>{item.qtyAnak16} pcs</strong> @ {formatRp(item.rateAnak16)}</div>}
+                              </td>
+                              <td className="p-3 text-center font-bold text-slate-800 font-mono">{item.totalPcs}</td>
+                              <td className="p-3 text-right font-bold text-slate-900 font-mono">{formatRp(item.totalAmount)}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2 CONTENT: PEMAKAIAN KAIN */}
+            {activeInvoiceTab === 'kain' && (
+              <div className="space-y-3">
+                {/* Batch Action Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-rose-50 p-2.5 rounded-xl border border-rose-200 text-xs">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedRollIds(availableRolls.map(r => r.id))}
+                      className="px-2.5 py-1 bg-white hover:bg-rose-100 border border-rose-300 rounded-lg font-semibold text-rose-800 text-[11px] transition cursor-pointer"
+                    >
+                      Pilih Semua ({availableRolls.length})
+                    </button>
+                    <button
+                      onClick={() => setSelectedRollIds([])}
+                      className="px-2.5 py-1 bg-white hover:bg-rose-100 border border-rose-300 rounded-lg font-semibold text-rose-800 text-[11px] transition cursor-pointer"
+                    >
+                      Batal Semua
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-rose-900 font-medium">
+                    Terpilih: <strong className="text-rose-950">{checkedRolls.length}</strong> Rol • <strong className="text-rose-800">{totalFabricMeters} Meter</strong> (- {formatRp(totalFabricDeduction)})
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="p-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={availableRolls.length > 0 && selectedRollIds.length === availableRolls.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedRollIds(availableRolls.map(r => r.id));
+                              } else {
+                                setSelectedRollIds([]);
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-rose-600 cursor-pointer accent-rose-600"
+                          />
+                        </th>
+                        <th className="p-3">Tanggal Masuk</th>
+                        <th className="p-3">Kode Rol Kain</th>
+                        <th className="p-3">Jenis / Nama Kain</th>
+                        <th className="p-3 text-center">Panjang Terpakai</th>
+                        <th className="p-3 text-right">Harga Modal Satuan</th>
+                        <th className="p-3 text-right">Total Nilai Kain (Potongan)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {availableRolls.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-400">
+                            Belum ada rol kain di gudang untuk Brand ini.
+                          </td>
+                        </tr>
+                      ) : (
+                        availableRolls.map((roll) => {
+                          const isChecked = selectedRollIds.includes(roll.id);
+                          const meterUsed = roll.meterUsed > 0 ? roll.meterUsed : roll.meterLength;
+                          const totalNilaiKain = meterUsed * (roll.hargaModalMeter || 0);
+
+                          return (
+                            <tr
+                              key={roll.id}
+                              onClick={() => {
+                                setSelectedRollIds(prev =>
+                                  prev.includes(roll.id)
+                                    ? prev.filter(id => id !== roll.id)
+                                    : [...prev, roll.id]
+                                );
+                              }}
+                              className={`transition align-middle cursor-pointer ${
+                                isChecked ? 'bg-rose-50/30 hover:bg-rose-50/50' : 'hover:bg-slate-50 opacity-75'
+                              }`}
+                            >
+                              <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setSelectedRollIds(prev =>
+                                      prev.includes(roll.id)
+                                        ? prev.filter(id => id !== roll.id)
+                                        : [...prev, roll.id]
+                                    );
+                                  }}
+                                  className="w-4 h-4 rounded text-rose-600 cursor-pointer accent-rose-600"
+                                />
+                              </td>
+                              <td className="p-3 text-slate-500 font-mono text-[11px]">
+                                {formatDateIndo(roll.tanggalMasuk)}
+                              </td>
+                              <td className="p-3">
+                                <span className="font-mono font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
+                                  {roll.rollCode}
+                                </span>
+                                {roll.sourcePONumber && (
+                                  <span className="block text-[9.5px] font-mono text-slate-400 mt-0.5">
+                                    PO: {roll.sourcePONumber}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 font-semibold text-slate-900">{roll.jenisKain}</td>
+                              <td className="p-3 text-center font-mono font-bold text-slate-900">
+                                {meterUsed} m
+                                <span className="block text-[9px] text-slate-400 font-normal">
+                                  dari {roll.meterLength} m
+                                </span>
+                              </td>
+                              <td className="p-3 text-right font-mono text-slate-700">
+                                {formatRp(roll.hargaModalMeter || 0)}
+                              </td>
+                              <td className="p-3 text-right font-mono font-bold text-rose-700">
+                                - {formatRp(totalNilaiKain)}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
           </div>
 
         </div>
@@ -1223,7 +1807,7 @@ export const FinanceView: React.FC = () => {
       )}
 
       {isInvoiceModalOpen && (
-        <InvoiceModal invoice={currentInvoice} onClose={() => setIsInvoiceModalOpen(false)} />
+        <InvoiceModal invoice={compositeInvoice} onClose={() => setIsInvoiceModalOpen(false)} />
       )}
 
     </div>

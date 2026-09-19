@@ -327,6 +327,7 @@ export const FobDepositModal: React.FC<FobDepositModalProps> = ({
           brand,
           tanggalBayar,
           nominalTotalOrder: parseSafeNumber(nominalTotalOrder),
+          totalNilaiPo: parseSafeNumber(nominalTotalOrder),
           persentaseDp: parseSafeNumber(persentaseDp),
           nominalDp: parseSafeNumber(nominalDp),
           metodePembayaran,

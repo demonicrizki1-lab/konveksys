@@ -857,7 +857,14 @@ fobRoutes.get('/deposits', async (c) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    return c.json(deposits);
+    const mapped = deposits.map((d: any) => ({
+      ...d,
+      nominalDp: Number(d.nominalDp || 0),
+      totalNilaiPo: Number(d.totalNilaiPo || 0),
+      nominalTotalOrder: Number(d.totalNilaiPo || 0),
+      persentaseDp: Number(d.persentaseDp || 0),
+    }));
+    return c.json(mapped);
   } catch (err: any) {
     console.error('[FOB-DEPOSITS-GET-ERROR]', err);
     return c.json({ error: 'Gagal mengambil data DP FOB: ' + err.message }, 500);
@@ -894,7 +901,7 @@ fobRoutes.post('/deposits', async (c) => {
         brand: body.brand,
         tanggalBayar: body.tanggalBayar ? new Date(body.tanggalBayar) : new Date(),
         nominalDp: body.nominalDp || 0,
-        totalNilaiPo: body.totalNilaiPo || 0,
+        totalNilaiPo: body.totalNilaiPo || body.nominalTotalOrder || 0,
         persentaseDp: body.persentaseDp || 0,
         metodePembayaran: body.metodePembayaran || 'TRANSFER_BCA',
         nomorReferensi: body.nomorReferensi || null,
@@ -923,6 +930,7 @@ fobRoutes.put('/deposits/:id', async (c) => {
     if (body.alokasiKain !== undefined) dataToUpdate.alokasiKain = body.alokasiKain;
     if (body.nominalDp !== undefined) dataToUpdate.nominalDp = body.nominalDp;
     if (body.totalNilaiPo !== undefined) dataToUpdate.totalNilaiPo = body.totalNilaiPo;
+    if (body.nominalTotalOrder !== undefined && body.totalNilaiPo === undefined) dataToUpdate.totalNilaiPo = body.nominalTotalOrder;
     if (body.persentaseDp !== undefined) dataToUpdate.persentaseDp = body.persentaseDp;
     if (body.metodePembayaran !== undefined) dataToUpdate.metodePembayaran = body.metodePembayaran;
     if (body.nomorReferensi !== undefined) dataToUpdate.nomorReferensi = body.nomorReferensi;

@@ -280,6 +280,36 @@ export interface VendorPayrollSummary {
   }[];
 }
 
+export interface BuyerInvoiceFabricItem {
+  id: string;
+  rollCode: string;
+  jenisKain: string;
+  tanggalMasuk: string;
+  meterUsed: number;
+  meterLength: number;
+  hargaModalMeter: number;
+  totalNilaiKain: number;
+}
+
+export interface BuyerInvoicePoInfo {
+  id?: string;
+  noPO: string;
+  brand: string;
+  vendorTujuan?: string;
+  tanggalPO?: string;
+  targetDeadline?: string;
+  targetPcs?: number;
+  catatan?: string | null;
+  items?: {
+    namaProduk: string;
+    warna?: string | null;
+    ukuran?: string | null;
+    qty: number;
+    bahanKain?: string | null;
+    catatan?: string | null;
+  }[];
+}
+
 export interface BuyerInvoiceSummary {
   brand: string;
   invoiceNo: string;
@@ -288,6 +318,7 @@ export interface BuyerInvoiceSummary {
   periodeAwal?: string;
   periodeAkhir?: string;
   periodeLabel?: string;
+  poInfo?: BuyerInvoicePoInfo;
   items: {
     suratJalanNo: string;
     tanggal: string;
@@ -323,6 +354,10 @@ export interface BuyerInvoiceSummary {
     totalAmount: number;
   }[];
   totalPcs: number;
+  subtotalGross?: number;
+  fabricItems?: BuyerInvoiceFabricItem[];
+  totalFabricMeters?: number;
+  totalFabricDeduction?: number;
   grandTotal: number;
 }
 
@@ -874,6 +909,7 @@ export interface FobDownPayment {
   brand: string;                 // e.g. MONTURE / GREYWOLF
   tanggalBayar: string;          // YYYY-MM-DD
   nominalTotalOrder: number;     // Nilai total pesanan PO FOB (akumulasi jika multi-PO)
+  totalNilaiPo?: number;         // Alias dari backend DB totalNilaiPo
   persentaseDp: number;          // e.g. 50 (%)
   nominalDp: number;             // Nilai rupiah DP yang disetor buyer
   metodePembayaran: MetodePembayaran;
