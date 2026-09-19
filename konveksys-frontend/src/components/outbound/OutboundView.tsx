@@ -754,7 +754,36 @@ export const OutboundView: React.FC = () => {
                   return (
                     <tr key={sj.id} className="hover:bg-slate-50 transition">
                       <td className="p-3.5 font-mono font-bold text-indigo-600 align-top">
-                        {sj.noSuratJalan}
+                        <div>{sj.noSuratJalan}</div>
+                        {(() => {
+                          const allSJPOs = Array.from(
+                            new Set(
+                              items
+                                .map(
+                                  (it) =>
+                                    it.sourcePONumber ||
+                                    spkList.find(
+                                      (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
+                                    )?.sourcePONumber
+                                )
+                                .filter(Boolean)
+                            )
+                          ) as string[];
+
+                          if (allSJPOs.length === 0) return null;
+                          return (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {allSJPOs.map((po) => (
+                                <span
+                                  key={po}
+                                  className="px-1.5 py-0.5 bg-blue-50 text-blue-700 font-sans font-bold rounded text-[9.5px] border border-blue-200"
+                                >
+                                  PO: {po}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="p-3.5 align-top text-center">
                         <div className="flex flex-wrap gap-1 justify-center max-w-[140px]">
@@ -766,24 +795,31 @@ export const OutboundView: React.FC = () => {
                         </div>
                       </td>
                       <td className="p-3.5 align-top space-y-1.5 min-w-[240px]">
-                        {items.map((it, idx) => (
-                          <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-0.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-bold text-slate-900">{it.produk}</span>
-                              <span className="font-bold text-indigo-600 shrink-0">{it.totalPcs} Pcs</span>
-                            </div>
-                            {it.sourcePONumber && (
-                              <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1">
-                                <span>📋</span>
-                                <span>PO: {it.sourcePONumber}</span>
+                        {items.map((it, idx) => {
+                          const itemPO =
+                            it.sourcePONumber ||
+                            spkList.find(
+                              (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
+                            )?.sourcePONumber;
+
+                          return (
+                            <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-0.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-bold text-slate-900">{it.produk}</span>
+                                <span className="font-bold text-indigo-600 shrink-0">{it.totalPcs} Pcs</span>
                               </div>
-                            )}
-                            {it.jenisKain && (
-                              <div className="text-[10px] text-slate-500 flex items-center gap-1 font-medium">
-                                <span>🧵</span>
-                                <span className="truncate">{it.jenisKain}</span>
-                              </div>
-                            )}
+                              {itemPO && (
+                                <div className="text-[10px] text-blue-700 font-semibold flex items-center gap-1 font-mono">
+                                  <span>📋</span>
+                                  <span>PO: {itemPO}</span>
+                                </div>
+                              )}
+                              {it.jenisKain && (
+                                <div className="text-[10px] text-slate-500 flex items-center gap-1 font-medium">
+                                  <span>🧵</span>
+                                  <span className="truncate">{it.jenisKain}</span>
+                                </div>
+                              )}
                             <div className="text-[10px] text-slate-500 flex flex-wrap gap-1 pt-1">
                               {SIZE_DISPLAY_ORDER.map(({ key, label }) => {
                                 const qty = it.qtyDelivered?.[key] || 0;
@@ -796,7 +832,8 @@ export const OutboundView: React.FC = () => {
                               })}
                             </div>
                           </div>
-                        ))}
+                        );
+                      })}
                       </td>
                       <td className="p-3.5 font-bold text-slate-700 align-top">
                         {uniqueVendors.join(', ') || sj.vendor || '-'}
@@ -1711,11 +1748,50 @@ export const OutboundView: React.FC = () => {
 
                 {/* Info Pengiriman Box */}
                 <div className="text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Brand Tujuan:</span>
-                    <strong className="text-slate-900 text-sm font-bold">{selectedSJDetail.brand}</strong>
-                    <div className="text-slate-500 text-[11px] mt-0.5">Partner Brand Makloon</div>
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Brand Tujuan:</span>
+                      <strong className="text-slate-900 text-sm font-bold">{selectedSJDetail.brand}</strong>
+                      <div className="text-slate-500 text-[11px] mt-0.5">Partner Brand Makloon</div>
+                    </div>
+
+                    {(() => {
+                      const detailItems = getSuratJalanItems(selectedSJDetail);
+                      const distinctPOs = Array.from(
+                        new Set(
+                          detailItems
+                            .map(
+                              (it) =>
+                                it.sourcePONumber ||
+                                spkList.find(
+                                  (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
+                                )?.sourcePONumber
+                            )
+                            .filter(Boolean)
+                        )
+                      ) as string[];
+
+                      if (distinctPOs.length === 0) return null;
+                      return (
+                        <div className="sm:text-right">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">
+                            Referensi PO Produksi:
+                          </span>
+                          <div className="flex flex-wrap gap-1 sm:justify-end mt-1">
+                            {distinctPOs.map((po) => (
+                              <span
+                                key={po}
+                                className="px-2 py-0.5 bg-blue-50 text-blue-700 font-mono font-bold rounded text-[10px] border border-blue-200"
+                              >
+                                PO: {po}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
+
                   {selectedSJDetail.catatan && (
                     <div className="pt-2 mt-2 border-t border-slate-200/60 text-[11px] text-slate-600">
                       <span className="font-bold">Catatan Pengiriman:</span> {selectedSJDetail.catatan}
@@ -1760,34 +1836,41 @@ export const OutboundView: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {getSuratJalanItems(selectedSJDetail).map((item, idx) => (
-                          <tr key={idx} className="align-top">
-                            <td className="p-2 text-center font-bold text-slate-400">{idx + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">
-                              <div>{item.produk}</div>
-                              <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                                {item.brand && (
-                                  <span className="px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded text-[9px] font-bold uppercase border border-slate-200">
-                                    {item.brand}
-                                  </span>
-                                )}
-                                {item.isManual && (
-                                  <span className="px-1.5 py-0.2 bg-amber-100 text-amber-900 rounded text-[9px] font-bold uppercase border border-amber-300">
-                                    NON-SPK / PO LAMA {item.legacyPoNumber ? `(${item.legacyPoNumber})` : ''}
-                                  </span>
-                                )}
-                                {!item.isManual && item.spkNumber && (
-                                  <span className="text-[9px] text-slate-400 font-mono">
-                                    [{item.spkNumber}]
-                                  </span>
-                                )}
-                                {item.sourcePONumber && (
-                                  <span className="px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded text-[9px] font-bold uppercase border border-blue-200 font-mono">
-                                    PO: {item.sourcePONumber}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
+                        {getSuratJalanItems(selectedSJDetail).map((item, idx) => {
+                          const itemPO =
+                            item.sourcePONumber ||
+                            spkList.find(
+                              (s) => s.id === item.spkId || s.spkNumber === item.spkNumber
+                            )?.sourcePONumber;
+
+                          return (
+                            <tr key={idx} className="align-top">
+                              <td className="p-2 text-center font-bold text-slate-400">{idx + 1}</td>
+                              <td className="p-2 font-bold text-slate-900">
+                                <div>{item.produk}</div>
+                                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                  {item.brand && (
+                                    <span className="px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded text-[9px] font-bold uppercase border border-slate-200">
+                                      {item.brand}
+                                    </span>
+                                  )}
+                                  {item.isManual && (
+                                    <span className="px-1.5 py-0.2 bg-amber-100 text-amber-900 rounded text-[9px] font-bold uppercase border border-amber-300">
+                                      NON-SPK / PO LAMA {item.legacyPoNumber ? `(${item.legacyPoNumber})` : ''}
+                                    </span>
+                                  )}
+                                  {!item.isManual && item.spkNumber && (
+                                    <span className="text-[9px] text-slate-400 font-mono">
+                                      [{item.spkNumber}]
+                                    </span>
+                                  )}
+                                  {itemPO && (
+                                    <span className="px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded text-[9px] font-bold uppercase border border-blue-200 font-mono">
+                                      PO: {itemPO}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
                             <td className="p-2 text-slate-600 text-[11px]">{item.jenisKain || 'Kain Standar'}</td>
                             <td className="p-2 text-[10px] text-slate-600 space-y-0.5">
                               {SIZE_DISPLAY_ORDER.map(({ key, label }) => {
@@ -1804,7 +1887,8 @@ export const OutboundView: React.FC = () => {
                               {item.totalPcs} Pcs
                             </td>
                           </tr>
-                        ))}
+                        );
+                      })}
                       </tbody>
                       <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
                         <tr>
