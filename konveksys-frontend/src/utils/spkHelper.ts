@@ -337,3 +337,86 @@ export function resolveItemPONumber(
 
   return null;
 }
+
+/**
+ * Mencocokkan warna item PO dengan warna/kain pada Surat Jalan atau SPK
+ */
+export function matchPOItemColor(
+  poColor?: string | null,
+  sjFabricOrColor?: string | null,
+  spk?: SPKCutting | null,
+  allKnownPOColors: string[] = []
+): boolean {
+  if (!poColor || !poColor.trim()) return true;
+
+  const targetColor = poColor.trim().toUpperCase();
+  const fabricStr = (sjFabricOrColor || '').trim().toUpperCase();
+  const depWarna = (spk?.depositInfo?.warna || '').trim().toUpperCase();
+  const spkFabric = (spk?.depositInfo?.jenisKain || '').trim().toUpperCase();
+
+  const isColorKeywordMatch = (str: string, color: string) => {
+    if (!str || !color) return false;
+    if (str.includes(color)) return true;
+    if (
+      (color === 'BROKEN WHITE' || color === 'BW' || color === 'B.W') &&
+      (str.includes('BW') || str.includes('BROKEN WHITE') || str.includes('PUTIH TULANG'))
+    ) {
+      return true;
+    }
+    if (
+      (color === 'HITAM' || color === 'BLACK') &&
+      (str.includes('HITAM') || str.includes('BLACK'))
+    ) {
+      return true;
+    }
+    if (
+      (color === 'PUTIH' || color === 'WHITE') &&
+      (str.includes('PUTIH') || str.includes('WHITE'))
+    ) {
+      return true;
+    }
+    if (
+      (color === 'MOCCA' || color === 'MOKA') &&
+      (str.includes('MOCCA') || str.includes('MOKA'))
+    ) {
+      return true;
+    }
+    if (
+      (color === 'TERRACOTA' || color === 'TERRACOTTA' || color === 'TERAKOTA') &&
+      (str.includes('TERRACOTA') || str.includes('TERRACOTTA') || str.includes('TERAKOTA'))
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  // 1. Cek langsung apakah kain / spk cocok dengan targetColor
+  if (
+    isColorKeywordMatch(fabricStr, targetColor) ||
+    isColorKeywordMatch(depWarna, targetColor) ||
+    isColorKeywordMatch(spkFabric, targetColor)
+  ) {
+    return true;
+  }
+
+  // 2. Jika kain / spk ternyata memuat warna LAIN yang ada di PO ini, maka BUKAN warna ini
+  const hasOtherColor = allKnownPOColors.some((otherCol) => {
+    if (otherCol.trim().toUpperCase() === targetColor) return false;
+    return (
+      isColorKeywordMatch(fabricStr, otherCol.trim().toUpperCase()) ||
+      isColorKeywordMatch(depWarna, otherCol.trim().toUpperCase()) ||
+      isColorKeywordMatch(spkFabric, otherCol.trim().toUpperCase())
+    );
+  });
+
+  if (hasOtherColor) {
+    return false;
+  }
+
+  // 3. Jika kain tidak memuat warna apapun dan PO hanya memiliki 1 warna, anggap cocok
+  if (allKnownPOColors.length <= 1) {
+    return true;
+  }
+
+  return false;
+}

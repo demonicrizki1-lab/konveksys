@@ -4,7 +4,7 @@ import { SlipGajiModal } from './SlipGajiModal';
 import { InvoiceModal } from './InvoiceModal';
 import { BuyerInvoiceSummary } from '../../types';
 import { formatRupiahInput, parseRupiahInput, formatDateIndo, getSabtuanPeriod } from '../../utils/formatters';
-import { resolveItemPONumber } from '../../utils/spkHelper';
+import { resolveItemPONumber, matchPOItemColor } from '../../utils/spkHelper';
 import {
   ReceiptText,
   DollarSign,
@@ -268,7 +268,7 @@ export const FinanceView: React.FC = () => {
       return true;
     });
 
-    const list: Array<BuyerInvoiceSummary['items'][0] & { rowKey: string; itemPo?: string }> = [];
+    const list: Array<BuyerInvoiceSummary['items'][0] & { rowKey: string; itemPo?: string; spkId?: string; spkNumber?: string; spkItemId?: string }> = [];
     matchedSJs.forEach((sj) => {
       const sjItems = getSuratJalanItems(sj);
       sjItems.forEach((it, itIdx) => {
@@ -314,6 +314,9 @@ export const FinanceView: React.FC = () => {
           tanggal: sj.tanggal,
           produk: it.produk,
           jenisKain: it.jenisKain,
+          spkId: it.spkId || sj.spkId,
+          spkNumber: it.spkNumber || undefined,
+          spkItemId: it.spkItemId || sj.spkItemId,
           qtyS,
           rateS: rates.rateS,
           qtyM,
@@ -448,40 +451,57 @@ export const FinanceView: React.FC = () => {
     selectedPOObjects.forEach(po => {
       const linkedSJs = checkedSjItems.filter(sj => sj.itemPo === po.noPO || (!sj.itemPo && selectedPOObjects.length === 1));
 
+      // Kumpulkan seluruh warna unik yang ada pada PO ini
+      const poColors = Array.from(
+        new Set((po.items || []).map(i => (i.warna || '').trim().toUpperCase()).filter(Boolean))
+      );
+
       (po.items || []).forEach(poItem => {
         const targetQty = Number(poItem.qty) || 0;
         let deliveredQty = 0;
 
-        const matchingSjs = linkedSJs.filter(
-          sj => sj.produk.trim().toLowerCase() === poItem.namaProduk.trim().toLowerCase()
-        );
+        const targetWarna = (poItem.warna || '').trim().toUpperCase();
+
+        const matchingSjs = linkedSJs.filter(sj => {
+          // 1. Model produk harus cocok
+          if (sj.produk.trim().toLowerCase() !== poItem.namaProduk.trim().toLowerCase()) {
+            return false;
+          }
+
+          // 2. Filter warna kain secara presisi
+          const linkedSpk = spkList.find(
+            s => (sj.spkId && s.id === sj.spkId) || (sj.spkNumber && s.spkNumber === sj.spkNumber)
+          );
+          return matchPOItemColor(targetWarna, sj.jenisKain, linkedSpk, poColors);
+        });
 
         if (matchingSjs.length > 0) {
-          const normUkuran = (poItem.ukuran || '').trim().toLowerCase();
-          
-          if (normUkuran === 's') {
+          const rawUkuran = (poItem.ukuran || '').trim().toLowerCase();
+          const digitsOnly = rawUkuran.replace(/\D/g, '');
+
+          if (rawUkuran === 's' || rawUkuran === 'size s') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyS || 0), 0);
-          } else if (normUkuran === 'm') {
+          } else if (rawUkuran === 'm' || rawUkuran === 'size m') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyM || 0), 0);
-          } else if (normUkuran === 'l') {
+          } else if (rawUkuran === 'l' || rawUkuran === 'size l') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyL || 0), 0);
-          } else if (normUkuran === 'xl') {
+          } else if (rawUkuran === 'xl' || rawUkuran === 'size xl') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyXL || 0), 0);
-          } else if (normUkuran === 'xxl' || normUkuran === '2xl') {
+          } else if (rawUkuran === 'xxl' || rawUkuran === '2xl' || rawUkuran === 'size 2xl' || rawUkuran === 'size xxl') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyXXL || 0), 0);
-          } else if (normUkuran.includes('4') || normUkuran === 'anak 4') {
+          } else if (digitsOnly === '4') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak4 || 0), 0);
-          } else if (normUkuran.includes('6') || normUkuran === 'anak 6') {
+          } else if (digitsOnly === '6') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak6 || 0), 0);
-          } else if (normUkuran.includes('8') || normUkuran === 'anak 8') {
+          } else if (digitsOnly === '8') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak8 || 0), 0);
-          } else if (normUkuran.includes('10') || normUkuran === 'anak 10') {
+          } else if (digitsOnly === '10') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak10 || 0), 0);
-          } else if (normUkuran.includes('12') || normUkuran === 'anak 12') {
+          } else if (digitsOnly === '12') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak12 || 0), 0);
-          } else if (normUkuran.includes('14') || normUkuran === 'anak 14') {
+          } else if (digitsOnly === '14') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak14 || 0), 0);
-          } else if (normUkuran.includes('16') || normUkuran === 'anak 16') {
+          } else if (digitsOnly === '16') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak16 || 0), 0);
           } else {
             const sameProductCount = po.items.filter(
@@ -514,7 +534,7 @@ export const FinanceView: React.FC = () => {
     });
 
     return list;
-  }, [selectedPOObjects, checkedSjItems]);
+  }, [selectedPOObjects, checkedSjItems, spkList]);
 
   const totalTargetPcs = useMemo(() => {
     return itemsProgress.reduce((sum, it) => sum + it.targetQty, 0);
