@@ -28,7 +28,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { ProductionPO, ProductionPOItem, ProductionPOStatus, VendorFabricDeposit, FabricTransferNote } from '../../types';
+import { ProductionPO, ProductionPOItem, ProductionPOStatus, VendorFabricDeposit, FabricTransferNote, SizeBreakdown } from '../../types';
 import { ProductionPOPrintModal } from './ProductionPOPrintModal';
 import { FabricTransferModal } from './FabricTransferModal';
 import { FabricTransferPrintModal } from './FabricTransferPrintModal';
@@ -60,6 +60,8 @@ export const SuratPOProduksiView: React.FC = () => {
     vendors,
     setActiveTab,
     setPendingSpkPrefillFromPO,
+    spkList,
+    inboundRolls,
   } = useApp();
 
   // Search & Filter State
@@ -174,6 +176,139 @@ export const SuratPOProduksiView: React.FC = () => {
       }))
     );
     setIsFormModalOpen(true);
+  };
+
+  // Sinkronisasi data rincian artikel PO dari hasil potong SPK Cutting
+  const handleSyncFromSPKCutting = () => {
+    const targetPoNo = formNoPO.trim().toUpperCase();
+    if (!targetPoNo) {
+      showToast('error', 'Nomor PO belum terisi.');
+      return;
+    }
+
+    const matchedSpks = (spkList || []).filter((s) => {
+      const direct = s.sourcePONumber?.trim().toUpperCase() === targetPoNo;
+      const multi =
+        Array.isArray(s.sourcePONumbers) &&
+        s.sourcePONumbers.some((p) => p.trim().toUpperCase() === targetPoNo);
+      const items =
+        Array.isArray(s.items) &&
+        s.items.some((it) => it.sourcePONumber?.trim().toUpperCase() === targetPoNo);
+      return direct || multi || items;
+    });
+
+    if (matchedSpks.length === 0) {
+      showToast('error', `Tidak ditemukan SPK Cutting yang terhubung ke nomor PO "${formNoPO}".`);
+      return;
+    }
+
+    const sizeMapping: { key: keyof SizeBreakdown; label: string }[] = [
+      { key: 'anak4', label: '4' },
+      { key: 'anak6', label: '6' },
+      { key: 'anak8', label: '8' },
+      { key: 'anak10', label: '10' },
+      { key: 'anak12', label: '12' },
+      { key: 'anak14', label: '14' },
+      { key: 'anak16', label: '16' },
+      { key: 's', label: 'S' },
+      { key: 'm', label: 'M' },
+      { key: 'l', label: 'L' },
+      { key: 'xl', label: 'XL' },
+      { key: 'xxl', label: 'XXL' },
+    ];
+
+    const extractedRows: ItemFormState[] = [];
+    let totalExtractedPcs = 0;
+
+    matchedSpks.forEach((spk) => {
+      // Dapatkan kain dan warna
+      const fabricName = (() => {
+        if (spk.fabricSourceType === 'TITIPAN_VENDOR' && spk.depositInfo?.jenisKain) {
+          return spk.depositInfo.jenisKain;
+        }
+        if (spk.rollIds && spk.rollIds.length > 0) {
+          const kainList = spk.rollIds
+            .map((id) => {
+              const r = inboundRolls.find((item) => item.id === id || item.rollCode === id);
+              return r?.jenisKain;
+            })
+            .filter(Boolean) as string[];
+          const uniqueKain = Array.from(new Set(kainList));
+          if (uniqueKain.length > 0) return uniqueKain.join(', ');
+        }
+        return (spk as any).jenisKain || '';
+      })();
+
+      const colorName =
+        spk.depositInfo?.warna ||
+        (() => {
+          if (!fabricName) return '';
+          const colors = [
+            'BROKEN WHITE', 'BW', 'PUTIH', 'PINK', 'MOCCA', 'MOKA', 'TERRACOTA', 'TERACOTTA',
+            'HITAM', 'BLACK', 'NAVY', 'SAGE', 'LILAC', 'CREAM', 'MAROON', 'DENIM', 'ARMY'
+          ];
+          const upper = fabricName.toUpperCase();
+          const found = colors.find((c) => upper.includes(c));
+          return found || '';
+        })();
+
+      // Item produk dalam SPK
+      const itemsToProcess =
+        spk.items && spk.items.length > 0
+          ? spk.items
+          : [
+              {
+                id: spk.id,
+                produk: spk.produk,
+                vendor: spk.vendor,
+                targetCutQty: spk.targetCutQty,
+                deliveredQty: spk.deliveredQty,
+                sourcePONumber: spk.sourcePONumber,
+              },
+            ];
+
+      itemsToProcess.forEach((item) => {
+        // Jika item memiliki nomor PO spesifik dan tidak sama dengan target PO saat multi-PO, lewati
+        if (item.sourcePONumber && item.sourcePONumber.trim().toUpperCase() !== targetPoNo) {
+          return;
+        }
+
+        const targetQty = item.targetCutQty || spk.targetCutQty;
+        sizeMapping.forEach((sz) => {
+          const q = Number(targetQty[sz.key]) || 0;
+          if (q > 0) {
+            extractedRows.push({
+              namaProduk: item.produk.trim().toUpperCase(),
+              warna: colorName,
+              ukuran: sz.label,
+              qty: q,
+              bahanKain: fabricName,
+              catatan: `SPK ${spk.spkNumber}`,
+            });
+            totalExtractedPcs += q;
+          }
+        });
+      });
+    });
+
+    if (extractedRows.length === 0) {
+      showToast('error', `SPK Cutting terkait tidak memiliki kuantiti potong (> 0).`);
+      return;
+    }
+
+    const confirmMsg = `Ditemukan ${matchedSpks.length} SPK Cutting (${matchedSpks
+      .map((s) => s.spkNumber)
+      .join(', ')}) dengan total ${totalExtractedPcs} Pcs (${extractedRows.length} baris artikel/ukuran).\n\nApakah Anda ingin memperbarui rincian artikel PO ini sesuai data hasil potong SPK Cutting?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setFormItems(extractedRows);
+    if (!formVendor && matchedSpks[0]?.vendor) {
+      setFormVendor(matchedSpks[0].vendor);
+    }
+    showToast(
+      'success',
+      `Berhasil menarik ${extractedRows.length} baris artikel dari SPK Cutting (Total: ${totalExtractedPcs} Pcs).`
+    );
   };
 
   // Items manipulation in Form
@@ -1283,7 +1418,7 @@ export const SuratPOProduksiView: React.FC = () => {
 
               {/* Items Section */}
               <div className="border-t border-slate-200 pt-4">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                   <div>
                     <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                       Rincian Artikel & Qty Potong Jahit
@@ -1292,14 +1427,25 @@ export const SuratPOProduksiView: React.FC = () => {
                       Tambahkan rincian model baju, ukuran, dan jumlah yang harus diproduksi.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddItemRow}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold transition cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+ Tambah Baris Artikel</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleSyncFromSPKCutting}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition cursor-pointer shadow-xs"
+                      title="Tarik data artikel & ukuran riil dari SPK Cutting yang terhubung ke PO ini"
+                    >
+                      <Scissors className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Tarik Data dari SPK Cutting</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddItemRow}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Tambah Baris Artikel</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2.5">
