@@ -28,6 +28,8 @@ interface ArticleOption {
   id?: string;
   produk: string;
   vendor: string;
+  sourcePOId?: string | null;
+  sourcePONumber?: string | null;
 }
 
 const emptySizeBreakdown = (): SizeBreakdown => ({
@@ -158,6 +160,8 @@ export const OutboundView: React.FC = () => {
         id: it.id,
         produk: it.produk,
         vendor: it.vendor || spk.vendor,
+        sourcePOId: it.sourcePOId || spk.sourcePOId || null,
+        sourcePONumber: it.sourcePONumber || spk.sourcePONumber || null,
       }));
     }
     if (spk.produk && spk.produk.includes('+')) {
@@ -167,6 +171,8 @@ export const OutboundView: React.FC = () => {
           id: `part-${idx}`,
           produk: p.trim(),
           vendor: spk.vendor,
+          sourcePOId: spk.sourcePOId || null,
+          sourcePONumber: spk.sourcePONumber || null,
         }))
         .filter((p) => Boolean(p.produk));
     }
@@ -175,6 +181,8 @@ export const OutboundView: React.FC = () => {
         id: undefined,
         produk: spk.produk,
         vendor: spk.vendor,
+        sourcePOId: spk.sourcePOId || null,
+        sourcePONumber: spk.sourcePONumber || null,
       },
     ];
   };
@@ -390,6 +398,12 @@ export const OutboundView: React.FC = () => {
       return;
     }
 
+    const matchedItem = currentSPK.items?.find(
+      (it) =>
+        (selectedSpkItemId && it.id === selectedSpkItemId) ||
+        it.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase()
+    );
+
     const newItem: SuratJalanItem = {
       id: `draft-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       spkId: currentSPK.id,
@@ -401,8 +415,8 @@ export const OutboundView: React.FC = () => {
       jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
       qtyDelivered: { ...qtySend },
       totalPcs: currentSendingPcs,
-      sourcePOId: currentSPK.sourcePOId || undefined,
-      sourcePONumber: currentSPK.sourcePONumber || undefined,
+      sourcePOId: matchedItem?.sourcePOId || currentSPK.sourcePOId || undefined,
+      sourcePONumber: matchedItem?.sourcePONumber || currentSPK.sourcePONumber || undefined,
     };
 
     if (editingDraftIndex !== null) {
@@ -523,6 +537,11 @@ export const OutboundView: React.FC = () => {
           totalPcs: currentSendingPcs,
         });
       } else if (currentSPK) {
+        const matchedItem = currentSPK.items?.find(
+          (it) =>
+            (selectedSpkItemId && it.id === selectedSpkItemId) ||
+            it.produk.trim().toUpperCase() === selectedArticleName.trim().toUpperCase()
+        );
         finalItems.push({
           id: `draft-${Date.now()}`,
           spkId: currentSPK.id,
@@ -534,8 +553,8 @@ export const OutboundView: React.FC = () => {
           jenisKain: customJenisKain || getSPKFabricName(currentSPK) || 'Kain Standar',
           qtyDelivered: { ...qtySend },
           totalPcs: currentSendingPcs,
-          sourcePOId: currentSPK.sourcePOId || undefined,
-          sourcePONumber: currentSPK.sourcePONumber || undefined,
+          sourcePOId: matchedItem?.sourcePOId || currentSPK.sourcePOId || undefined,
+          sourcePONumber: matchedItem?.sourcePONumber || currentSPK.sourcePONumber || undefined,
         });
       }
     }
@@ -1290,10 +1309,19 @@ export const OutboundView: React.FC = () => {
                               : spk.produk.includes('+')
                               ? ' [Artikel Combo]'
                               : '';
+                          const allPos = Array.from(
+                            new Set([
+                              spk.sourcePONumber,
+                              ...(spk.sourcePONumbers || []),
+                              ...(spk.items?.map((it) => it.sourcePONumber) || []),
+                            ].filter(Boolean))
+                          ) as string[];
+                          const poLabel = allPos.length > 0 ? ` [PO: ${allPos.join(', ')}]` : '';
+
                           return (
                             <option key={spk.id} value={spk.id}>
                               {spk.spkNumber}
-                              {spk.sourcePONumber ? ` [PO: ${spk.sourcePONumber}]` : ''} - {spk.produk}
+                              {poLabel} - {spk.produk}
                               {fabricLabel}
                               {multiLabel}
                             </option>
@@ -1315,6 +1343,7 @@ export const OutboundView: React.FC = () => {
                             const rem = currentSPK
                               ? getSPKRemainingQty(currentSPK, art.id || art.produk)
                               : null;
+                            const artPO = art.sourcePONumber || currentSPK?.sourcePONumber;
 
                             return (
                               <button
@@ -1331,6 +1360,7 @@ export const OutboundView: React.FC = () => {
                                   <div className="truncate">{art.produk}</div>
                                   <div className={`text-[10px] font-normal ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
                                     Vendor: {art.vendor}
+                                    {artPO && <span> • PO: {artPO}</span>}
                                   </div>
                                 </div>
                                 <div className="text-right shrink-0">

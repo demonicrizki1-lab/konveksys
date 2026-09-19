@@ -36,6 +36,8 @@ interface ProductFormItem {
   vendor: string;
   targetCut: SizeBreakdown;
   deliveredQty?: SizeBreakdown;
+  sourcePOId?: string | null;
+  sourcePONumber?: string | null;
 }
 
 const emptySizeBreakdown: SizeBreakdown = {
@@ -126,6 +128,8 @@ export const SPKView: React.FC = () => {
       produk: '',
       vendor: vendors[0]?.name || 'SAHIRA',
       targetCut: { ...emptySizeBreakdown },
+      sourcePOId: null,
+      sourcePONumber: null,
     },
   ]);
   const [activeProductTab, setActiveProductTab] = useState(0);
@@ -194,9 +198,10 @@ export const SPKView: React.FC = () => {
       spk.produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
       spk.vendor.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (spk.sourcePONumber && spk.sourcePONumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (spk.sourcePONumbers && spk.sourcePONumbers.some((po) => po.toLowerCase().includes(searchTerm.toLowerCase()))) ||
       (spk.depositInfo?.jenisKain && spk.depositInfo.jenisKain.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (spk.depositInfo?.sourceVendor && spk.depositInfo.sourceVendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (spk.items && spk.items.some((it) => it.produk.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+      (spk.items && spk.items.some((it) => it.produk.toLowerCase().includes(searchTerm.toLowerCase()) || (it.sourcePONumber && it.sourcePONumber.toLowerCase().includes(searchTerm.toLowerCase())))) ||
       (spk.rollIds && spk.rollIds.some((rId) => {
         const r = inboundRolls.find((item) => item.id === rId || item.rollCode === rId);
         return r?.jenisKain && r.jenisKain.toLowerCase().includes(searchTerm.toLowerCase());
@@ -291,6 +296,8 @@ export const SPKView: React.FC = () => {
         produk: '',
         vendor: initVendor,
         targetCut: { ...emptySizeBreakdown },
+        sourcePOId: null,
+        sourcePONumber: null,
       },
     ]);
     setActiveProductTab(0);
@@ -332,6 +339,8 @@ export const SPKView: React.FC = () => {
         vendor: it.vendor || spk.vendor,
         targetCut: { ...it.targetCutQty },
         deliveredQty: it.deliveredQty ? { ...it.deliveredQty } : undefined,
+        sourcePOId: it.sourcePOId || null,
+        sourcePONumber: it.sourcePONumber || null,
       }))
     );
 
@@ -373,6 +382,8 @@ export const SPKView: React.FC = () => {
       vendor: res.vendor || itemToSplit.vendor,
       targetCut: { ...res.targetCutQty },
       deliveredQty: res.deliveredQty ? { ...res.deliveredQty } : undefined,
+      sourcePOId: itemToSplit.sourcePOId || null,
+      sourcePONumber: itemToSplit.sourcePONumber || null,
     }));
 
     setProductItems((prev) => {
@@ -417,6 +428,8 @@ export const SPKView: React.FC = () => {
       produk: '',
       vendor: defaultVendor,
       targetCut: { ...emptySizeBreakdown },
+      sourcePOId: sourcePOId || null,
+      sourcePONumber: sourcePONumber || null,
     };
     setProductItems((prev) => [...prev, newItem]);
     setActiveProductTab(productItems.length);
@@ -537,6 +550,16 @@ export const SPKView: React.FC = () => {
       const existingItem = editingSpk?.items?.find(
         (ex) => ex.id === it.id || ex.produk.trim().toUpperCase() === it.produk.trim().toUpperCase()
       );
+
+      const resolvedPOId =
+        it.sourcePOId !== undefined
+          ? it.sourcePOId
+          : existingItem?.sourcePOId || sourcePOId || null;
+      const resolvedPONumber =
+        it.sourcePONumber !== undefined
+          ? it.sourcePONumber
+          : existingItem?.sourcePONumber || sourcePONumber || null;
+
       return {
         id: it.id || existingItem?.id || `item-${Date.now()}-${idx + 1}`,
         produk: it.produk.trim().toUpperCase(),
@@ -549,8 +572,20 @@ export const SPKView: React.FC = () => {
           : it.deliveredQty
           ? { ...it.deliveredQty }
           : { ...emptySizeBreakdown },
+        sourcePOId: resolvedPOId,
+        sourcePONumber: resolvedPONumber,
       };
     });
+
+    const uniqueItemPOs = Array.from(
+      new Set(itemsPayload.map((it) => it.sourcePONumber).filter(Boolean))
+    ) as string[];
+
+    const primaryPONumber =
+      sourcePONumber || (uniqueItemPOs.length > 0 ? uniqueItemPOs[0] : null);
+    const primaryPO = productionPOs.find((p) => p.noPO === primaryPONumber);
+    const primaryPOId =
+      sourcePOId || primaryPO?.id || (editingSpk?.sourcePOId ?? null);
 
     const chosenDep = fabricSourceType === 'TITIPAN_VENDOR' ? selectedDeposit : null;
 
@@ -578,8 +613,14 @@ export const SPKView: React.FC = () => {
             sourcePONumber: chosenDep.sourcePONumber,
           }
         : null,
-      sourcePOId: sourcePOId || (editingSpk?.sourcePOId ?? null),
-      sourcePONumber: sourcePONumber || (editingSpk?.sourcePONumber ?? null),
+      sourcePOId: primaryPOId,
+      sourcePONumber: primaryPONumber || (editingSpk?.sourcePONumber ?? null),
+      sourcePONumbers:
+        uniqueItemPOs.length > 0
+          ? uniqueItemPOs
+          : primaryPONumber
+          ? [primaryPONumber]
+          : [],
     };
 
     try {
@@ -961,11 +1002,32 @@ export const SPKView: React.FC = () => {
                                 Combo ({spkItems.length})
                               </span>
                             )}
-                            {spk.sourcePONumber && (
-                              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[9.5px] border border-blue-200">
-                                PO: {spk.sourcePONumber}
-                              </span>
-                            )}
+                            {(() => {
+                              const distinctPOs = Array.from(
+                                new Set([
+                                  spk.sourcePONumber,
+                                  ...(spk.sourcePONumbers || []),
+                                  ...(spk.items?.map((it) => it.sourcePONumber) || []),
+                                ].filter(Boolean))
+                              ) as string[];
+
+                              if (distinctPOs.length === 0) return null;
+                              if (distinctPOs.length === 1) {
+                                return (
+                                  <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[9.5px] border border-blue-200">
+                                    PO: {distinctPOs[0]}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span
+                                  className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded text-[9.5px] border border-indigo-200"
+                                  title={`Multi-PO: ${distinctPOs.join(', ')}`}
+                                >
+                                  {distinctPOs.length} PO: {distinctPOs.join(', ')}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </td>
 
@@ -1549,11 +1611,20 @@ export const SPKView: React.FC = () => {
                 <div className="flex-1">
                   <label className="block font-bold text-slate-700 text-xs flex items-center gap-1.5 mb-1">
                     <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    Referensi Nomor PO Produksi (Opsional):
+                    Referensi Nomor PO Produksi Utama (Opsional):
                   </label>
                   <select
                     value={sourcePONumber || (editingSpk?.sourcePONumber ?? '')}
-                    onChange={(e) => setSourcePONumber(e.target.value || null)}
+                    onChange={(e) => {
+                      const val = e.target.value || null;
+                      const matched = productionPOs.find((p) => p.noPO === val);
+                      setSourcePONumber(val);
+                      setSourcePOId(matched?.id || null);
+                      if (productItems.length === 1 && !productItems[0].sourcePONumber) {
+                        updateProductItem(0, 'sourcePONumber', val);
+                        updateProductItem(0, 'sourcePOId', matched?.id || null);
+                      }
+                    }}
                     className="w-full p-2 bg-white border border-slate-200 rounded-lg font-medium text-slate-800 outline-none text-xs cursor-pointer"
                   >
                     <option value="">-- Tanpa Referensi PO (SPK Mandiri) --</option>
@@ -1563,17 +1634,23 @@ export const SPKView: React.FC = () => {
                       </option>
                     ))}
                   </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Acuan PO default. Jika 1 kain memotong 2 atau lebih produk dengan list PO berbeda, tentukan PO masing-masing pada tab artikel di bawah.
+                  </p>
                 </div>
                 {(sourcePONumber || editingSpk?.sourcePONumber) && (
                   <div className="shrink-0 flex items-center gap-2">
                     <span className="text-[10px] font-bold px-2.5 py-1 bg-indigo-100 text-indigo-800 rounded-md font-mono border border-indigo-200">
-                      Terkoneksi: {sourcePONumber || editingSpk?.sourcePONumber}
+                      PO Utama: {sourcePONumber || editingSpk?.sourcePONumber}
                     </span>
                     <button
                       type="button"
-                      onClick={() => setSourcePONumber(null)}
+                      onClick={() => {
+                        setSourcePONumber(null);
+                        setSourcePOId(null);
+                      }}
                       className="text-[10px] text-slate-500 hover:text-rose-600 font-semibold cursor-pointer underline"
-                      title="Lepas koneksi PO"
+                      title="Lepas koneksi PO Utama"
                     >
                       Lepas PO
                     </button>
@@ -1861,6 +1938,7 @@ export const SPKView: React.FC = () => {
                   {productItems.map((item, idx) => {
                     const isActive = activeProductTab === idx;
                     const itemPcs = getItemTotalPcs(item.targetCut);
+                    const itemPO = item.sourcePONumber || sourcePONumber;
                     return (
                       <button
                         key={item.id}
@@ -1877,6 +1955,17 @@ export const SPKView: React.FC = () => {
                           {idx === 0 ? '1. Produk Utama' : `${idx + 1}. Produk #${idx + 1}`}
                           {item.produk ? `: ${item.produk}` : ''}
                         </span>
+                        {itemPO && (
+                          <span
+                            className={`text-[9.5px] px-1.5 py-0.5 rounded font-mono ${
+                              isActive
+                                ? 'bg-indigo-700 text-white'
+                                : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            }`}
+                          >
+                            {itemPO}
+                          </span>
+                        )}
                         <span
                           className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                             isActive ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-600'
@@ -1914,7 +2003,7 @@ export const SPKView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="block font-bold text-slate-600">
@@ -1964,6 +2053,40 @@ export const SPKView: React.FC = () => {
                         {vendors.map((v) => (
                           <option key={v.id} value={v.name}>
                             {v.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-bold text-slate-600 truncate">
+                          Referensi PO Produksi:
+                        </label>
+                        {(currentActiveProduct.sourcePONumber || sourcePONumber) && (
+                          <span className="text-[9.5px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                            {currentActiveProduct.sourcePONumber || sourcePONumber}
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        value={currentActiveProduct.sourcePONumber || ''}
+                        onChange={(e) => {
+                          const val = e.target.value || null;
+                          const matched = productionPOs.find((p) => p.noPO === val);
+                          updateProductItem(activeProductTab, 'sourcePONumber', val);
+                          updateProductItem(activeProductTab, 'sourcePOId', matched?.id || null);
+                        }}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none text-xs cursor-pointer"
+                      >
+                        <option value="">
+                          {sourcePONumber
+                            ? `-- Ikuti PO Utama (${sourcePONumber}) --`
+                            : '-- Tanpa PO (SPK Mandiri) --'}
+                        </option>
+                        {productionPOs.map((po) => (
+                          <option key={po.id} value={po.noPO}>
+                            {po.noPO} • {po.brand} ({po.totalPcs || 0} Pcs)
                           </option>
                         ))}
                       </select>
@@ -2120,13 +2243,26 @@ export const SPKView: React.FC = () => {
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-slideUp max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-bold text-slate-900 text-base">{selectedSPKDetail.spkNumber}</h3>
-                  {selectedSPKDetail.sourcePONumber && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                      PO: {selectedSPKDetail.sourcePONumber}
-                    </span>
-                  )}
+                  {(() => {
+                    const distinctPOs = Array.from(
+                      new Set([
+                        selectedSPKDetail.sourcePONumber,
+                        ...(selectedSPKDetail.sourcePONumbers || []),
+                        ...(selectedSPKDetail.items?.map((it) => it.sourcePONumber) || []),
+                      ].filter(Boolean))
+                    ) as string[];
+
+                    return distinctPOs.map((poNum) => (
+                      <span
+                        key={poNum}
+                        className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 font-mono"
+                      >
+                        PO: {poNum}
+                      </span>
+                    ));
+                  })()}
                 </div>
                 <span className="text-xs text-slate-500">
                   {selectedSPKDetail.produk} ({selectedSPKDetail.brand})
@@ -2214,27 +2350,48 @@ export const SPKView: React.FC = () => {
                   return (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
-                        {detailItems.map((item, idx) => (
-                          <button
-                            key={item.id || idx}
-                            onClick={() => setActiveDetailTab(idx)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
-                              activeDetailTab === idx
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                            }`}
-                          >
-                            {item.produk} ({item.vendor})
-                          </button>
-                        ))}
+                        {detailItems.map((item, idx) => {
+                          const itemPO = item.sourcePONumber || selectedSPKDetail.sourcePONumber;
+                          return (
+                            <button
+                              key={item.id || idx}
+                              onClick={() => setActiveDetailTab(idx)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition border flex items-center gap-1.5 ${
+                                activeDetailTab === idx
+                                  ? 'bg-indigo-600 text-white border-indigo-600'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>
+                                {item.produk} ({item.vendor})
+                              </span>
+                              {itemPO && (
+                                <span
+                                  className={`text-[9.5px] px-1.5 py-0.5 rounded font-mono ${
+                                    activeDetailTab === idx
+                                      ? 'bg-indigo-700 text-white'
+                                      : 'bg-slate-100 text-indigo-700 border border-indigo-200'
+                                  }`}
+                                >
+                                  {itemPO}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
 
                       <div className="border border-slate-200 rounded-xl overflow-hidden">
-                        <div className="bg-slate-100 px-3 py-2 font-bold text-slate-800 flex justify-between">
+                        <div className="bg-slate-100 px-3 py-2 font-bold text-slate-800 flex justify-between items-center">
                           <span>
                             Artikel: <strong>{currentDetailItem.produk}</strong> (Mitra:{' '}
                             {currentDetailItem.vendor})
                           </span>
+                          {(currentDetailItem.sourcePONumber || selectedSPKDetail.sourcePONumber) && (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold">
+                              PO: {currentDetailItem.sourcePONumber || selectedSPKDetail.sourcePONumber}
+                            </span>
+                          )}
                         </div>
                         <table className="w-full text-center text-xs">
                           <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">

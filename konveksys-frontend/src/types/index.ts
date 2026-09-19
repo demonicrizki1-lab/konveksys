@@ -121,6 +121,8 @@ export interface SPKProductItem {
   vendor: string;
   targetCutQty: SizeBreakdown;
   deliveredQty: SizeBreakdown;
+  sourcePOId?: string | null;
+  sourcePONumber?: string | null;
 }
 
 export interface SPKCutting {
@@ -152,6 +154,7 @@ export interface SPKCutting {
   } | null;
   sourcePOId?: string | null;
   sourcePONumber?: string | null;
+  sourcePONumbers?: string[]; // Daftar seluruh nomor PO jika multi-PO
 }
 
 export interface SuratJalanItem {
