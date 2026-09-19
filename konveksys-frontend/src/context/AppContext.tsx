@@ -876,6 +876,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak16: s.deliveredAnak16 || 0,
           };
 
+          const mappedPONumbers = Array.isArray(s.sourcePONumbers)
+            ? s.sourcePONumbers
+            : typeof s.sourcePONumbers === 'string'
+            ? (() => { try { return JSON.parse(s.sourcePONumbers); } catch { return []; } })()
+            : cached?.sourcePONumbers || [];
+
+          const allSpkPos = Array.from(
+            new Set([
+              s.sourcePONumber,
+              ...(mappedPONumbers || []),
+              ...(cached?.items?.map((it: any) => it.sourcePONumber) || []),
+            ].filter(Boolean))
+          ) as string[];
+
           const rawItems = typeof s.items === 'string'
             ? (() => { try { return JSON.parse(s.items); } catch { return undefined; } })()
             : s.items;
@@ -889,14 +903,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             targetCutQty,
             deliveredQty,
             rawItems || cached?.items,
-            rawSJs
+            rawSJs,
+            allSpkPos
           );
-
-          const mappedPONumbers = Array.isArray(s.sourcePONumbers)
-            ? s.sourcePONumbers
-            : typeof s.sourcePONumbers === 'string'
-            ? (() => { try { return JSON.parse(s.sourcePONumbers); } catch { return []; } })()
-            : cached?.sourcePONumbers || [];
 
           return {
             id: s.id,
@@ -4082,13 +4091,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       target = matchedItem.targetCutQty;
     }
 
+    const allSpkPos: string[] = [];
+    if (spk.sourcePONumber?.trim()) allSpkPos.push(spk.sourcePONumber.trim().toUpperCase());
+    if (Array.isArray(spk.sourcePONumbers)) {
+      spk.sourcePONumbers.forEach((p) => {
+        if (typeof p === 'string' && p.trim()) allSpkPos.push(p.trim().toUpperCase());
+      });
+    }
+    if (Array.isArray(spk.items)) {
+      spk.items.forEach((it) => {
+        if (it.sourcePONumber?.trim() && !allSpkPos.includes(it.sourcePONumber.trim().toUpperCase())) {
+          allSpkPos.push(it.sourcePONumber.trim().toUpperCase());
+        }
+      });
+    }
+
     // Hitung akumulasi terkirim secara dinamis dari daftar Surat Jalan aktif
     const matchedSJs = Array.isArray(suratJalanList)
       ? suratJalanList.filter(
-          sj =>
+          (sj) =>
             sj.spkId === spk.id ||
             (sj as any).spkNumber === spk.spkNumber ||
-            getSuratJalanItems(sj).some(it => it.spkId === spk.id || it.spkNumber === spk.spkNumber)
+            getSuratJalanItems(sj).some(
+              (it) =>
+                it.spkId === spk.id ||
+                it.spkNumber === spk.spkNumber ||
+                (it.spkItemId && spk.items?.some((ex) => ex.id === it.spkItemId)) ||
+                (it.sourcePONumber && allSpkPos.includes(it.sourcePONumber.trim().toUpperCase()))
+            )
         )
       : [];
 
@@ -4098,36 +4128,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const sjItems = getSuratJalanItems(sj);
         if (sjItems.length > 0) {
           for (const item of sjItems) {
-            if (item.spkId === spk.id || item.spkNumber === spk.spkNumber) {
+            const directMatch =
+              (item.spkId && (item.spkId === spk.id || item.spkId === spk.spkNumber)) ||
+              (item.spkNumber && (item.spkNumber === spk.spkNumber || item.spkNumber === spk.id));
+            const itemIdMatch =
+              item.spkItemId && spk.items?.some((ex) => ex.id === item.spkItemId);
+            const sjHeaderMatch =
+              !item.spkId &&
+              !item.spkNumber &&
+              (sj.spkId === spk.id || (sj as any).spkNumber === spk.spkNumber);
+            const poMatch =
+              item.sourcePONumber && allSpkPos.includes(item.sourcePONumber.trim().toUpperCase());
+
+            const isThisSpk = directMatch || itemIdMatch || sjHeaderMatch || poMatch;
+
+            if (isThisSpk) {
               const itemProd = (item.produk || '').trim().toUpperCase();
+              const qDeliv = item.qtyDelivered || (item as any).deliveredQty;
               if (matchedItem) {
                 if (itemProd === targetProductName || (item.spkItemId && item.spkItemId === matchedItem.id)) {
-                  deliv.s += Number(item.qtyDelivered?.s) || 0;
-                  deliv.m += Number(item.qtyDelivered?.m) || 0;
-                  deliv.l += Number(item.qtyDelivered?.l) || 0;
-                  deliv.xl += Number(item.qtyDelivered?.xl) || 0;
-                  deliv.xxl += Number(item.qtyDelivered?.xxl) || 0;
-                  deliv.anak4 += Number(item.qtyDelivered?.anak4) || 0;
-                  deliv.anak6 += Number(item.qtyDelivered?.anak6) || 0;
-                  deliv.anak8 += Number(item.qtyDelivered?.anak8) || 0;
-                  deliv.anak10 += Number(item.qtyDelivered?.anak10) || 0;
-                  deliv.anak12 += Number(item.qtyDelivered?.anak12) || 0;
-                  deliv.anak14 += Number(item.qtyDelivered?.anak14) || 0;
-                  deliv.anak16 += Number(item.qtyDelivered?.anak16) || 0;
+                  deliv.s += Number(qDeliv?.s) || 0;
+                  deliv.m += Number(qDeliv?.m) || 0;
+                  deliv.l += Number(qDeliv?.l) || 0;
+                  deliv.xl += Number(qDeliv?.xl) || 0;
+                  deliv.xxl += Number(qDeliv?.xxl) || 0;
+                  deliv.anak4 += Number(qDeliv?.anak4) || 0;
+                  deliv.anak6 += Number(qDeliv?.anak6) || 0;
+                  deliv.anak8 += Number(qDeliv?.anak8) || 0;
+                  deliv.anak10 += Number(qDeliv?.anak10) || 0;
+                  deliv.anak12 += Number(qDeliv?.anak12) || 0;
+                  deliv.anak14 += Number(qDeliv?.anak14) || 0;
+                  deliv.anak16 += Number(qDeliv?.anak16) || 0;
                 }
               } else {
-                deliv.s += Number(item.qtyDelivered?.s) || 0;
-                deliv.m += Number(item.qtyDelivered?.m) || 0;
-                deliv.l += Number(item.qtyDelivered?.l) || 0;
-                deliv.xl += Number(item.qtyDelivered?.xl) || 0;
-                deliv.xxl += Number(item.qtyDelivered?.xxl) || 0;
-                deliv.anak4 += Number(item.qtyDelivered?.anak4) || 0;
-                deliv.anak6 += Number(item.qtyDelivered?.anak6) || 0;
-                deliv.anak8 += Number(item.qtyDelivered?.anak8) || 0;
-                deliv.anak10 += Number(item.qtyDelivered?.anak10) || 0;
-                deliv.anak12 += Number(item.qtyDelivered?.anak12) || 0;
-                deliv.anak14 += Number(item.qtyDelivered?.anak14) || 0;
-                deliv.anak16 += Number(item.qtyDelivered?.anak16) || 0;
+                deliv.s += Number(qDeliv?.s) || 0;
+                deliv.m += Number(qDeliv?.m) || 0;
+                deliv.l += Number(qDeliv?.l) || 0;
+                deliv.xl += Number(qDeliv?.xl) || 0;
+                deliv.xxl += Number(qDeliv?.xxl) || 0;
+                deliv.anak4 += Number(qDeliv?.anak4) || 0;
+                deliv.anak6 += Number(qDeliv?.anak6) || 0;
+                deliv.anak8 += Number(qDeliv?.anak8) || 0;
+                deliv.anak10 += Number(qDeliv?.anak10) || 0;
+                deliv.anak12 += Number(qDeliv?.anak12) || 0;
+                deliv.anak14 += Number(qDeliv?.anak14) || 0;
+                deliv.anak16 += Number(qDeliv?.anak16) || 0;
               }
             }
           }

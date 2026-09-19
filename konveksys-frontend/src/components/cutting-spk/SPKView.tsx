@@ -309,6 +309,14 @@ export const SPKView: React.FC = () => {
   };
 
   const getSpkItems = (spk: SPKCutting): SPKProductItem[] => {
+    const poList = Array.from(
+      new Set([
+        spk.sourcePONumber,
+        ...(spk.sourcePONumbers || []),
+        ...(spk.items?.map((it) => it.sourcePONumber) || []),
+      ].filter(Boolean))
+    ) as string[];
+
     return buildSplitSpkItems(
       spk.id,
       spk.spkNumber,
@@ -317,7 +325,8 @@ export const SPKView: React.FC = () => {
       spk.targetCutQty,
       spk.deliveredQty,
       spk.items,
-      suratJalanList
+      suratJalanList,
+      poList
     );
   };
 
@@ -914,10 +923,15 @@ export const SPKView: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {paginatedSPK.map((spk) => {
                   const isExpanded = !!expandedSpkIds[spk.id];
+                  const spkItems = getSpkItems(spk);
                   const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
-                  const delivTotal = Object.values(spk.deliveredQty).reduce((a, b) => a + b, 0);
+                  const dynamicDelivTotal = spkItems.reduce((acc, it) => {
+                    return acc + Object.values(it.deliveredQty || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+                  }, 0);
+                  const rawDelivTotal = Object.values(spk.deliveredQty || {}).reduce((a, b) => a + (Number(b) || 0), 0);
                   const remaining = getSPKRemainingQty(spk);
                   const fulfilledTotal = Math.max(0, targetTotal - remaining.totalRemaining);
+                  const delivTotal = Math.max(rawDelivTotal, dynamicDelivTotal, fulfilledTotal);
                   const percent = targetTotal > 0 ? Math.min(100, Math.round((fulfilledTotal / targetTotal) * 100)) : 0;
                   const isOverDelivery = spk.status === 'OVER_DELIVERY' || (targetTotal > 0 && delivTotal > targetTotal);
                   const isCompleted = (spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal >= targetTotal)) && remaining.totalRemaining === 0;
@@ -929,7 +943,6 @@ export const SPKView: React.FC = () => {
                     ? 'PARTIAL_DELIVERED'
                     : spk.status;
 
-                  const spkItems = getSpkItems(spk);
                   const hasMultipleProducts = spkItems.length > 1;
 
                   const fabricSummary = (() => {

@@ -32,7 +32,8 @@ export function buildSplitSpkItems(
   targetCutQty: SizeBreakdown,
   deliveredQty?: SizeBreakdown,
   existingItems?: SPKProductItem[] | string,
-  suratJalanList?: SuratJalan[] | any[]
+  suratJalanList?: SuratJalan[] | any[],
+  spkPONumbers?: string[] | string
 ): SPKProductItem[] {
   let safeExistingItems: SPKProductItem[] = [];
   if (Array.isArray(existingItems)) {
@@ -44,6 +45,21 @@ export function buildSplitSpkItems(
       safeExistingItems = [];
     }
   }
+
+  // Kumpulkan PO acuan yang terikat ke SPK ini
+  const allSpkPOs: string[] = [];
+  if (typeof spkPONumbers === 'string' && spkPONumbers.trim()) {
+    allSpkPOs.push(spkPONumbers.trim().toUpperCase());
+  } else if (Array.isArray(spkPONumbers)) {
+    spkPONumbers.forEach((p) => {
+      if (typeof p === 'string' && p.trim()) allSpkPOs.push(p.trim().toUpperCase());
+    });
+  }
+  safeExistingItems.forEach((ex) => {
+    if (ex.sourcePONumber && !allSpkPOs.includes(ex.sourcePONumber.trim().toUpperCase())) {
+      allSpkPOs.push(ex.sourcePONumber.trim().toUpperCase());
+    }
+  });
 
   // Kumpulkan semua nama produk jika terdapat tanda "+"
   let names: string[] = [];
@@ -66,33 +82,11 @@ export function buildSplitSpkItems(
 
   // Jika produk tunggal tanpa tanda "+", kembalikan 1 item
   if (names.length <= 1) {
-    if (safeExistingItems && safeExistingItems.length > 0 && !safeExistingItems.some(it => it.produk && it.produk.includes('+'))) {
-      return safeExistingItems;
-    }
-    const orig = safeExistingItems[0];
-    return [
-      {
-        id: orig?.id || `item-${spkId}-1`,
-        produk: names[0] || produk || 'PRODUK 1',
-        vendor: orig?.vendor || vendor,
-        targetCutQty: { ...targetCutQty },
-        deliveredQty: deliveredQty ? { ...deliveredQty } : { ...emptySizeBreakdown },
-        sourcePOId: orig?.sourcePOId,
-        sourcePONumber: orig?.sourcePONumber,
-      },
-    ];
-  }
-
-  // Multiple names terdeteksi (misal: ["GOLDIE", "MINIBELLE"])
-  // 1. Hitung riwayat pengiriman per nama produk dari daftar Surat Jalan
-  const delivPerProduct: Record<string, SizeBreakdown> = {};
-  names.forEach((name) => {
-    delivPerProduct[name] = { ...emptySizeBreakdown };
-  });
-
-  if (suratJalanList && Array.isArray(suratJalanList)) {
-    suratJalanList.forEach((sj) => {
-      if (sj.spkId === spkId || sj.spkNumber === spkNumber) {
+    let singleDeliv = deliveredQty ? { ...deliveredQty } : { ...emptySizeBreakdown };
+    if (suratJalanList && Array.isArray(suratJalanList)) {
+      const calculated: SizeBreakdown = { ...emptySizeBreakdown };
+      let foundAny = false;
+      suratJalanList.forEach((sj) => {
         let items = sj.items || [];
         if (typeof items === 'string') {
           try {
@@ -101,43 +95,170 @@ export function buildSplitSpkItems(
         }
         if (Array.isArray(items) && items.length > 0) {
           items.forEach((it: any) => {
-            if ((it.spkId === spkId || it.spkNumber === spkNumber) && it.produk) {
-              const matchedName = names.find(
-                (n) => n.toUpperCase() === it.produk.trim().toUpperCase()
-              );
-              if (matchedName && it.qtyDelivered) {
-                const targetDeliv = delivPerProduct[matchedName];
-                SIZE_KEYS.forEach((sz) => {
-                  targetDeliv[sz] += Number(it.qtyDelivered[sz]) || 0;
-                });
-              }
+            const itemProd = (it.produk || '').trim().toUpperCase();
+            const prodMatch = !names[0] || !itemProd || names[0].toUpperCase() === itemProd;
+            const directMatch =
+              (it.spkId && (it.spkId === spkId || it.spkId === spkNumber)) ||
+              (it.spkNumber && (it.spkNumber === spkNumber || it.spkNumber === spkId));
+            const sjHeaderMatch =
+              !it.spkId &&
+              !it.spkNumber &&
+              (sj.spkId === spkId || sj.spkNumber === spkNumber || (sj as any).spkNumber === spkNumber);
+            const poMatch =
+              it.sourcePONumber && allSpkPOs.some((p) => p === it.sourcePONumber?.trim().toUpperCase());
+
+            if ((directMatch || sjHeaderMatch || poMatch) && prodMatch && it.qtyDelivered) {
+              foundAny = true;
+              SIZE_KEYS.forEach((sz) => {
+                calculated[sz] += Number(it.qtyDelivered[sz]) || 0;
+              });
             }
           });
-        } else if (sj.produk) {
-          const matchedName = names.find(
-            (n) => n.toUpperCase() === sj.produk.trim().toUpperCase()
-          );
-          if (matchedName && sj.qtyDelivered) {
-            const targetDeliv = delivPerProduct[matchedName];
+        } else if (sj.spkId === spkId || sj.spkNumber === spkNumber || (sj as any).spkNumber === spkNumber) {
+          if (sj.qtyDelivered) {
+            foundAny = true;
             SIZE_KEYS.forEach((sz) => {
-              targetDeliv[sz] += Number(sj.qtyDelivered[sz]) || 0;
+              calculated[sz] += Number(sj.qtyDelivered[sz]) || 0;
             });
           }
+        }
+      });
+      if (foundAny) {
+        singleDeliv = calculated;
+      }
+    }
+
+    if (
+      safeExistingItems &&
+      safeExistingItems.length > 0 &&
+      !safeExistingItems.some((it) => it.produk && it.produk.includes('+'))
+    ) {
+      return safeExistingItems.map((orig) => ({
+        ...orig,
+        deliveredQty: singleDeliv,
+      }));
+    }
+    const orig = safeExistingItems[0];
+    return [
+      {
+        id: orig?.id || `item-${spkId}-1`,
+        produk: names[0] || produk || 'PRODUK 1',
+        vendor: orig?.vendor || vendor,
+        targetCutQty: { ...targetCutQty },
+        deliveredQty: singleDeliv,
+        sourcePOId: orig?.sourcePOId,
+        sourcePONumber: orig?.sourcePONumber,
+      },
+    ];
+  }
+
+  // Multiple names terdeteksi (misal: ["GOLDIE", "MINIBELLE"])
+  // 1. Hitung riwayat pengiriman per nama produk dari daftar Surat Jalan secara komprehensif
+  const delivPerProduct: Record<string, SizeBreakdown> = {};
+  names.forEach((name) => {
+    delivPerProduct[name] = { ...emptySizeBreakdown };
+  });
+
+  if (suratJalanList && Array.isArray(suratJalanList)) {
+    suratJalanList.forEach((sj) => {
+      let items = sj.items || [];
+      if (typeof items === 'string') {
+        try {
+          items = JSON.parse(items);
+        } catch {}
+      }
+
+      if (Array.isArray(items) && items.length > 0) {
+        // Multi-item Surat Jalan: periksa setiap artikel muatan tanpa bergantung pada sj.spkId header
+        items.forEach((it: any) => {
+          const itemProd = (it.produk || '').trim().toUpperCase();
+          const matchedName = names.find((n) => n.toUpperCase() === itemProd);
+          if (!matchedName) return;
+
+          // Apakah item ini milik SPK yang sedang diproses?
+          const directMatch =
+            (it.spkId && (it.spkId === spkId || it.spkId === spkNumber)) ||
+            (it.spkNumber && (it.spkNumber === spkNumber || it.spkNumber === spkId));
+
+          const itemIdMatch =
+            it.spkItemId && safeExistingItems.some((ex) => ex.id === it.spkItemId);
+
+          const sjHeaderMatch =
+            !it.spkId &&
+            !it.spkNumber &&
+            (sj.spkId === spkId || sj.spkNumber === spkNumber || (sj as any).spkNumber === spkNumber);
+
+          const poMatch =
+            it.sourcePONumber &&
+            allSpkPOs.some((p) => p === it.sourcePONumber?.trim().toUpperCase());
+
+          const isThisSpk = directMatch || itemIdMatch || sjHeaderMatch || poMatch;
+
+          if (isThisSpk) {
+            const qDeliv = it.qtyDelivered || it.deliveredQty;
+            if (qDeliv) {
+              const targetDeliv = delivPerProduct[matchedName];
+              SIZE_KEYS.forEach((sz) => {
+                targetDeliv[sz] += Number(qDeliv[sz]) || 0;
+              });
+            }
+          }
+        });
+      } else if (sj.produk) {
+        // Single-item Surat Jalan lama
+        const itemProd = sj.produk.trim().toUpperCase();
+        const matchedName = names.find((n) => n.toUpperCase() === itemProd);
+        const matchesSjHeader =
+          sj.spkId === spkId ||
+          sj.spkNumber === spkNumber ||
+          (sj as any).spkNumber === spkNumber;
+
+        const qDeliv = sj.qtyDelivered || (sj as any).deliveredQty;
+        if (matchedName && matchesSjHeader && qDeliv) {
+          const targetDeliv = delivPerProduct[matchedName];
+          SIZE_KEYS.forEach((sz) => {
+            targetDeliv[sz] += Number(qDeliv[sz]) || 0;
+          });
         }
       }
     });
   }
 
+  // Helper untuk mengambil kalkulasi pengiriman per produk secara case-insensitive
+  const getCalculatedDeliv = (prodName: string): SizeBreakdown | undefined => {
+    if (!prodName) return undefined;
+    if (delivPerProduct[prodName]) return delivPerProduct[prodName];
+    const key = Object.keys(delivPerProduct).find(
+      (k) => k.trim().toUpperCase() === prodName.trim().toUpperCase()
+    );
+    return key ? delivPerProduct[key] : undefined;
+  };
+
   // Jika safeExistingItems sudah terpisah rapi (length > 1 dan tidak ada '+'), pertahankan alokasi targetnya
   if (safeExistingItems && safeExistingItems.length > 1) {
     const hasCombinedName = safeExistingItems.some((it) => it.produk && it.produk.includes('+'));
     if (!hasCombinedName) {
-      return safeExistingItems.map((ex, idx) => ({
-        ...ex,
-        id: ex.id || `item-${spkId}-${idx + 1}`,
-        vendor: ex.vendor || vendor,
-        deliveredQty: delivPerProduct[ex.produk] || ex.deliveredQty || { ...emptySizeBreakdown },
-      }));
+      return safeExistingItems.map((ex, idx) => {
+        const calculated = getCalculatedDeliv(ex.produk);
+        const hasCalculated = calculated && Object.values(calculated).some((v) => v > 0);
+        const mergedDeliv: SizeBreakdown = { ...emptySizeBreakdown };
+        SIZE_KEYS.forEach((sz) => {
+          const calcVal = Number(calculated?.[sz]) || 0;
+          const exVal = Number(ex.deliveredQty?.[sz]) || 0;
+          mergedDeliv[sz] = Math.max(calcVal, exVal);
+        });
+
+        return {
+          ...ex,
+          id: ex.id || `item-${spkId}-${idx + 1}`,
+          vendor: ex.vendor || vendor,
+          deliveredQty: hasCalculated
+            ? mergedDeliv
+            : (ex.deliveredQty && Object.values(ex.deliveredQty).some((v) => v > 0)
+                ? ex.deliveredQty
+                : mergedDeliv),
+        };
+      });
     }
   }
 
@@ -152,35 +273,30 @@ export function buildSplitSpkItems(
     if (totalSzTarget === 0) return;
 
     // Cek produk mana saja yang memiliki pengiriman di ukuran ini
-    const productsWithDeliv = names.filter((n) => (delivPerProduct[n][sz] || 0) > 0);
+    const productsWithDeliv = names.filter((name) => {
+      const d = getCalculatedDeliv(name);
+      return d && Number(d[sz]) > 0;
+    });
 
     if (productsWithDeliv.length === 1) {
-      // Hanya 1 produk yang dikirim untuk ukuran ini -> alokasikan seluruh target ke produk tersebut (minimal sama dgn terkirim)
-      const prod = productsWithDeliv[0];
-      targetPerProduct[prod][sz] = Math.max(totalSzTarget, delivPerProduct[prod][sz]);
-    } else if (productsWithDeliv.length > 1) {
-      // Lebih dari 1 produk memiliki pengiriman -> bagi proporsional dengan batas minimal sama dengan delivered
-      const sumDeliv = productsWithDeliv.reduce((sum, n) => sum + delivPerProduct[n][sz], 0);
-      productsWithDeliv.forEach((prod) => {
-        const ratio = delivPerProduct[prod][sz] / sumDeliv;
-        targetPerProduct[prod][sz] = Math.max(
-          delivPerProduct[prod][sz],
-          Math.round(totalSzTarget * ratio)
-        );
-      });
+      // Seluruh target ukuran ini dialokasikan ke produk yang dikirim
+      targetPerProduct[productsWithDeliv[0]][sz] = totalSzTarget;
     } else {
-      // Belum ada produk yang dikirim di ukuran ini -> alokasikan ke produk utama (Produk #1)
-      targetPerProduct[names[0]][sz] = totalSzTarget;
+      // Bagi rata sesuai jumlah produk
+      const perProductBase = Math.floor(totalSzTarget / names.length);
+      const remainder = totalSzTarget % names.length;
+      names.forEach((name, idx) => {
+        targetPerProduct[name][sz] = perProductBase + (idx === 0 ? remainder : 0);
+      });
     }
   });
 
-  // Pastikan jika ada produk yang targetnya 0 sementara total SPK > 0 dan belum ada pengiriman,
-  // distribusikan target potong secara proporsional ke seluruh produk agar tidak memicu error kuantiti 0
+  // Fallback: Jika ada produk yang targetnya 0 sama sekali karena belum ada pengiriman, bagi rata
   const isAnyProductZero = names.some(
     (name) => Object.values(targetPerProduct[name]).reduce((a, b) => a + b, 0) === 0
   );
   const totalDeliveredAll = Object.values(delivPerProduct).reduce(
-    (acc, deliv) => acc + Object.values(deliv).reduce((a, b) => a + b, 0),
+    (acc, d) => acc + Object.values(d).reduce((a, b) => a + b, 0),
     0
   );
 
@@ -200,12 +316,25 @@ export function buildSplitSpkItems(
     const orig = safeExistingItems.find(
       (it) => it.produk && it.produk.trim().toUpperCase() === name.trim().toUpperCase()
     );
+    const calculated = getCalculatedDeliv(name);
+    const hasCalculated = calculated && Object.values(calculated).some((v) => v > 0);
+    const mergedDeliv: SizeBreakdown = { ...emptySizeBreakdown };
+    SIZE_KEYS.forEach((sz) => {
+      const calcVal = Number(calculated?.[sz]) || 0;
+      const origVal = Number(orig?.deliveredQty?.[sz]) || 0;
+      mergedDeliv[sz] = Math.max(calcVal, origVal);
+    });
+
     return {
       id: orig?.id || `item-${spkId}-${idx + 1}`,
       produk: name,
       vendor: orig?.vendor || vendor,
       targetCutQty: targetPerProduct[name],
-      deliveredQty: delivPerProduct[name],
+      deliveredQty: hasCalculated
+        ? mergedDeliv
+        : (orig?.deliveredQty && Object.values(orig.deliveredQty).some((v) => v > 0)
+            ? orig.deliveredQty
+            : mergedDeliv),
       sourcePOId: orig?.sourcePOId,
       sourcePONumber: orig?.sourcePONumber,
     };
