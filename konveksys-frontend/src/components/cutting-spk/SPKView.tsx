@@ -317,6 +317,25 @@ export const SPKView: React.FC = () => {
       ].filter(Boolean))
     ) as string[];
 
+    const fabric = (() => {
+      if (spk.fabricSourceType === 'TITIPAN_VENDOR' && spk.depositInfo?.jenisKain) {
+        return spk.depositInfo.jenisKain;
+      }
+      if (spk.rollIds && spk.rollIds.length > 0) {
+        const kainList = spk.rollIds
+          .map((id) => {
+            const r = inboundRolls.find((item) => item.id === id || item.rollCode === id);
+            return r?.jenisKain;
+          })
+          .filter(Boolean) as string[];
+        const uniqueKain = Array.from(new Set(kainList));
+        if (uniqueKain.length > 0) {
+          return uniqueKain.join(', ');
+        }
+      }
+      return (spk as any).jenisKain || '';
+    })();
+
     return buildSplitSpkItems(
       spk.id,
       spk.spkNumber,
@@ -326,7 +345,8 @@ export const SPKView: React.FC = () => {
       spk.deliveredQty,
       spk.items,
       suratJalanList,
-      poList
+      poList,
+      fabric
     );
   };
 
@@ -2108,6 +2128,37 @@ export const SPKView: React.FC = () => {
 
                   {/* Size Breakdown per Product */}
                   <div className="space-y-3 pt-2">
+                    {/* Toolbar Sinkronisasi Target dengan Surat Jalan */}
+                    {editingSpk && currentActiveProduct.deliveredQty && (
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl gap-2">
+                        <div>
+                          <span className="text-xs font-bold text-indigo-950 block">
+                            Penyamaan Target dengan Realisasi Terkirim
+                          </span>
+                          <span className="text-[10px] text-indigo-700">
+                            Total terkirim Surat Jalan untuk artikel ini:{' '}
+                            <strong>
+                              {Object.values(currentActiveProduct.deliveredQty).reduce((a, b) => a + (Number(b) || 0), 0)} Pcs
+                            </strong>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!currentActiveProduct.deliveredQty) return;
+                            ALL_SIZES.forEach((sz) => {
+                              const dVal = currentActiveProduct.deliveredQty?.[sz.key] || 0;
+                              updateProductSize(activeProductTab, sz.key, dVal);
+                            });
+                          }}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5 shrink-0"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                          Samakan Target dengan Terkirim (SJ)
+                        </button>
+                      </div>
+                    )}
+
                     {/* Ukuran Anak Seri Huruf */}
                     <div>
                       <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block mb-1.5">

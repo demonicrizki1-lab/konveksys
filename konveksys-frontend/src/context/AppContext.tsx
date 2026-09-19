@@ -890,6 +890,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ].filter(Boolean))
           ) as string[];
 
+          const rawRollList = results[4].status === 'fulfilled' && Array.isArray(results[4].value.data) ? results[4].value.data : [];
+          const spkRollIds = s.rolsDigunakan ? s.rolsDigunakan.map((r: any) => r.rollId) : (cached?.rollIds || []);
+          const matchedRollFabrics = rawRollList
+            .filter((r: any) => spkRollIds.includes(r.id) || spkRollIds.includes(r.rollCode))
+            .map((r: any) => r.jenisKain)
+            .filter(Boolean);
+          const spkFabric = s.depositInfo?.jenisKain || (matchedRollFabrics.length > 0 ? matchedRollFabrics.join(', ') : (s.jenisKain || ''));
+
           const rawItems = typeof s.items === 'string'
             ? (() => { try { return JSON.parse(s.items); } catch { return undefined; } })()
             : s.items;
@@ -904,7 +912,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             deliveredQty,
             rawItems || cached?.items,
             rawSJs,
-            allSpkPos
+            allSpkPos,
+            spkFabric
           );
 
           return {
@@ -2989,13 +2998,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Calculate total targets and delivered
     const targetTotal = Object.values(updatedTargetCutQty).reduce((a, b) => a + b, 0);
-    const delivTotal = Object.values(existingSpk.deliveredQty || {}).reduce((a, b) => a + b, 0);
+    const effectiveDeliv = spkData.deliveredQty || existingSpk.deliveredQty || {};
+    const itemsDelivTotal = spkData.items
+      ? spkData.items.reduce(
+          (acc, it) =>
+            acc +
+            Object.values(it.deliveredQty || {}).reduce((a, b) => a + (Number(b) || 0), 0),
+          0
+        )
+      : 0;
+    const rawDelivTotal = Object.values(effectiveDeliv).reduce((a, b) => a + (Number(b) || 0), 0);
+    const delivTotal = Math.max(rawDelivTotal, itemsDelivTotal);
 
     let newStatus = existingSpk.status;
     if (delivTotal > 0) {
-      if (delivTotal > targetTotal) {
+      if (targetTotal > 0 && delivTotal > targetTotal) {
         newStatus = 'OVER_DELIVERY';
-      } else if (delivTotal >= targetTotal && targetTotal > 0) {
+      } else if (targetTotal > 0 && delivTotal >= targetTotal) {
         newStatus = 'COMPLETED';
       } else {
         newStatus = 'PARTIAL_DELIVERED';
@@ -4106,19 +4125,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
+    const spkFabric = (() => {
+      if (spk.fabricSourceType === 'TITIPAN_VENDOR' && spk.depositInfo?.jenisKain) {
+        return spk.depositInfo.jenisKain;
+      }
+      if (spk.rollIds && spk.rollIds.length > 0) {
+        const kainList = spk.rollIds
+          .map((id) => {
+            const r = inboundRolls.find((item) => item.id === id || item.rollCode === id);
+            return r?.jenisKain;
+          })
+          .filter(Boolean) as string[];
+        const uniqueKain = Array.from(new Set(kainList));
+        if (uniqueKain.length > 0) return uniqueKain.join(', ');
+      }
+      return (spk as any).jenisKain || '';
+    })();
+
+    const isFabricCompatible = (itemFabric?: string, targetFabric?: string) => {
+      if (!itemFabric || !targetFabric) return true;
+      const f1 = itemFabric.trim().toUpperCase();
+      const f2 = targetFabric.trim().toUpperCase();
+      if (f1 === f2) return true;
+      if (f1.includes(f2) || f2.includes(f1)) return true;
+      const colors = [
+        'BW', 'PUTIH', 'PINK', 'MOCCA', 'MOKA', 'TERRACOTA', 'TERACOTTA',
+        'HITAM', 'NAVY', 'SAGE', 'LILAC', 'CREAM', 'MAROON', 'DENIM', 'ARMY'
+      ];
+      const f1Colors = colors.filter((c) => f1.includes(c));
+      const f2Colors = colors.filter((c) => f2.includes(c));
+      if (f1Colors.length > 0 && f2Colors.length > 0) {
+        const hasSharedColor = f1Colors.some((c) => f2Colors.includes(c));
+        if (!hasSharedColor) return false;
+      }
+      return true;
+    };
+
     // Hitung akumulasi terkirim secara dinamis dari daftar Surat Jalan aktif
     const matchedSJs = Array.isArray(suratJalanList)
       ? suratJalanList.filter(
           (sj) =>
             sj.spkId === spk.id ||
             (sj as any).spkNumber === spk.spkNumber ||
-            getSuratJalanItems(sj).some(
-              (it) =>
+            getSuratJalanItems(sj).some((it) => {
+              const direct =
                 it.spkId === spk.id ||
                 it.spkNumber === spk.spkNumber ||
-                (it.spkItemId && spk.items?.some((ex) => ex.id === it.spkItemId)) ||
-                (it.sourcePONumber && allSpkPos.includes(it.sourcePONumber.trim().toUpperCase()))
-            )
+                (it.spkItemId && spk.items?.some((ex) => ex.id === it.spkItemId));
+              const conflict =
+                (it.spkId && it.spkId !== spk.id && it.spkId !== spk.spkNumber) ||
+                (it.spkNumber && it.spkNumber !== spk.spkNumber && it.spkNumber !== spk.id);
+              const fabOk = isFabricCompatible(it.jenisKain, spkFabric);
+              const poOk =
+                !conflict &&
+                fabOk &&
+                it.sourcePONumber &&
+                allSpkPos.includes(it.sourcePONumber.trim().toUpperCase());
+              return direct || poOk;
+            })
         )
       : [];
 
@@ -4133,12 +4197,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               (item.spkNumber && (item.spkNumber === spk.spkNumber || item.spkNumber === spk.id));
             const itemIdMatch =
               item.spkItemId && spk.items?.some((ex) => ex.id === item.spkItemId);
+            const hasConflictingSpk =
+              (item.spkId && item.spkId !== spk.id && item.spkId !== spk.spkNumber) ||
+              (item.spkNumber && item.spkNumber !== spk.spkNumber && item.spkNumber !== spk.id);
+            const fabricMatch = isFabricCompatible(item.jenisKain, spkFabric);
             const sjHeaderMatch =
+              !hasConflictingSpk &&
               !item.spkId &&
               !item.spkNumber &&
               (sj.spkId === spk.id || (sj as any).spkNumber === spk.spkNumber);
             const poMatch =
-              item.sourcePONumber && allSpkPos.includes(item.sourcePONumber.trim().toUpperCase());
+              !hasConflictingSpk &&
+              fabricMatch &&
+              item.sourcePONumber &&
+              allSpkPos.includes(item.sourcePONumber.trim().toUpperCase());
 
             const isThisSpk = directMatch || itemIdMatch || sjHeaderMatch || poMatch;
 

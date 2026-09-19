@@ -33,7 +33,8 @@ export function buildSplitSpkItems(
   deliveredQty?: SizeBreakdown,
   existingItems?: SPKProductItem[] | string,
   suratJalanList?: SuratJalan[] | any[],
-  spkPONumbers?: string[] | string
+  spkPONumbers?: string[] | string,
+  spkFabricName?: string
 ): SPKProductItem[] {
   let safeExistingItems: SPKProductItem[] = [];
   if (Array.isArray(existingItems)) {
@@ -45,6 +46,28 @@ export function buildSplitSpkItems(
       safeExistingItems = [];
     }
   }
+
+  // Helper untuk memeriksa kecocokan jenis / warna kain
+  const isFabricCompatible = (itemFabric?: string, targetFabric?: string) => {
+    if (!itemFabric || !targetFabric) return true;
+    const f1 = itemFabric.trim().toUpperCase();
+    const f2 = targetFabric.trim().toUpperCase();
+    if (f1 === f2) return true;
+    if (f1.includes(f2) || f2.includes(f1)) return true;
+
+    // Deteksi warna spesifik agar warna berbeda tidak saling campur
+    const colors = [
+      'BW', 'PUTIH', 'PINK', 'MOCCA', 'MOKA', 'TERRACOTA', 'TERACOTTA',
+      'HITAM', 'NAVY', 'SAGE', 'LILAC', 'CREAM', 'MAROON', 'DENIM', 'ARMY'
+    ];
+    const f1Colors = colors.filter((c) => f1.includes(c));
+    const f2Colors = colors.filter((c) => f2.includes(c));
+    if (f1Colors.length > 0 && f2Colors.length > 0) {
+      const hasSharedColor = f1Colors.some((c) => f2Colors.includes(c));
+      if (!hasSharedColor) return false;
+    }
+    return true;
+  };
 
   // Kumpulkan PO acuan yang terikat ke SPK ini
   const allSpkPOs: string[] = [];
@@ -100,25 +123,38 @@ export function buildSplitSpkItems(
             const directMatch =
               (it.spkId && (it.spkId === spkId || it.spkId === spkNumber)) ||
               (it.spkNumber && (it.spkNumber === spkNumber || it.spkNumber === spkId));
+            const hasConflictingSpk =
+              (it.spkId && it.spkId !== spkId && it.spkId !== spkNumber) ||
+              (it.spkNumber && it.spkNumber !== spkNumber && it.spkNumber !== spkId);
+            const fabricMatch = isFabricCompatible(it.jenisKain, spkFabricName);
             const sjHeaderMatch =
+              !hasConflictingSpk &&
               !it.spkId &&
               !it.spkNumber &&
               (sj.spkId === spkId || sj.spkNumber === spkNumber || (sj as any).spkNumber === spkNumber);
             const poMatch =
-              it.sourcePONumber && allSpkPOs.some((p) => p === it.sourcePONumber?.trim().toUpperCase());
+              !hasConflictingSpk &&
+              fabricMatch &&
+              it.sourcePONumber &&
+              allSpkPOs.some((p) => p === it.sourcePONumber?.trim().toUpperCase());
 
-            if ((directMatch || sjHeaderMatch || poMatch) && prodMatch && it.qtyDelivered) {
+            const isThisSpk = directMatch || sjHeaderMatch || poMatch;
+            const qDeliv = it.qtyDelivered || it.deliveredQty;
+
+            if (isThisSpk && prodMatch && qDeliv) {
               foundAny = true;
               SIZE_KEYS.forEach((sz) => {
-                calculated[sz] += Number(it.qtyDelivered[sz]) || 0;
+                calculated[sz] += Number(qDeliv[sz]) || 0;
               });
             }
           });
         } else if (sj.spkId === spkId || sj.spkNumber === spkNumber || (sj as any).spkNumber === spkNumber) {
-          if (sj.qtyDelivered) {
+          const qDeliv = sj.qtyDelivered || (sj as any).deliveredQty;
+          const fabricMatch = isFabricCompatible(sj.jenisKain, spkFabricName);
+          if (fabricMatch && qDeliv) {
             foundAny = true;
             SIZE_KEYS.forEach((sz) => {
-              calculated[sz] += Number(sj.qtyDelivered[sz]) || 0;
+              calculated[sz] += Number(qDeliv[sz]) || 0;
             });
           }
         }
@@ -133,10 +169,18 @@ export function buildSplitSpkItems(
       safeExistingItems.length > 0 &&
       !safeExistingItems.some((it) => it.produk && it.produk.includes('+'))
     ) {
-      return safeExistingItems.map((orig) => ({
-        ...orig,
-        deliveredQty: singleDeliv,
-      }));
+      return safeExistingItems.map((orig) => {
+        const mergedDeliv: SizeBreakdown = { ...emptySizeBreakdown };
+        SIZE_KEYS.forEach((sz) => {
+          const calcVal = Number(singleDeliv?.[sz]) || 0;
+          const origVal = Number(orig?.deliveredQty?.[sz]) || 0;
+          mergedDeliv[sz] = Math.max(calcVal, origVal);
+        });
+        return {
+          ...orig,
+          deliveredQty: mergedDeliv,
+        };
+      });
     }
     const orig = safeExistingItems[0];
     return [
@@ -183,12 +227,21 @@ export function buildSplitSpkItems(
           const itemIdMatch =
             it.spkItemId && safeExistingItems.some((ex) => ex.id === it.spkItemId);
 
+          const hasConflictingSpk =
+            (it.spkId && it.spkId !== spkId && it.spkId !== spkNumber) ||
+            (it.spkNumber && it.spkNumber !== spkNumber && it.spkNumber !== spkId);
+
+          const fabricMatch = isFabricCompatible(it.jenisKain, spkFabricName);
+
           const sjHeaderMatch =
+            !hasConflictingSpk &&
             !it.spkId &&
             !it.spkNumber &&
             (sj.spkId === spkId || sj.spkNumber === spkNumber || (sj as any).spkNumber === spkNumber);
 
           const poMatch =
+            !hasConflictingSpk &&
+            fabricMatch &&
             it.sourcePONumber &&
             allSpkPOs.some((p) => p === it.sourcePONumber?.trim().toUpperCase());
 
@@ -212,9 +265,10 @@ export function buildSplitSpkItems(
           sj.spkId === spkId ||
           sj.spkNumber === spkNumber ||
           (sj as any).spkNumber === spkNumber;
+        const fabricMatch = isFabricCompatible(sj.jenisKain, spkFabricName);
 
         const qDeliv = sj.qtyDelivered || (sj as any).deliveredQty;
-        if (matchedName && matchesSjHeader && qDeliv) {
+        if (matchedName && matchesSjHeader && fabricMatch && qDeliv) {
           const targetDeliv = delivPerProduct[matchedName];
           SIZE_KEYS.forEach((sz) => {
             targetDeliv[sz] += Number(qDeliv[sz]) || 0;
