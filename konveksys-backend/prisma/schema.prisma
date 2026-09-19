@@ -590,3 +590,25 @@ model FobPurchaseOrder {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
+
+
+model FobDownPayment {
+  id               String    @id @default(cuid())
+  depositNumber    String    @unique
+  poNumber         String
+  poId             String?
+  brand            String
+  tanggalBayar     DateTime
+  nominalDp        Decimal   @db.Decimal(14, 2)
+  totalNilaiPo     Decimal   @db.Decimal(14, 2)
+  persentaseDp     Decimal   @db.Decimal(5, 2)
+  metodePembayaran String
+  nomorReferensi   String?
+  buktiBayarUrl    String?   @db.Text
+  keterangan       String?
+  statusBahan      String    @default("BELUM_DIBELANJAKAN")
+  alokasiKain      Json?
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}

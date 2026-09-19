@@ -91,6 +91,10 @@ import {
   apiUpdateFobOrder,
   apiUpdateFobOrderStatus,
   apiDeleteFobOrder,
+  apiGetFobDeposits,
+  apiCreateFobDeposit,
+  apiUpdateFobDeposit,
+  apiDeleteFobDeposit,
 } from '../services/api';
 import {
   AuthUser,
@@ -134,6 +138,9 @@ import {
   FOBProductMaster,
   FobPurchaseOrder,
   ProductionTimeline,
+  FobDownPayment,
+  FobDepositStatus,
+  FobFabricAllocation,
 } from '../types';
 import {
   demoUsers,
@@ -152,6 +159,7 @@ import {
   initialFobProducts,
   initialFobOrders,
   initialProductionTimelines,
+  initialFobDeposits,
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
@@ -411,6 +419,13 @@ interface AppContextType {
   updateInboundRollStatus: (id: string, status: InboundRoll['status']) => void;
   deleteInboundRoll: (id: string) => Promise<{ success: boolean; message?: string }>;
 
+  // Inbound DP Uang (FOB)
+  fobDeposits: FobDownPayment[];
+  addFobDeposit: (deposit: Omit<FobDownPayment, 'id' | 'depositNumber' | 'createdAt'>, syncToFinance?: boolean) => Promise<FobDownPayment>;
+  updateFobDeposit: (id: string, updates: Partial<FobDownPayment>) => Promise<void> | void;
+  deleteFobDeposit: (id: string) => Promise<void> | void;
+  receiveFabricFromFobDeposit: (depositId: string, fabricData: { jenisKain: string; meterLength: number; hargaModalMeter: number; keterangan?: string }) => Promise<{ success: boolean; rollCode?: string; message?: string }>;
+
   spkList: SPKCutting[];
   createSPK: (spk: Omit<SPKCutting, 'id' | 'spkNumber' | 'deliveredQty' | 'status'>) => Promise<void> | void;
   updateSPK: (id: string, spkData: Partial<SPKCutting> & { rollIds?: string[]; depositId?: string | null }) => Promise<{ success: boolean; message?: string }>;
@@ -650,14 +665,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [fobMaterials, setFobMaterials] = useState<FOBMaterialMaster[]>(() => getCache('fob_materials', initialFobMaterials));
   const [fobProducts, setFobProducts] = useState<FOBProductMaster[]>(() => getCache('fob_products', initialFobProducts));
   const [fobOrders, setFobOrders] = useState<FobPurchaseOrder[]>(() => {
-    const cached = getCache<FobPurchaseOrder[]>('fob_orders', []);
-    if (cached && cached.length > 0) return cached;
-    return initialFobOrders;
+    const cached = getCache<FobPurchaseOrder[]>('fob_orders', null as any);
+    if (cached !== null && Array.isArray(cached)) return cached;
+    return [];
   });
   const [productionTimelines, setProductionTimelines] = useState<ProductionTimeline[]>(() => {
     const cached = getCache<ProductionTimeline[]>('production_timelines', []);
     if (cached && cached.length > 0) return cached;
     return initialProductionTimelines;
+  });
+  const [fobDeposits, setFobDeposits] = useState<FobDownPayment[]>(() => {
+    const cached = getCache<FobDownPayment[]>('fob_deposits', null as any);
+    if (cached !== null && Array.isArray(cached)) return cached;
+    return [];
   });
   const [isLoadingFob, setIsLoadingFob] = useState<boolean>(false);
 
@@ -710,6 +730,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobMaterials(), // 19
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobProducts(), // 20
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobOrders(), // 21
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobDeposits(), // 22
       ]);
 
       // 0. Brands
@@ -1099,9 +1120,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 21. FOB Orders (PO Brand)
-      if (results[21]?.status === 'fulfilled' && Array.isArray(results[21].value.data) && results[21].value.data.length > 0) {
-        setFobOrders(results[21].value.data);
-        setCache('fob_orders', results[21].value.data);
+      if (results[21]?.status === 'fulfilled' && Array.isArray(results[21].value.data)) {
+        const cleanedOrders = results[21].value.data.map((o: any) => ({
+          ...o,
+          grandTotal: Number(o.grandTotal || 0),
+          totalQty: Number(o.totalQty || 0),
+          totalPembelian: Number(o.totalPembelian || 0),
+          biayaLain: Number(o.biayaLain || 0),
+        }));
+        setFobOrders(cleanedOrders);
+        setCache('fob_orders', cleanedOrders);
+      }
+
+      // 22. FOB Down Payments (Inbound DP Uang)
+      if (results[22]?.status === 'fulfilled' && Array.isArray(results[22].value.data)) {
+        const rawDep = results[22].value.data.map((d: any) => ({
+          ...d,
+          nominalDp: Number(d.nominalDp || 0),
+          totalNilaiPo: Number(d.totalNilaiPo || 0),
+          nominalTotalOrder: Number(d.nominalTotalOrder || d.totalNilaiPo || 0),
+          persentaseDp: Number(d.persentaseDp || 0),
+          tanggalBayar: typeof d.tanggalBayar === 'string' ? d.tanggalBayar.split('T')[0] : d.tanggalBayar,
+          alokasiKain: d.alokasiKain ? (typeof d.alokasiKain === 'string' ? JSON.parse(d.alokasiKain) : d.alokasiKain) : undefined,
+          buktiBayarUrl: d.buktiBayarUrl || undefined,
+        }));
+        setFobDeposits(rawDep);
+        setCache('fob_deposits', rawDep);
       }
 
       setLastSyncedAt(new Date());
@@ -1843,7 +1887,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setFobProducts(resProd.data);
         setCache('fob_products', resProd.data);
       }
-      if (resOrders.data && Array.isArray(resOrders.data) && resOrders.data.length > 0) {
+      if (resOrders.data && Array.isArray(resOrders.data)) {
         setFobOrders(resOrders.data);
         setCache('fob_orders', resOrders.data);
       }
@@ -2524,6 +2568,186 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setInboundRolls(prev => prev.filter(r => r.id !== id));
     return { success: true, message: 'Rol kain berhasil dihapus' };
+  };
+
+  // FOB Down Payment (Inbound DP Uang) Handlers
+  const addFobDeposit = async (
+    depositData: Omit<FobDownPayment, 'id' | 'depositNumber' | 'createdAt'>,
+    syncToFinance: boolean = true
+  ): Promise<FobDownPayment> => {
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prefix = `DP-FOB-${yearMonth}-`;
+    let maxSeq = 0;
+    fobDeposits.forEach((d) => {
+      if (d.depositNumber && d.depositNumber.startsWith(prefix)) {
+        const seq = parseInt(d.depositNumber.substring(prefix.length), 10);
+        if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+      }
+    });
+    const depositNumber = `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+
+    const fallbackId = `dp-fob-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    let newDeposit: FobDownPayment = {
+      ...depositData,
+      id: fallbackId,
+      depositNumber,
+      statusBahan: depositData.statusBahan || 'BELUM_DIBELANJAKAN',
+      createdAt: new Date().toISOString(),
+    };
+
+    // Simpan langsung ke database PostgreSQL via API
+    try {
+      const res = await apiCreateFobDeposit({
+        ...depositData,
+        depositNumber,
+      });
+      if (res.data) {
+        newDeposit = {
+          ...res.data,
+          nominalDp: Number(res.data.nominalDp || 0),
+          totalNilaiPo: Number(res.data.totalNilaiPo || 0),
+          persentaseDp: Number(res.data.persentaseDp || 0),
+          tanggalBayar: typeof res.data.tanggalBayar === 'string' ? res.data.tanggalBayar.split('T')[0] : res.data.tanggalBayar,
+          alokasiKain: res.data.alokasiKain ? (typeof res.data.alokasiKain === 'string' ? JSON.parse(res.data.alokasiKain) : res.data.alokasiKain) : undefined,
+        };
+      }
+    } catch (apiErr) {
+      console.warn('[DB Error] Gagal menyimpan DP ke backend, fallback ke penyimpanan lokal:', apiErr);
+    }
+
+    setFobDeposits((prev) => {
+      const updated = [newDeposit, ...prev.filter((p) => p.id !== newDeposit.id)];
+      setCache('fob_deposits', updated);
+      return updated;
+    });
+
+    if (syncToFinance && newDeposit.nominalDp > 0) {
+      await addPembayaran({
+        brand: newDeposit.brand,
+        tanggal: newDeposit.tanggalBayar,
+        jumlah: newDeposit.nominalDp,
+        metode: newDeposit.metodePembayaran,
+        keterangan: newDeposit.keterangan || `DP FOB (${newDeposit.poNumber}) - ${newDeposit.depositNumber}`,
+        referensiNomor: newDeposit.nomorReferensi,
+      });
+    }
+
+    return newDeposit;
+  };
+
+  const updateFobDeposit = async (id: string, updates: Partial<FobDownPayment>) => {
+    setFobDeposits((prev) => {
+      const updated = prev.map((d) =>
+        d.id === id ? { ...d, ...updates, updatedAt: new Date().toISOString() } : d
+      );
+      setCache('fob_deposits', updated);
+      return updated;
+    });
+
+    try {
+      await apiUpdateFobDeposit(id, updates);
+    } catch (err) {
+      console.warn('[DB Error] Gagal mengupdate DP ke backend:', err);
+    }
+  };
+
+  const deleteFobDeposit = async (id: string) => {
+    setFobDeposits((prev) => {
+      const updated = prev.filter((d) => d.id !== id);
+      setCache('fob_deposits', updated);
+      return updated;
+    });
+
+    try {
+      await apiDeleteFobDeposit(id);
+    } catch (err) {
+      console.warn('[DB Error] Gagal menghapus DP dari backend:', err);
+    }
+  };
+
+  const receiveFabricFromFobDeposit = async (
+    depositId: string,
+    fabricData: {
+      jenisKain: string;
+      meterLength: number;
+      hargaModalMeter: number;
+      keterangan?: string;
+    }
+  ): Promise<{ success: boolean; rollCode?: string; message?: string }> => {
+    const deposit = fobDeposits.find((d) => d.id === depositId);
+    if (!deposit) {
+      return { success: false, message: 'Data DP FOB tidak ditemukan.' };
+    }
+
+    const matchedBrand = brands.find(
+      (b) => b.name.trim().toUpperCase() === deposit.brand.trim().toUpperCase()
+    );
+    const brandCode = (
+      matchedBrand?.code ||
+      deposit.brand.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3) ||
+      'ROL'
+    ).toUpperCase();
+    const prefix = `ROL-${brandCode}-`;
+
+    let maxSeq = 0;
+    inboundRolls.forEach((roll) => {
+      if (roll.rollCode && roll.rollCode.toUpperCase().startsWith(prefix)) {
+        const seqStr = roll.rollCode.substring(prefix.length);
+        const parsedNum = parseInt(seqStr, 10);
+        if (!isNaN(parsedNum) && parsedNum > maxSeq) {
+          maxSeq = parsedNum;
+        }
+      } else if (roll.brand?.trim().toUpperCase() === deposit.brand.trim().toUpperCase()) {
+        const match = roll.rollCode?.match(/(\d+)$/);
+        if (match) {
+          const parsedNum = parseInt(match[1], 10);
+          if (!isNaN(parsedNum) && parsedNum > maxSeq) {
+            maxSeq = parsedNum;
+          }
+        }
+      }
+    });
+
+    const generatedRollCode = `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+
+    await addInboundRoll({
+      rollCode: generatedRollCode,
+      brand: deposit.brand,
+      jenisKain: fabricData.jenisKain,
+      meterLength: fabricData.meterLength,
+      meterUsed: 0,
+      hargaModalMeter: fabricData.hargaModalMeter,
+      status: 'DI_GUDANG',
+      tanggalMasuk: new Date().toISOString().split('T')[0],
+      keterangan: `[FOB DP: ${deposit.poNumber}] ${fabricData.keterangan || ''}`.trim(),
+      sourceType: 'FOB',
+      sourcePONumber: deposit.poNumber,
+      fobDepositId: deposit.id,
+    });
+
+    const currentAllocation = deposit.alokasiKain || { totalMeter: 0, totalBiaya: 0, rolCodes: [] };
+    const newTotalMeter = currentAllocation.totalMeter + fabricData.meterLength;
+    const newTotalBiaya =
+      currentAllocation.totalBiaya + fabricData.meterLength * fabricData.hargaModalMeter;
+    const updatedRolCodes = [...currentAllocation.rolCodes, generatedRollCode];
+
+    const updatedAllocation: FobFabricAllocation = {
+      totalMeter: newTotalMeter,
+      totalBiaya: newTotalBiaya,
+      rolCodes: updatedRolCodes,
+    };
+
+    await updateFobDeposit(depositId, {
+      statusBahan: 'SUDAH_JADI_KAIN',
+      alokasiKain: updatedAllocation,
+    });
+
+    return {
+      success: true,
+      rollCode: generatedRollCode,
+      message: `Rol kain ${generatedRollCode} (${fabricData.meterLength} m) berhasil diterima ke gudang dan siap dipotong.`,
+    };
   };
 
   // SPK Handlers
@@ -4794,6 +5018,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         vendorSettlements,
         settleVendorPO,
         unsettleVendorPO,
+        fobDeposits,
+        addFobDeposit,
+        updateFobDeposit,
+        deleteFobDeposit,
+        receiveFabricFromFobDeposit,
         calculateVendorPayroll,
         calculateBuyerInvoice,
         resetToDefaultData,

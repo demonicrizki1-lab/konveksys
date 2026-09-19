@@ -1032,4 +1032,37 @@ export async function apiDeleteFobOrder(id: string) {
   });
 }
 
+// ============================================================
+// FOB DOWN PAYMENTS (INBOUND DP UANG)
+// ============================================================
+
+export async function apiGetFobDeposits(params?: { brand?: string; search?: string }) {
+  const queryParts: string[] = [];
+  if (params?.brand && params.brand !== 'ALL') queryParts.push(`brand=${encodeURIComponent(params.brand)}`);
+  if (params?.search && params.search.trim()) queryParts.push(`search=${encodeURIComponent(params.search.trim())}`);
+  const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return apiFetch<any[]>(`/api/fob/deposits${query}`);
+}
+
+export async function apiCreateFobDeposit(data: any) {
+  return apiFetch<any>('/api/fob/deposits', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateFobDeposit(id: string, data: any) {
+  return apiFetch<any>(`/api/fob/deposits/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteFobDeposit(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/fob/deposits/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+
 

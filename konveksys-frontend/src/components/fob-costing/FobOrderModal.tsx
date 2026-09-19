@@ -24,6 +24,7 @@ import {
   Check,
   ChevronDown,
   ShieldCheck,
+  ArrowUpDown,
 } from 'lucide-react';
 import {
   FobPurchaseOrder,
@@ -33,7 +34,7 @@ import {
   HPPCalculationRecord,
   FOBQuotation,
 } from '../../types';
-import { formatRp, angkaKeTerbilang } from '../../utils/formatters';
+import { formatRp, formatRupiahInput, parseRupiahInput, angkaKeTerbilang } from '../../utils/formatters';
 
 interface FobOrderModalProps {
   initialOrder?: FobPurchaseOrder | null;
@@ -51,6 +52,78 @@ export const FOB_LETTER_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL',
 export const FOB_NUMBER_SIZES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16'];
 const ALL_AVAILABLE_SIZES = [...FOB_LETTER_SIZES, ...FOB_NUMBER_SIZES];
 const DEFAULT_SELECTED_SIZES = ['S', 'M', 'L', 'XL', '2XL'];
+
+// Standar urutan size garmen (S - 8XL & nomor anak/standar)
+const SIZE_ORDER_MAP: Record<string, number> = {
+  'ALL SIZE': 0,
+  'ALLSIZE': 0,
+  'FREE SIZE': 0,
+  'XXS': 5,
+  'XS': 10,
+  'S': 20,
+  'M': 30,
+  'L': 40,
+  'XL': 50,
+  '2XL': 60,
+  'XXL': 60,
+  '3XL': 70,
+  'XXXL': 70,
+  '4XL': 80,
+  'XXXXL': 80,
+  '5XL': 90,
+  '6XL': 100,
+  '7XL': 110,
+  '8XL': 120,
+  '9XL': 130,
+  '10XL': 140,
+  'JUMBO': 150,
+};
+
+export function getGarmentSizeRank(sizeStr?: string): number {
+  if (!sizeStr) return 999;
+  const clean = sizeStr.trim().toUpperCase();
+  if (SIZE_ORDER_MAP[clean] !== undefined) {
+    return SIZE_ORDER_MAP[clean];
+  }
+  const parsedNum = parseInt(clean, 10);
+  if (!isNaN(parsedNum)) {
+    return 200 + parsedNum;
+  }
+  return 900;
+}
+
+export function sortFobOrderItems(itemsList: FobOrderItem[]): FobOrderItem[] {
+  // Rekam urutan kemunculan kelompok warna
+  const colorSequence = new Map<string, number>();
+  let colorSeq = 0;
+  itemsList.forEach((it) => {
+    const w = (it.warna || '').trim().toUpperCase();
+    if (!colorSequence.has(w)) {
+      colorSequence.set(w, colorSeq++);
+    }
+  });
+
+  return [...itemsList].sort((a, b) => {
+    const colorA = (a.warna || '').trim().toUpperCase();
+    const colorB = (b.warna || '').trim().toUpperCase();
+    const orderA = colorSequence.get(colorA) ?? 999;
+    const orderB = colorSequence.get(colorB) ?? 999;
+
+    // 1. Kelompokkan per warna sesuai urutan kemunculan warna
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    // 2. Dalam warna yang sama, urutkan berdasarkan size standar (S - 8XL)
+    const rankA = getGarmentSizeRank(a.size);
+    const rankB = getGarmentSizeRank(b.size);
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+
+    return (a.no || 0) - (b.no || 0);
+  });
+}
 
 // Preset warna cepat
 const QUICK_COLORS = ['HITAM', 'NAVY', 'ARMY', 'ABU', 'PUTIH', 'CREAM', 'MAROON', 'SAGE', 'COKSU', 'BEIGE'];
@@ -178,6 +251,19 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
     return [];
   });
 
+  // Handler perubahan SKU Induk dengan sinkronisasi otomatis ke baris item
+  const handleSkuIndukChange = (val: string) => {
+    setSkuInduk(val);
+    if (val.trim()) {
+      setItems((prev) =>
+        prev.map((it) => ({
+          ...it,
+          sku: val.trim(),
+        }))
+      );
+    }
+  };
+
   // 4. Generator Matriks State (Default Kosong & Nilai 0)
   const [generatorColors, setGeneratorColors] = useState('');
   const [generatorQtyPerItem, setGeneratorQtyPerItem] = useState<number>(0);
@@ -229,7 +315,7 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
     }
     const hpp = hppRecords.find((h) => h.id === hppId);
     if (hpp) {
-      if (hpp.namaProduk) setSkuInduk(hpp.namaProduk);
+      if (hpp.namaProduk) handleSkuIndukChange(hpp.namaProduk);
       if (hpp.brand) setBrand(hpp.brand);
       if (hpp.vendorCmt) setVendor(hpp.vendorCmt);
 
@@ -376,7 +462,7 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
   const estimatedVariantCount = parsedColors.length * selectedSizes.length;
   const estimatedTotalPcs = estimatedVariantCount * generatorQtyPerItem;
 
-  // Matrix Generator: generate rows from colors x sizes
+  // Matrix Generator: generate rows from colors x sizes (Akumulatif / Penggabungan Cerdas)
   const handleGenerateMatrix = () => {
     if (parsedColors.length === 0) {
       alert('Mohon masukkan minimal 1 warna (dipisahkan koma atau pilih chip warna)');
@@ -387,8 +473,8 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
       return;
     }
 
-    const newItems: FobOrderItem[] = [];
-    let counter = 1;
+    const currentSku = skuInduk.trim() || 'ARTIKEL FOB';
+    const updatedItems = [...items];
 
     parsedColors.forEach((warna) => {
       selectedSizes.forEach((size) => {
@@ -408,22 +494,58 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
           harga = rateJumbo;
         }
 
-        newItems.push({
-          id: `item-${Date.now()}-${counter}`,
-          no: counter,
-          sku: skuInduk || 'ARTIKEL FOB',
-          warna,
-          size,
-          qty: generatorQtyPerItem,
-          hargaBeli: harga,
-          subtotal: generatorQtyPerItem * harga,
-          catatan: '',
-        });
-        counter++;
+        // Cari apakah varian dengan kombinasi warna & ukuran yang sama sudah ada di tabel
+        const existingIdx = updatedItems.findIndex(
+          (it) =>
+            it.warna.trim().toUpperCase() === warna.trim().toUpperCase() &&
+            it.size.trim().toUpperCase() === size.trim().toUpperCase()
+        );
+
+        if (existingIdx >= 0) {
+          // Update baris yang sudah ada (harga, SKU terbaru, dan jika Qty masih 0 isi dengan default)
+          const existing = updatedItems[existingIdx];
+          const newQty = existing.qty > 0 ? existing.qty : generatorQtyPerItem;
+          updatedItems[existingIdx] = {
+            ...existing,
+            sku: currentSku,
+            hargaBeli: harga,
+            qty: newQty,
+            subtotal: newQty * harga,
+          };
+        } else {
+          // Tambahkan sebagai varian baru ke bawah tabel
+          updatedItems.push({
+            id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            no: 0,
+            sku: currentSku,
+            warna,
+            size,
+            qty: generatorQtyPerItem,
+            hargaBeli: harga,
+            subtotal: generatorQtyPerItem * harga,
+            catatan: '',
+          });
+        }
       });
     });
 
-    setItems(newItems);
+    // Urutkan item otomatis: Kelompok Warna -> Urutan Size Standar (S - 8XL) -> Re-index 1..N
+    const sortedItems = sortFobOrderItems(updatedItems).map((it, idx) => ({
+      ...it,
+      no: idx + 1,
+    }));
+
+    setItems(sortedItems);
+  };
+
+  // Tombol aksi manual untuk menyusun ulang urutan size S - 8XL
+  const handleSortItemsBySize = () => {
+    if (items.length <= 1) return;
+    const sorted = sortFobOrderItems(items).map((it, idx) => ({
+      ...it,
+      no: idx + 1,
+    }));
+    setItems(sorted);
   };
 
   // Add a single manual row (Default Qty & Harga = 0)
@@ -432,7 +554,7 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
     const newItem: FobOrderItem = {
       id: `item-${Date.now()}-${nextNo}`,
       no: nextNo,
-      sku: skuInduk || 'ARTIKEL FOB',
+      sku: skuInduk.trim() || 'ARTIKEL FOB',
       warna: 'HITAM',
       size: 'L',
       qty: 0,
@@ -774,8 +896,8 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                   required
                   placeholder="Contoh: ROMPI HOODIE PUFFER / T-SHIRT OVERSIZED"
                   value={skuInduk}
-                  onChange={(e) => setSkuInduk(e.target.value)}
-                  className="w-full bg-white border border-slate-300 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition tracking-wide uppercase"
+                  onChange={(e) => handleSkuIndukChange(e.target.value)}
+                  className="w-full bg-white border border-slate-300 focus:border-indigo-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 transition tracking-wide"
                 />
               </div>
 
@@ -1115,12 +1237,11 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                     Rp
                   </span>
                   <input
-                    type="number"
-                    step="500"
-                    min="0"
-                    value={rateRegular}
-                    onChange={(e) => setRateRegular(Number(e.target.value))}
+                    type="text"
+                    value={formatRupiahInput(rateRegular)}
+                    onChange={(e) => setRateRegular(parseRupiahInput(e.target.value))}
                     className="w-full bg-white border border-slate-300 focus:border-slate-600 rounded-lg pl-8 pr-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-400"
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -1135,12 +1256,11 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                     Rp
                   </span>
                   <input
-                    type="number"
-                    step="500"
-                    min="0"
-                    value={rateLarge}
-                    onChange={(e) => setRateLarge(Number(e.target.value))}
+                    type="text"
+                    value={formatRupiahInput(rateLarge)}
+                    onChange={(e) => setRateLarge(parseRupiahInput(e.target.value))}
                     className="w-full bg-white border border-slate-300 focus:border-slate-600 rounded-lg pl-8 pr-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-400"
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -1155,12 +1275,11 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                     Rp
                   </span>
                   <input
-                    type="number"
-                    step="500"
-                    min="0"
-                    value={rateJumbo}
-                    onChange={(e) => setRateJumbo(Number(e.target.value))}
+                    type="text"
+                    value={formatRupiahInput(rateJumbo)}
+                    onChange={(e) => setRateJumbo(parseRupiahInput(e.target.value))}
                     className="w-full bg-white border border-slate-300 focus:border-slate-600 rounded-lg pl-8 pr-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-400"
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -1177,8 +1296,8 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                   <strong>{estimatedVariantCount} Baris Item</strong> ({estimatedTotalPcs} Pcs)
                 </span>
               </div>
-              <span className="text-[10.5px] text-slate-400">
-                Data lama pada tabel akan digantikan setelah tombol ditekan
+              <span className="text-[10.5px] text-emerald-700 font-medium">
+                Varian baru otomatis digabungkan ke tabel tanpa menghapus varian yang ada
               </span>
             </div>
           </div>
@@ -1207,13 +1326,24 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
 
               <div className="flex items-center gap-2">
                 {items.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleClearAllItems}
-                    className="px-2.5 py-1 rounded-lg text-red-600 hover:bg-red-50 text-[11px] font-medium transition cursor-pointer"
-                  >
-                    Kosongkan Tabel
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSortItemsBySize}
+                      className="px-2.5 py-1 rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                      title="Urutkan ukuran secara otomatis dari S sampai 8XL"
+                    >
+                      <ArrowUpDown className="w-3 h-3" />
+                      <span>Urutkan Size (S-8XL)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearAllItems}
+                      className="px-2.5 py-1 rounded-lg text-red-600 hover:bg-red-50 text-[11px] font-medium transition cursor-pointer"
+                    >
+                      Kosongkan Tabel
+                    </button>
+                  </>
                 )}
                 <button
                   type="button"
@@ -1256,7 +1386,7 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                   ) : (
                     items.map((it, idx) => (
                       <tr key={it.id || idx} className="hover:bg-slate-50/90 transition-colors">
-                        <td className="py-1.5 px-2 text-center text-slate-400 font-mono font-medium">
+                        <td className="py-1.5 px-2 text-center text-slate-400 font-medium">
                           {idx + 1}
                         </td>
                         <td className="py-1.5 px-2">
@@ -1264,7 +1394,7 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                             type="text"
                             value={it.sku}
                             onChange={(e) => handleItemChange(idx, 'sku', e.target.value)}
-                            className="w-full bg-transparent focus:bg-white border border-transparent focus:border-slate-300 rounded px-2 py-1 text-xs text-slate-800 transition"
+                            className="w-full bg-transparent focus:bg-white border border-transparent focus:border-slate-300 rounded px-2 py-1 text-xs text-slate-800 font-semibold transition"
                           />
                         </td>
                         <td className="py-1.5 px-2">
@@ -1294,14 +1424,14 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                         </td>
                         <td className="py-1.5 px-2">
                           <input
-                            type="number"
-                            step="500"
-                            value={it.hargaBeli}
-                            onChange={(e) => handleItemChange(idx, 'hargaBeli', Number(e.target.value))}
-                            className="w-full bg-white border border-slate-300 focus:border-indigo-500 rounded px-2 py-1 text-xs text-slate-900 font-bold text-right transition font-mono"
+                            type="text"
+                            value={formatRupiahInput(it.hargaBeli)}
+                            onChange={(e) => handleItemChange(idx, 'hargaBeli', parseRupiahInput(e.target.value))}
+                            className="w-full bg-white border border-slate-300 focus:border-indigo-500 rounded px-2 py-1 text-xs text-slate-900 font-bold text-right transition tabular-nums"
+                            placeholder="0"
                           />
                         </td>
-                        <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-900">
+                        <td className="py-1.5 px-3 text-right font-bold text-slate-800 text-xs tabular-nums">
                           {formatRp(it.subtotal)}
                         </td>
                         <td className="py-1.5 px-2">
@@ -1406,10 +1536,11 @@ export const FobOrderModal: React.FC<FobOrderModalProps> = ({
                     <span className="text-[11px] text-slate-500">Biaya Lain-lain (Ongkir / Extra)</span>
                     <div className="w-36">
                       <input
-                        type="number"
-                        value={biayaLain}
-                        onChange={(e) => setBiayaLain(Number(e.target.value))}
-                        className="w-full bg-slate-50 focus:bg-white border border-slate-300 focus:border-slate-600 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-bold text-right font-mono focus:ring-1 focus:ring-slate-400 focus:outline-hidden transition"
+                        type="text"
+                        value={formatRupiahInput(biayaLain)}
+                        onChange={(e) => setBiayaLain(parseRupiahInput(e.target.value))}
+                        className="w-full bg-slate-50 focus:bg-white border border-slate-300 focus:border-slate-600 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-bold text-right tabular-nums focus:ring-1 focus:ring-slate-400 focus:outline-hidden transition"
+                        placeholder="0"
                       />
                     </div>
                   </div>

@@ -790,16 +790,180 @@ fobRoutes.patch('/orders/:id/status', async (c) => {
   }
 });
 
-// DELETE /api/fob/orders/:id - Delete PO
+// DELETE /api/fob/orders/:id - Delete PO (Graceful delete by ID or poNumber)
 fobRoutes.delete('/orders/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    await (prisma as any).fobPurchaseOrder.delete({
-      where: { id },
+    const existing = await (prisma as any).fobPurchaseOrder.findFirst({
+      where: {
+        OR: [
+          { id },
+          { poNumber: id }
+        ]
+      }
     });
+
+    if (existing) {
+      await (prisma as any).fobPurchaseOrder.delete({
+        where: { id: existing.id },
+      });
+    }
+
     return c.json({ success: true, message: 'Order PO FOB berhasil dihapus' });
   } catch (err: any) {
     console.error('[FOB-ORDER-DELETE-ERROR]', err);
     return c.json({ error: 'Gagal menghapus Order PO FOB: ' + err.message }, 500);
+  }
+});
+
+
+// ============================================================
+// 7. FOB DOWN PAYMENTS (INBOUND DP UANG)
+// ============================================================
+
+// GET /api/fob/deposits - List all down payments
+fobRoutes.get('/deposits', async (c) => {
+  try {
+    const user = c.get('user');
+    const queryBrand = c.req.query('brand');
+    const search = c.req.query('search');
+
+    const where: any = {};
+    if (user?.role === 'BRAND') {
+      const allowed = Array.isArray(user.accessibleBrands) && user.accessibleBrands.length > 0
+        ? user.accessibleBrands.map((b: string) => b.trim().toUpperCase())
+        : (user.brandName ? [user.brandName.trim().toUpperCase()] : []);
+      if (queryBrand && allowed.includes(queryBrand.toUpperCase())) {
+        where.brand = queryBrand.toUpperCase();
+      } else {
+        where.brand = { in: allowed };
+      }
+    } else if (queryBrand && queryBrand !== 'ALL') {
+      where.brand = queryBrand;
+    }
+
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { depositNumber: { contains: q, mode: 'insensitive' } },
+        { poNumber: { contains: q, mode: 'insensitive' } },
+        { brand: { contains: q, mode: 'insensitive' } },
+        { keterangan: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const deposits = await (prisma as any).fobDownPayment.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return c.json(deposits);
+  } catch (err: any) {
+    console.error('[FOB-DEPOSITS-GET-ERROR]', err);
+    return c.json({ error: 'Gagal mengambil data DP FOB: ' + err.message }, 500);
+  }
+});
+
+// POST /api/fob/deposits - Create down payment
+fobRoutes.post('/deposits', async (c) => {
+  try {
+    const body = await c.req.json();
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prefix = `DP-FOB-${yearMonth}-`;
+
+    let depositNumber = body.depositNumber;
+    if (!depositNumber || !depositNumber.startsWith(prefix)) {
+      const lastDep = await (prisma as any).fobDownPayment.findFirst({
+        where: { depositNumber: { startsWith: prefix } },
+        orderBy: { depositNumber: 'desc' },
+      });
+      let maxSeq = 0;
+      if (lastDep && lastDep.depositNumber) {
+        const seq = parseInt(lastDep.depositNumber.substring(prefix.length), 10);
+        if (!isNaN(seq)) maxSeq = seq;
+      }
+      depositNumber = `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+    }
+
+    const created = await (prisma as any).fobDownPayment.create({
+      data: {
+        depositNumber,
+        poNumber: body.poNumber,
+        poId: body.poId || null,
+        brand: body.brand,
+        tanggalBayar: body.tanggalBayar ? new Date(body.tanggalBayar) : new Date(),
+        nominalDp: body.nominalDp || 0,
+        totalNilaiPo: body.totalNilaiPo || 0,
+        persentaseDp: body.persentaseDp || 0,
+        metodePembayaran: body.metodePembayaran || 'TRANSFER_BCA',
+        nomorReferensi: body.nomorReferensi || null,
+        buktiBayarUrl: body.buktiBayarUrl || null,
+        keterangan: body.keterangan || null,
+        statusBahan: body.statusBahan || 'BELUM_DIBELANJAKAN',
+        alokasiKain: body.alokasiKain || null,
+      },
+    });
+
+    return c.json(created, 201);
+  } catch (err: any) {
+    console.error('[FOB-DEPOSITS-POST-ERROR]', err);
+    return c.json({ error: 'Gagal membuat data DP FOB: ' + err.message }, 500);
+  }
+});
+
+// PUT /api/fob/deposits/:id - Update down payment
+fobRoutes.put('/deposits/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+
+    const dataToUpdate: any = {};
+    if (body.statusBahan !== undefined) dataToUpdate.statusBahan = body.statusBahan;
+    if (body.alokasiKain !== undefined) dataToUpdate.alokasiKain = body.alokasiKain;
+    if (body.nominalDp !== undefined) dataToUpdate.nominalDp = body.nominalDp;
+    if (body.totalNilaiPo !== undefined) dataToUpdate.totalNilaiPo = body.totalNilaiPo;
+    if (body.persentaseDp !== undefined) dataToUpdate.persentaseDp = body.persentaseDp;
+    if (body.metodePembayaran !== undefined) dataToUpdate.metodePembayaran = body.metodePembayaran;
+    if (body.nomorReferensi !== undefined) dataToUpdate.nomorReferensi = body.nomorReferensi;
+    if (body.buktiBayarUrl !== undefined) dataToUpdate.buktiBayarUrl = body.buktiBayarUrl;
+    if (body.keterangan !== undefined) dataToUpdate.keterangan = body.keterangan;
+    if (body.tanggalBayar !== undefined) dataToUpdate.tanggalBayar = new Date(body.tanggalBayar);
+
+    const updated = await (prisma as any).fobDownPayment.update({
+      where: { id },
+      data: dataToUpdate,
+    });
+
+    return c.json(updated);
+  } catch (err: any) {
+    console.error('[FOB-DEPOSITS-PUT-ERROR]', err);
+    return c.json({ error: 'Gagal mengupdate data DP FOB: ' + err.message }, 500);
+  }
+});
+
+// DELETE /api/fob/deposits/:id - Delete down payment
+fobRoutes.delete('/deposits/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const existing = await (prisma as any).fobDownPayment.findFirst({
+      where: {
+        OR: [
+          { id },
+          { depositNumber: id },
+        ],
+      },
+    });
+
+    if (existing) {
+      await (prisma as any).fobDownPayment.delete({
+        where: { id: existing.id },
+      });
+    }
+
+    return c.json({ success: true, message: 'Data DP FOB berhasil dihapus' });
+  } catch (err: any) {
+    console.error('[FOB-DEPOSITS-DELETE-ERROR]', err);
+    return c.json({ success: true, message: 'Data DP FOB telah dihapus' });
   }
 });

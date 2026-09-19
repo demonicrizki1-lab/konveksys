@@ -32,3 +32,9 @@ yarn-error.log*
 
 # Other scratch projects
 invotrack/
+ 
+*.rar
+scratch/
+konveksys-frontend/scratch/
+grosir-serba-ada/
+hpp-fob-dashboard/

@@ -82,6 +82,7 @@ export interface HargaBuyer {
 }
 
 export type RollStatus = 'MENUNGGU_FISIK' | 'DI_GUDANG' | 'DIPROSES' | 'SELESAI';
+export type RollSourceType = 'CMT' | 'FOB';
 
 export interface InboundRoll {
   id: string;
@@ -94,6 +95,9 @@ export interface InboundRoll {
   status: RollStatus;
   tanggalMasuk: string;
   keterangan?: string;
+  sourceType?: RollSourceType;
+  sourcePONumber?: string;
+  fobDepositId?: string;
 }
 
 export interface SizeBreakdown {
@@ -840,3 +844,46 @@ export interface ProductionTimeline {
   createdAt: string;
   updatedAt?: string;
 }
+
+// ----------------------------------------------------
+// FOB DOWN PAYMENT / DEPOSIT BUYER (INBOUND DP UANG)
+// ----------------------------------------------------
+export type FobDepositStatus = 'BELUM_DIBELANJAKAN' | 'SEBAGIAN_DIBELANJAKAN' | 'SUDAH_JADI_KAIN';
+
+export interface FobFabricAllocation {
+  totalMeter: number;
+  totalBiaya: number;
+  rolCodes: string[];
+}
+
+export interface FobDownPayment {
+  id: string;
+  depositNumber: string;         // e.g. DP-FOB-202609-001
+  poId?: string | null;          // Relasi ke FobPurchaseOrder.id (atau null jika multi-PO)
+  poNumber: string;              // e.g. PO-PH-0002 atau PO-PH-0001, PO-PH-0002, PO-PH-0003
+  poNumbers?: string[];          // Array nomor PO jika bundel multi-PO
+  poIds?: string[];              // Array ID PO jika bundel multi-PO
+  totalQty?: number;             // Total volume kuantitas pcs seluruh PO
+  bundleInfo?: Array<{
+    poId?: string;
+    poNumber: string;
+    skuInduk: string;
+    totalQty: number;
+    grandTotal: number;
+  }>;
+  brand: string;                 // e.g. MONTURE / GREYWOLF
+  tanggalBayar: string;          // YYYY-MM-DD
+  nominalTotalOrder: number;     // Nilai total pesanan PO FOB (akumulasi jika multi-PO)
+  persentaseDp: number;          // e.g. 50 (%)
+  nominalDp: number;             // Nilai rupiah DP yang disetor buyer
+  metodePembayaran: MetodePembayaran;
+  bankTujuan?: string;           // BCA, MANDIRI, BRI, KAS_TUNAI
+  nomorReferensi?: string;       // No bukti transfer bank
+  buktiBayarUrl?: string;        // Foto/struk transfer opsional
+  keterangan?: string;
+  statusBahan: FobDepositStatus;
+  alokasiKain?: FobFabricAllocation;
+  createdAt: string;
+  updatedAt?: string;
+}
+
