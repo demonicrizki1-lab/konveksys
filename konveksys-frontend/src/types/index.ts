@@ -291,16 +291,45 @@ export interface BuyerInvoiceFabricItem {
   totalNilaiKain: number;
 }
 
+export interface BuyerInvoicePoItemProgress {
+  id?: string;
+  poNumber: string;
+  namaProduk: string;
+  warna?: string | null;
+  ukuran?: string | null;
+  targetQty: number;
+  deliveredQty: number;
+  remainingQty: number;
+  bahanKain?: string | null;
+  catatan?: string | null;
+}
+
+export interface BuyerInvoicePoEntry {
+  id?: string;
+  noPO: string;
+  vendorTujuan?: string;
+  tanggalPO?: string;
+  targetDeadline?: string;
+  targetPcs?: number;
+  status?: string;
+}
+
 export interface BuyerInvoicePoInfo {
   id?: string;
   noPO: string;
+  selectedPoNumbers?: string[];
   brand: string;
   vendorTujuan?: string;
   tanggalPO?: string;
   targetDeadline?: string;
   targetPcs?: number;
   catatan?: string | null;
+  pos?: BuyerInvoicePoEntry[];
+  totalTargetPcs?: number;
+  totalDeliveredPcs?: number;
+  totalRemainingPcs?: number;
   items?: {
+    poNumber?: string;
     namaProduk: string;
     warna?: string | null;
     ukuran?: string | null;
@@ -308,6 +337,7 @@ export interface BuyerInvoicePoInfo {
     bahanKain?: string | null;
     catatan?: string | null;
   }[];
+  itemsProgress?: BuyerInvoicePoItemProgress[];
 }
 
 export interface BuyerInvoiceSummary {

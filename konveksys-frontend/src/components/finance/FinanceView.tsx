@@ -220,7 +220,7 @@ export const FinanceView: React.FC = () => {
     ? (activeBrand === 'CREADIVE' ? 'NAMI' : activeBrand)
     : (selectedBrandName === 'CREADIVE' ? 'NAMI' : selectedBrandName);
 
-  const [selectedPoNumber, setSelectedPoNumber] = useState<string>('');
+  const [selectedPoNumbers, setSelectedPoNumbers] = useState<string[]>([]);
   const [selectedSjRowKeys, setSelectedSjRowKeys] = useState<string[]>([]);
   const [selectedRollIds, setSelectedRollIds] = useState<string[]>([]);
   const [activeInvoiceTab, setActiveInvoiceTab] = useState<'surat_jalan' | 'kain'>('surat_jalan');
@@ -232,19 +232,22 @@ export const FinanceView: React.FC = () => {
     );
   }, [productionPOs, effectiveBrand]);
 
-  // Current Selected PO Object
-  const currentPO = useMemo(() => {
-    return productionPOs.find(p => p.noPO === selectedPoNumber);
-  }, [productionPOs, selectedPoNumber]);
+  // Selected PO Objects
+  const selectedPOObjects = useMemo(() => {
+    return brandPOs.filter(p => selectedPoNumbers.includes(p.noPO));
+  }, [brandPOs, selectedPoNumbers]);
 
-  // Auto-switch selectedPoNumber when brand or brandPOs change
+  // Auto-sync selectedPoNumbers when brand or brandPOs change
   useEffect(() => {
     if (brandPOs.length > 0) {
-      if (!selectedPoNumber || !brandPOs.some(p => p.noPO === selectedPoNumber)) {
-        setSelectedPoNumber(brandPOs[0].noPO);
+      const valid = selectedPoNumbers.filter(no => brandPOs.some(p => p.noPO === no));
+      if (valid.length === 0) {
+        setSelectedPoNumbers([brandPOs[0].noPO]);
+      } else {
+        setSelectedPoNumbers(valid);
       }
     } else {
-      setSelectedPoNumber('');
+      setSelectedPoNumbers([]);
     }
   }, [effectiveBrand, brandPOs]);
 
@@ -355,8 +358,10 @@ export const FinanceView: React.FC = () => {
   // Auto initialize selection when PO or Brand changes
   useEffect(() => {
     if (availableSjItems.length > 0) {
-      if (selectedPoNumber) {
-        const matchingSJs = availableSjItems.filter(it => it.itemPo === selectedPoNumber).map(it => it.rowKey);
+      if (selectedPoNumbers.length > 0) {
+        const matchingSJs = availableSjItems
+          .filter(it => it.itemPo && selectedPoNumbers.includes(it.itemPo))
+          .map(it => it.rowKey);
         setSelectedSjRowKeys(matchingSJs.length > 0 ? matchingSJs : availableSjItems.map(it => it.rowKey));
       } else {
         setSelectedSjRowKeys(availableSjItems.map(it => it.rowKey));
@@ -366,8 +371,10 @@ export const FinanceView: React.FC = () => {
     }
 
     if (availableRolls.length > 0) {
-      if (selectedPoNumber) {
-        const matchingRolls = availableRolls.filter(r => r.sourcePONumber === selectedPoNumber).map(r => r.id);
+      if (selectedPoNumbers.length > 0) {
+        const matchingRolls = availableRolls
+          .filter(r => r.sourcePONumber && selectedPoNumbers.includes(r.sourcePONumber))
+          .map(r => r.id);
         setSelectedRollIds(matchingRolls);
       } else {
         setSelectedRollIds([]);
@@ -375,7 +382,7 @@ export const FinanceView: React.FC = () => {
     } else {
       setSelectedRollIds([]);
     }
-  }, [selectedPoNumber, effectiveBrand, availableSjItems.length, availableRolls.length]);
+  }, [selectedPoNumbers, effectiveBrand, availableSjItems.length, availableRolls.length]);
 
   // Checked items calculations
   const checkedSjItems = useMemo(() => {
@@ -421,6 +428,104 @@ export const FinanceView: React.FC = () => {
     return Math.max(0, totalGrossTagihan - totalFabricDeduction);
   }, [totalGrossTagihan, totalFabricDeduction]);
 
+  // Progres Pemenuhan Item PO (Target vs Terkirim vs Sisa Belum Terkirim)
+  const itemsProgress = useMemo(() => {
+    const list: Array<{
+      id?: string;
+      poNumber: string;
+      namaProduk: string;
+      warna?: string | null;
+      ukuran?: string | null;
+      targetQty: number;
+      deliveredQty: number;
+      remainingQty: number;
+      bahanKain?: string | null;
+      catatan?: string | null;
+    }> = [];
+
+    selectedPOObjects.forEach(po => {
+      const linkedSJs = checkedSjItems.filter(sj => sj.itemPo === po.noPO || (!sj.itemPo && selectedPOObjects.length === 1));
+
+      (po.items || []).forEach(poItem => {
+        const targetQty = Number(poItem.qty) || 0;
+        let deliveredQty = 0;
+
+        const matchingSjs = linkedSJs.filter(
+          sj => sj.produk.trim().toLowerCase() === poItem.namaProduk.trim().toLowerCase()
+        );
+
+        if (matchingSjs.length > 0) {
+          const normUkuran = (poItem.ukuran || '').trim().toLowerCase();
+          
+          if (normUkuran === 's') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyS || 0), 0);
+          } else if (normUkuran === 'm') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyM || 0), 0);
+          } else if (normUkuran === 'l') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyL || 0), 0);
+          } else if (normUkuran === 'xl') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyXL || 0), 0);
+          } else if (normUkuran === 'xxl' || normUkuran === '2xl') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyXXL || 0), 0);
+          } else if (normUkuran.includes('4') || normUkuran === 'anak 4') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak4 || 0), 0);
+          } else if (normUkuran.includes('6') || normUkuran === 'anak 6') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak6 || 0), 0);
+          } else if (normUkuran.includes('8') || normUkuran === 'anak 8') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak8 || 0), 0);
+          } else if (normUkuran.includes('10') || normUkuran === 'anak 10') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak10 || 0), 0);
+          } else if (normUkuran.includes('12') || normUkuran === 'anak 12') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak12 || 0), 0);
+          } else if (normUkuran.includes('14') || normUkuran === 'anak 14') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak14 || 0), 0);
+          } else if (normUkuran.includes('16') || normUkuran === 'anak 16') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak16 || 0), 0);
+          } else {
+            const sameProductCount = po.items.filter(
+              i => i.namaProduk.trim().toLowerCase() === poItem.namaProduk.trim().toLowerCase()
+            ).length;
+            const totalProdDelivered = matchingSjs.reduce((s, it) => s + (it.totalPcs || 0), 0);
+            if (sameProductCount === 1) {
+              deliveredQty = totalProdDelivered;
+            } else {
+              deliveredQty = Math.min(targetQty, totalProdDelivered);
+            }
+          }
+        }
+
+        const remainingQty = Math.max(0, targetQty - deliveredQty);
+
+        list.push({
+          id: poItem.id,
+          poNumber: po.noPO,
+          namaProduk: poItem.namaProduk,
+          warna: poItem.warna,
+          ukuran: poItem.ukuran,
+          targetQty,
+          deliveredQty,
+          remainingQty,
+          bahanKain: poItem.bahanKain,
+          catatan: poItem.catatan,
+        });
+      });
+    });
+
+    return list;
+  }, [selectedPOObjects, checkedSjItems]);
+
+  const totalTargetPcs = useMemo(() => {
+    return itemsProgress.reduce((sum, it) => sum + it.targetQty, 0);
+  }, [itemsProgress]);
+
+  const totalDeliveredFromPO = useMemo(() => {
+    return itemsProgress.reduce((sum, it) => sum + it.deliveredQty, 0);
+  }, [itemsProgress]);
+
+  const totalRemainingPcs = useMemo(() => {
+    return itemsProgress.reduce((sum, it) => sum + it.remainingQty, 0);
+  }, [itemsProgress]);
+
   // Full composite invoice data for Preview & PDF Export
   const compositeInvoice = useMemo((): BuyerInvoiceSummary => {
     const now = new Date();
@@ -434,6 +539,8 @@ export const FinanceView: React.FC = () => {
       jatuhTempoDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     }
 
+    const primaryPO = selectedPOObjects[0];
+
     return {
       brand: effectiveBrand,
       invoiceNo,
@@ -442,26 +549,37 @@ export const FinanceView: React.FC = () => {
       periodeAwal: activeStartDate,
       periodeAkhir: activeEndDate,
       periodeLabel: activePeriodLabel,
-      poInfo: currentPO ? {
-        id: currentPO.id,
-        noPO: currentPO.noPO,
-        brand: currentPO.brand,
-        vendorTujuan: currentPO.vendorTujuan,
-        tanggalPO: currentPO.tanggalPO,
-        targetDeadline: currentPO.targetDeadline,
-        targetPcs: currentPO.totalPcs || currentPO.items?.reduce((s, it) => s + (it.qty || 0), 0) || 0,
-        catatan: currentPO.catatan,
-        items: currentPO.items?.map(it => ({
+      poInfo: selectedPOObjects.length > 0 ? {
+        id: primaryPO?.id,
+        noPO: selectedPoNumbers.join(', '),
+        selectedPoNumbers,
+        brand: effectiveBrand,
+        vendorTujuan: Array.from(new Set(selectedPOObjects.map(p => p.vendorTujuan).filter(Boolean))).join(', '),
+        tanggalPO: primaryPO?.tanggalPO,
+        targetDeadline: primaryPO?.targetDeadline,
+        targetPcs: totalTargetPcs,
+        totalTargetPcs,
+        totalDeliveredPcs: totalDeliveredFromPO || totalDeliveredPcs,
+        totalRemainingPcs,
+        pos: selectedPOObjects.map(p => ({
+          id: p.id,
+          noPO: p.noPO,
+          vendorTujuan: p.vendorTujuan,
+          tanggalPO: p.tanggalPO,
+          targetDeadline: p.targetDeadline,
+          targetPcs: p.totalPcs || p.items?.reduce((s, it) => s + (it.qty || 0), 0) || 0,
+          status: p.status,
+        })),
+        items: itemsProgress.map(it => ({
+          poNumber: it.poNumber,
           namaProduk: it.namaProduk,
           warna: it.warna,
           ukuran: it.ukuran,
-          qty: it.qty,
+          qty: it.targetQty,
           bahanKain: it.bahanKain,
           catatan: it.catatan,
         })),
-      } : selectedPoNumber ? {
-        noPO: selectedPoNumber,
-        brand: effectiveBrand,
+        itemsProgress,
       } : undefined,
       items: checkedSjItems,
       totalPcs: totalDeliveredPcs,
@@ -473,8 +591,12 @@ export const FinanceView: React.FC = () => {
     };
   }, [
     effectiveBrand,
-    selectedPoNumber,
-    currentPO,
+    selectedPoNumbers,
+    selectedPOObjects,
+    itemsProgress,
+    totalTargetPcs,
+    totalDeliveredFromPO,
+    totalRemainingPcs,
     checkedSjItems,
     totalDeliveredPcs,
     totalGrossTagihan,
@@ -1100,7 +1222,7 @@ export const FinanceView: React.FC = () => {
               )}
             </div>
 
-            {/* 2. Dropdown Pilih PO Produksi */}
+            {/* 2. Multi-Select Checklist PO Produksi */}
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-2">
@@ -1112,82 +1234,167 @@ export const FinanceView: React.FC = () => {
                 </span>
               </div>
 
-              <select
-                value={selectedPoNumber}
-                onChange={(e) => setSelectedPoNumber(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 rounded-xl border border-slate-300 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-              >
-                <option value="">-- Semua / Non-PO (Pilih Bebas) --</option>
-                {brandPOs.map((po) => (
-                  <option key={po.id || po.noPO} value={po.noPO}>
-                    {po.noPO} • {po.vendorTujuan || 'Workshop'} ({po.totalPcs} pcs) - {po.status}
-                  </option>
-                ))}
-              </select>
+              {/* Batch Select / Deselect Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPoNumbers(brandPOs.map(p => p.noPO))}
+                  className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg font-semibold text-indigo-700 text-[11px] transition cursor-pointer flex items-center gap-1"
+                >
+                  <CheckSquare className="w-3 h-3" />
+                  Pilih Semua ({brandPOs.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPoNumbers([])}
+                  className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg font-semibold text-slate-600 text-[11px] transition cursor-pointer flex items-center gap-1"
+                >
+                  <Square className="w-3 h-3" />
+                  Batal Semua
+                </button>
+                {selectedPoNumbers.length > 0 && (
+                  <span className="text-[10.5px] font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-md ml-auto">
+                    {selectedPoNumbers.length} PO Dipilih
+                  </span>
+                )}
+              </div>
 
-              {/* Detail Kartu PO Terpilih */}
-              {currentPO ? (
-                <div className="bg-indigo-50/60 border border-indigo-200/80 rounded-xl p-3 text-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-indigo-950 text-xs">
-                      {currentPO.noPO}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                      currentPO.status === 'SELESAI'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-indigo-100 text-indigo-800'
-                    }`}>
-                      {currentPO.status}
-                    </span>
+              {/* PO Checklist Items */}
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {brandPOs.length === 0 ? (
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                    <span>Belum ada PO Produksi untuk brand ini.</span>
+                  </div>
+                ) : (
+                  brandPOs.map((po) => {
+                    const isPoChecked = selectedPoNumbers.includes(po.noPO);
+                    return (
+                      <div
+                        key={po.id || po.noPO}
+                        onClick={() => {
+                          setSelectedPoNumbers(prev =>
+                            prev.includes(po.noPO)
+                              ? prev.filter(n => n !== po.noPO)
+                              : [...prev, po.noPO]
+                          );
+                        }}
+                        className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center gap-2.5 ${
+                          isPoChecked
+                            ? 'bg-indigo-50/80 border-indigo-400 shadow-xs'
+                            : 'bg-slate-50 border-slate-200 hover:border-slate-300 opacity-70'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isPoChecked}
+                          onChange={() => {}}
+                          className="w-4 h-4 rounded text-indigo-600 cursor-pointer accent-indigo-600 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="font-mono font-bold text-xs text-slate-900 truncate">{po.noPO}</span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[8.5px] font-bold shrink-0 ${
+                              po.status === 'SELESAI'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-indigo-100 text-indigo-800'
+                            }`}>
+                              {po.status}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">
+                            {po.vendorTujuan || 'Workshop'} • {(po.totalPcs || po.items?.reduce((s: number, i: any) => s + (i.qty || 0), 0) || 0).toLocaleString('id-ID')} pcs
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Multi-PO Summary Card with Progress */}
+              {selectedPOObjects.length > 0 && (
+                <div className="bg-indigo-50/60 border border-indigo-200/80 rounded-xl p-3 text-xs space-y-2.5">
+                  {/* PO Badges */}
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    <span className="text-[9.5px] font-bold text-indigo-700 uppercase tracking-wider">PO Terpilih:</span>
+                    {selectedPOObjects.map(po => (
+                      <span key={po.noPO} className="font-mono text-[10px] font-bold text-indigo-900 bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-200">
+                        {po.noPO}
+                      </span>
+                    ))}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-indigo-100">
-                    <div>
-                      <span className="text-slate-400 block text-[9.5px]">Vendor Workshop:</span>
-                      <span className="font-semibold text-slate-800">{currentPO.vendorTujuan || '-'}</span>
+                  {/* Aggregate Metrics */}
+                  <div className="grid grid-cols-3 gap-2 pt-1.5 border-t border-indigo-100">
+                    <div className="text-center">
+                      <span className="text-slate-400 block text-[9px]">Target PO</span>
+                      <span className="font-bold text-indigo-900 font-mono text-xs">{totalTargetPcs.toLocaleString('id-ID')}</span>
+                      <span className="text-[9px] text-slate-500 block">Pcs</span>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-[9.5px]">Target Deadline:</span>
-                      <span className="font-semibold text-slate-800">{formatDateIndo(currentPO.targetDeadline)}</span>
+                    <div className="text-center">
+                      <span className="text-slate-400 block text-[9px]">Sudah Terkirim</span>
+                      <span className="font-bold text-emerald-700 font-mono text-xs">{totalDeliveredFromPO.toLocaleString('id-ID')}</span>
+                      <span className="text-[9px] text-slate-500 block">Pcs</span>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-[9.5px]">Target PO:</span>
-                      <span className="font-bold text-indigo-900 font-mono">{currentPO.totalPcs.toLocaleString('id-ID')} Pcs</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[9.5px]">Terkirim via SJ:</span>
-                      <span className="font-bold text-emerald-700 font-mono">{totalDeliveredPcs.toLocaleString('id-ID')} Pcs</span>
+                    <div className="text-center">
+                      <span className="text-slate-400 block text-[9px]">Sisa Belum Terkirim</span>
+                      <span className={`font-bold font-mono text-xs ${totalRemainingPcs > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                        {totalRemainingPcs.toLocaleString('id-ID')}
+                      </span>
+                      <span className="text-[9px] text-slate-500 block">Pcs</span>
                     </div>
                   </div>
 
-                  {currentPO.items && currentPO.items.length > 0 && (
+                  {/* Vendor Workshops */}
+                  {(() => {
+                    const vendorSet = Array.from(new Set(selectedPOObjects.map(p => p.vendorTujuan).filter(Boolean)));
+                    return vendorSet.length > 0 ? (
+                      <div className="pt-1 border-t border-indigo-100 text-[10px] text-indigo-800">
+                        <span className="text-slate-400 text-[9px]">Workshop:</span>{' '}
+                        <span className="font-semibold">{vendorSet.join(', ')}</span>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  {/* Per-Item Progress Breakdown */}
+                  {itemsProgress.length > 0 && (
                     <div className="pt-2 border-t border-indigo-100 space-y-1.5">
                       <div className="flex items-center justify-between text-[10px] font-bold text-indigo-950 uppercase tracking-wider">
-                        <span>Rincian Item Pesanan PO:</span>
-                        <span className="text-indigo-600 font-mono font-semibold">{currentPO.items.length} Item</span>
+                        <span>Rincian Item PO & Progres:</span>
+                        <span className="text-indigo-600 font-mono font-semibold">{itemsProgress.length} Item</span>
                       </div>
-                      <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
-                        {currentPO.items.map((it, idx) => (
-                          <div key={idx} className="bg-white/80 p-1.5 rounded-lg border border-indigo-100 text-[10.5px] flex items-center justify-between">
-                            <div>
-                              <div className="font-bold text-slate-900">{it.namaProduk}</div>
-                              <div className="text-slate-500 text-[9.5px]">
-                                {it.warna ? `${it.warna} • ` : ''}{it.ukuran ? `Size ${it.ukuran}` : ''}{it.bahanKain ? ` • ${it.bahanKain}` : ''}
+                      <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                        {itemsProgress.map((it, idx) => (
+                          <div key={it.id || idx} className="bg-white/80 p-1.5 rounded-lg border border-indigo-100 text-[10.5px]">
+                            <div className="flex items-center justify-between">
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                  {selectedPOObjects.length > 1 && (
+                                    <span className="text-[8.5px] font-mono text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded shrink-0">{it.poNumber}</span>
+                                  )}
+                                  <span className="truncate">{it.namaProduk}</span>
+                                </div>
+                                <div className="text-slate-500 text-[9.5px]">
+                                  {it.warna ? `${it.warna} • ` : ''}{it.ukuran ? `Size ${it.ukuran}` : ''}{it.bahanKain ? ` • ${it.bahanKain}` : ''}
+                                </div>
                               </div>
                             </div>
-                            <span className="font-mono font-bold text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                              {Number(it.qty).toLocaleString('id-ID')} Pcs
-                            </span>
+                            <div className="flex items-center gap-2 mt-1 text-[9.5px]">
+                              <span className="text-indigo-800">Target: <b className="font-mono">{it.targetQty.toLocaleString('id-ID')}</b></span>
+                              <span className="text-slate-300">|</span>
+                              <span className="text-emerald-700">Terkirim: <b className="font-mono">{it.deliveredQty.toLocaleString('id-ID')}</b></span>
+                              <span className="text-slate-300">|</span>
+                              <span className={`${it.remainingQty > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                                Sisa: <b className="font-mono">{it.remainingQty.toLocaleString('id-ID')}</b>
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-                </div>
-              ) : (
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                  <span>Mode Bebas: Anda dapat memilih Surat Jalan dan Rol Kain secara manual di tabel sebelah kanan.</span>
                 </div>
               )}
             </div>
@@ -1246,7 +1453,7 @@ export const FinanceView: React.FC = () => {
                   Rekapan & Pemilihan Item Invoice: {effectiveBrand}
                 </h3>
                 <span className="text-xs text-slate-400">
-                  {selectedPoNumber ? `Terkoneksi ke ${selectedPoNumber} • Centang item yang masuk tagihan` : 'Pilih surat jalan & kain yang akan dimasukkan ke invoice'}
+                  {selectedPoNumbers.length > 0 ? `Terkoneksi ke ${selectedPoNumbers.join(', ')} • Centang item yang masuk tagihan` : 'Pilih surat jalan & kain yang akan dimasukkan ke invoice'}
                 </span>
               </div>
               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full self-start sm:self-auto">

@@ -152,49 +152,91 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               </div>
             </div>
 
-            {/* Informasi PO Produksi Terkait */}
+            {/* Informasi PO Produksi Terkait (Multi-PO) */}
             {invoice.poInfo && (
-              <div className="bg-indigo-50/70 border border-indigo-200 rounded-lg p-3 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+              <div className="bg-indigo-50/70 border border-indigo-200 rounded-lg p-3 space-y-2.5">
+                {/* PO Badges Header */}
+                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-900 text-[9px] font-bold uppercase tracking-wider">
                       Rujukan PO Produksi
                     </span>
-                    <span className="font-mono font-bold text-indigo-950 text-xs">{invoice.poInfo.noPO}</span>
+                    {(invoice.poInfo.selectedPoNumbers || [invoice.poInfo.noPO]).map((poNo, i) => (
+                      <span key={i} className="font-mono font-bold text-indigo-950 text-[11px] bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-200">
+                        {poNo}
+                      </span>
+                    ))}
                   </div>
                   {invoice.poInfo.vendorTujuan && (
                     <span className="text-[10px] text-indigo-800 font-medium">
-                      Vendor Workshop: <b>{invoice.poInfo.vendorTujuan}</b>
+                      Workshop: <b>{invoice.poInfo.vendorTujuan}</b>
                     </span>
                   )}
                 </div>
 
+                {/* Per-PO Detail List (for multi-PO) */}
+                {invoice.poInfo.pos && invoice.poInfo.pos.length > 1 && (
+                  <div className="border border-indigo-200 rounded overflow-hidden bg-white shadow-2xs">
+                    <table className="w-full text-center text-[10px] border-collapse">
+                      <thead className="bg-indigo-100/70 text-indigo-950 font-bold uppercase text-[8px] border-b border-indigo-200">
+                        <tr>
+                          <th className="py-1 px-1.5 text-left border-r border-indigo-200">No. PO</th>
+                          <th className="py-1 px-1.5 text-left border-r border-indigo-200">Workshop</th>
+                          <th className="py-1 px-1.5 text-center border-r border-indigo-200">Tgl PO</th>
+                          <th className="py-1 px-1.5 text-center border-r border-indigo-200">Deadline</th>
+                          <th className="py-1 px-1.5 text-center border-r border-indigo-200">Target Qty</th>
+                          <th className="py-1 px-1.5 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-indigo-50 text-slate-800">
+                        {invoice.poInfo.pos.map((po, idx) => (
+                          <tr key={idx} className="hover:bg-indigo-50/30">
+                            <td className="py-1 px-1.5 text-left font-mono font-bold text-indigo-800 border-r border-indigo-100">{po.noPO}</td>
+                            <td className="py-1 px-1.5 text-left text-slate-700 border-r border-indigo-100">{po.vendorTujuan || '-'}</td>
+                            <td className="py-1 px-1.5 text-center text-slate-600 border-r border-indigo-100">{formatDateIndo(po.tanggalPO)}</td>
+                            <td className="py-1 px-1.5 text-center text-slate-600 border-r border-indigo-100">{formatDateIndo(po.targetDeadline)}</td>
+                            <td className="py-1 px-1.5 text-center font-mono font-bold text-indigo-700 border-r border-indigo-100">{(po.targetPcs || 0).toLocaleString('id-ID')} Pcs</td>
+                            <td className="py-1 px-1.5 text-center">
+                              <span className={`px-1.5 py-0.2 rounded-full text-[8px] font-bold ${
+                                po.status === 'SELESAI' ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'
+                              }`}>{po.status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Aggregate Metrics */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] pt-1 border-t border-indigo-100 text-indigo-950">
                   <div>
                     <span className="text-indigo-600 block text-[9px]">Tgl Terbit PO:</span>
                     <span className="font-semibold">{formatDateIndo(invoice.poInfo.tanggalPO)}</span>
                   </div>
                   <div>
-                    <span className="text-indigo-600 block text-[9px]">Target Deadline:</span>
-                    <span className="font-semibold">{formatDateIndo(invoice.poInfo.targetDeadline)}</span>
-                  </div>
-                  <div>
-                    <span className="text-indigo-600 block text-[9px]">Target Qty PO:</span>
-                    <span className="font-bold font-mono">{invoice.poInfo.targetPcs ? `${invoice.poInfo.targetPcs.toLocaleString('id-ID')} Pcs` : '-'}</span>
+                    <span className="text-indigo-600 block text-[9px]">Target Total PO:</span>
+                    <span className="font-bold font-mono">{(invoice.poInfo.totalTargetPcs || invoice.poInfo.targetPcs || 0).toLocaleString('id-ID')} Pcs</span>
                   </div>
                   <div>
                     <span className="text-indigo-600 block text-[9px]">Realisasi Terkirim:</span>
-                    <span className="font-bold font-mono text-emerald-700">{invoice.totalPcs.toLocaleString('id-ID')} Pcs</span>
+                    <span className="font-bold font-mono text-emerald-700">{(invoice.poInfo.totalDeliveredPcs || invoice.totalPcs || 0).toLocaleString('id-ID')} Pcs</span>
+                  </div>
+                  <div>
+                    <span className="text-indigo-600 block text-[9px]">Sisa Belum Terkirim:</span>
+                    <span className={`font-bold font-mono ${(invoice.poInfo.totalRemainingPcs || 0) > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                      {(invoice.poInfo.totalRemainingPcs || 0).toLocaleString('id-ID')} Pcs
+                    </span>
                   </div>
                 </div>
 
-                {/* Rincian Tabel Item / Artikel PO Produksi */}
-                {invoice.poInfo.items && invoice.poInfo.items.length > 0 && (
+                {/* Rincian Tabel Item PO & Progres Pengiriman */}
+                {invoice.poInfo.itemsProgress && invoice.poInfo.itemsProgress.length > 0 && (
                   <div className="pt-2 border-t border-indigo-200/80 space-y-1">
                     <div className="flex items-center justify-between text-[9.5px] font-bold uppercase tracking-wider text-indigo-950">
-                      <span>Rincian Item / Artikel PO Produksi:</span>
+                      <span>Rincian Item PO & Progres Pengiriman:</span>
                       <span className="text-indigo-700 font-medium lowercase text-[9px]">
-                        {invoice.poInfo.items.length} item pesanan
+                        {invoice.poInfo.itemsProgress.length} item pesanan
                       </span>
                     </div>
 
@@ -202,44 +244,69 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       <table className="w-full text-center text-[10px] border-collapse">
                         <thead className="bg-indigo-100/70 text-indigo-950 font-bold uppercase text-[8.5px] border-b border-indigo-200">
                           <tr>
-                            <th className="py-1 px-1.5 w-7 border-r border-indigo-200 text-center">No</th>
-                            <th className="py-1 px-2 text-left border-r border-indigo-200">Model / Nama Artikel</th>
-                            <th className="py-1 px-2 border-r border-indigo-200 text-center">Warna</th>
-                            <th className="py-1 px-2 border-r border-indigo-200 text-center">Size</th>
-                            <th className="py-1 px-2 border-r border-indigo-200 text-center font-mono">Qty (Pcs)</th>
-                            <th className="py-1 px-2 border-r border-indigo-200 text-left">Bahan / Kain</th>
-                            <th className="py-1 px-2 text-left">Catatan</th>
+                            <th className="py-1 px-1 w-6 border-r border-indigo-200 text-center">No</th>
+                            {(invoice.poInfo.selectedPoNumbers || []).length > 1 && (
+                              <th className="py-1 px-1.5 border-r border-indigo-200 text-left">No. PO</th>
+                            )}
+                            <th className="py-1 px-1.5 text-left border-r border-indigo-200">Model / Nama Artikel</th>
+                            <th className="py-1 px-1.5 border-r border-indigo-200 text-center">Warna</th>
+                            <th className="py-1 px-1.5 border-r border-indigo-200 text-center">Size</th>
+                            <th className="py-1 px-1.5 border-r border-indigo-200 text-center font-mono">Target PO</th>
+                            <th className="py-1 px-1.5 border-r border-indigo-200 text-center font-mono">Terkirim</th>
+                            <th className="py-1 px-1.5 border-r border-indigo-200 text-center font-mono" style={{ color: '#b45309' }}>Sisa*</th>
+                            <th className="py-1 px-1.5 text-left">Bahan / Kain</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-indigo-50 text-slate-800">
-                          {invoice.poInfo.items.map((it, idx) => (
+                          {invoice.poInfo.itemsProgress.map((it, idx) => (
                             <tr key={idx} className="hover:bg-indigo-50/30">
-                              <td className="py-1 px-1.5 text-slate-400 font-mono border-r border-indigo-100 text-[9px] text-center">{idx + 1}</td>
-                              <td className="py-1 px-2 text-left font-bold text-slate-900 border-r border-indigo-100">{it.namaProduk}</td>
-                              <td className="py-1 px-2 text-slate-700 border-r border-indigo-100 text-center">{it.warna || '-'}</td>
-                              <td className="py-1 px-2 font-bold text-slate-800 border-r border-indigo-100 text-center">{it.ukuran || '-'}</td>
-                              <td className="py-1 px-2 font-mono font-bold text-indigo-700 border-r border-indigo-100 text-center">
-                                {Number(it.qty).toLocaleString('id-ID')}
+                              <td className="py-1 px-1 text-slate-400 font-mono border-r border-indigo-100 text-[9px] text-center">{idx + 1}</td>
+                              {(invoice.poInfo!.selectedPoNumbers || []).length > 1 && (
+                                <td className="py-1 px-1.5 text-left font-mono text-indigo-700 text-[9px] border-r border-indigo-100">{it.poNumber}</td>
+                              )}
+                              <td className="py-1 px-1.5 text-left font-bold text-slate-900 border-r border-indigo-100">{it.namaProduk}</td>
+                              <td className="py-1 px-1.5 text-slate-700 border-r border-indigo-100 text-center">{it.warna || '-'}</td>
+                              <td className="py-1 px-1.5 font-bold text-slate-800 border-r border-indigo-100 text-center">{it.ukuran || '-'}</td>
+                              <td className="py-1 px-1.5 font-mono font-bold text-indigo-700 border-r border-indigo-100 text-center">
+                                {it.targetQty.toLocaleString('id-ID')}
                               </td>
-                              <td className="py-1 px-2 text-left text-slate-600 border-r border-indigo-100">{it.bahanKain || '-'}</td>
-                              <td className="py-1 px-2 text-left text-slate-500 italic text-[9px]">{it.catatan || '-'}</td>
+                              <td className="py-1 px-1.5 font-mono font-bold text-emerald-700 border-r border-indigo-100 text-center">
+                                {it.deliveredQty.toLocaleString('id-ID')}
+                              </td>
+                              <td className={`py-1 px-1.5 font-mono font-bold border-r border-indigo-100 text-center ${it.remainingQty > 0 ? 'text-amber-700 bg-amber-50/50' : 'text-slate-400'}`}>
+                                {it.remainingQty.toLocaleString('id-ID')}
+                              </td>
+                              <td className="py-1 px-1.5 text-left text-slate-600 text-[9px]">{it.bahanKain || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot className="bg-indigo-50/80 font-bold border-t border-indigo-200 text-[9.5px]">
                           <tr>
-                            <td colSpan={4} className="py-1 px-2 text-right uppercase tracking-wider text-indigo-950">
-                              Total Target Qty PO:
+                            <td colSpan={(invoice.poInfo.selectedPoNumbers || []).length > 1 ? 5 : 4} className="py-1 px-2 text-right uppercase tracking-wider text-indigo-950">
+                              Total:
                             </td>
-                            <td className="py-1 px-2 text-center text-indigo-950 font-mono">
-                              {invoice.poInfo.targetPcs 
-                                ? `${invoice.poInfo.targetPcs.toLocaleString('id-ID')} Pcs` 
-                                : `${invoice.poInfo.items.reduce((s, i) => s + (Number(i.qty) || 0), 0).toLocaleString('id-ID')} Pcs`}
+                            <td className="py-1 px-1.5 text-center text-indigo-950 font-mono">
+                              {(invoice.poInfo.totalTargetPcs || 0).toLocaleString('id-ID')} Pcs
                             </td>
-                            <td colSpan={2} className="py-1 px-2"></td>
+                            <td className="py-1 px-1.5 text-center text-emerald-700 font-mono">
+                              {(invoice.poInfo.totalDeliveredPcs || 0).toLocaleString('id-ID')} Pcs
+                            </td>
+                            <td className={`py-1 px-1.5 text-center font-mono ${(invoice.poInfo.totalRemainingPcs || 0) > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                              {(invoice.poInfo.totalRemainingPcs || 0).toLocaleString('id-ID')} Pcs
+                            </td>
+                            <td className="py-1 px-1.5"></td>
                           </tr>
                         </tfoot>
                       </table>
+                    </div>
+
+                    {/* Footnote / Disclaimer */}
+                    <div className="text-[8.5px] text-slate-500 italic pt-1 flex items-start gap-1">
+                      <span className="text-amber-600 font-bold">*</span>
+                      <span>
+                        Kolom "Sisa Belum Terkirim" merupakan acuan progres produksi bagi Buyer. 
+                        Tagihan invoice di bawah murni hanya menghitung barang yang telah terkirim via Surat Jalan.
+                      </span>
                     </div>
                   </div>
                 )}
