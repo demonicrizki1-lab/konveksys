@@ -385,6 +385,7 @@ export interface BuyerInvoiceSummary {
     rateAnak16: number;
     totalPcs: number;
     totalAmount: number;
+    itemPo?: string;
   }[];
   totalPcs: number;
   subtotalGross?: number;

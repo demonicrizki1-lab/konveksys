@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SuratJalan, SuratJalanItem, SizeBreakdown, SPKCutting } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { resolveItemPONumber } from '../../utils/spkHelper';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
@@ -87,6 +88,7 @@ export const OutboundView: React.FC = () => {
     deleteSuratJalan,
     getSuratJalanItems,
     spkList,
+    productionPOs,
     getSPKRemainingQty,
     userRole,
     activeBrand,
@@ -156,24 +158,43 @@ export const OutboundView: React.FC = () => {
   const getArticlesForSPK = (spk?: SPKCutting): ArticleOption[] => {
     if (!spk) return [];
     if (spk.items && spk.items.length > 0) {
-      return spk.items.map((it) => ({
-        id: it.id,
-        produk: it.produk,
-        vendor: it.vendor || spk.vendor,
-        sourcePOId: it.sourcePOId || spk.sourcePOId || null,
-        sourcePONumber: it.sourcePONumber || spk.sourcePONumber || null,
-      }));
+      return spk.items.map((it) => {
+        const itemProd = it.produk.trim().toUpperCase();
+        const matchedPO = !it.sourcePONumber
+          ? productionPOs.find(
+              (po) =>
+                po.brand === spk.brand &&
+                po.items?.some((p) => p.namaProduk.trim().toUpperCase() === itemProd)
+            )
+          : null;
+
+        return {
+          id: it.id,
+          produk: it.produk,
+          vendor: it.vendor || spk.vendor,
+          sourcePOId: it.sourcePOId || matchedPO?.id || spk.sourcePOId || null,
+          sourcePONumber: it.sourcePONumber || matchedPO?.noPO || spk.sourcePONumber || null,
+        };
+      });
     }
     if (spk.produk && spk.produk.includes('+')) {
       return spk.produk
         .split('+')
-        .map((p, idx) => ({
-          id: `part-${idx}`,
-          produk: p.trim(),
-          vendor: spk.vendor,
-          sourcePOId: spk.sourcePOId || null,
-          sourcePONumber: spk.sourcePONumber || null,
-        }))
+        .map((p, idx) => {
+          const prodName = p.trim();
+          const matchedPO = productionPOs.find(
+            (po) =>
+              po.brand === spk.brand &&
+              po.items?.some((it) => it.namaProduk.trim().toUpperCase() === prodName.toUpperCase())
+          );
+          return {
+            id: `part-${idx}`,
+            produk: prodName,
+            vendor: spk.vendor,
+            sourcePOId: matchedPO?.id || spk.sourcePOId || null,
+            sourcePONumber: matchedPO?.noPO || spk.sourcePONumber || null,
+          };
+        })
         .filter((p) => Boolean(p.produk));
     }
     return [
@@ -759,13 +780,7 @@ export const OutboundView: React.FC = () => {
                           const allSJPOs = Array.from(
                             new Set(
                               items
-                                .map(
-                                  (it) =>
-                                    it.sourcePONumber ||
-                                    spkList.find(
-                                      (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
-                                    )?.sourcePONumber
-                                )
+                                .map((it) => resolveItemPONumber(it, spkList, sj, productionPOs))
                                 .filter(Boolean)
                             )
                           ) as string[];
@@ -796,11 +811,7 @@ export const OutboundView: React.FC = () => {
                       </td>
                       <td className="p-3.5 align-top space-y-1.5 min-w-[240px]">
                         {items.map((it, idx) => {
-                          const itemPO =
-                            it.sourcePONumber ||
-                            spkList.find(
-                              (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
-                            )?.sourcePONumber;
+                          const itemPO = resolveItemPONumber(it, spkList, sj, productionPOs);
 
                           return (
                             <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-0.5">
@@ -1760,13 +1771,7 @@ export const OutboundView: React.FC = () => {
                       const distinctPOs = Array.from(
                         new Set(
                           detailItems
-                            .map(
-                              (it) =>
-                                it.sourcePONumber ||
-                                spkList.find(
-                                  (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
-                                )?.sourcePONumber
-                            )
+                            .map((it) => resolveItemPONumber(it, spkList, selectedSJDetail, productionPOs))
                             .filter(Boolean)
                         )
                       ) as string[];
@@ -1837,11 +1842,7 @@ export const OutboundView: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {getSuratJalanItems(selectedSJDetail).map((item, idx) => {
-                          const itemPO =
-                            item.sourcePONumber ||
-                            spkList.find(
-                              (s) => s.id === item.spkId || s.spkNumber === item.spkNumber
-                            )?.sourcePONumber;
+                          const itemPO = resolveItemPONumber(item, spkList, selectedSJDetail, productionPOs);
 
                           return (
                             <tr key={idx} className="align-top">

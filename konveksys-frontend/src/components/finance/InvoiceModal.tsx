@@ -347,6 +347,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                             <span className="text-[9.5px] text-slate-500 font-medium block mt-0.5">
                               {formatDateIndo(item.tanggal)}
                             </span>
+                            {item.itemPo && (
+                              <span className="text-[9px] font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1 py-0.2 rounded mt-0.5 inline-block">
+                                PO: {item.itemPo}
+                              </span>
+                            )}
                           </td>
                           <td className="p-2">
                             <div className="font-bold text-slate-900">{item.produk}</div>

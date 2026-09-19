@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SuratJalan, SuratJalanItem, SizeBreakdown } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
+import { resolveItemPONumber } from '../../utils/spkHelper';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import {
   Inbox,
@@ -92,6 +93,7 @@ export const BarangMasukView: React.FC = () => {
     getSuratJalanItems,
     updateSuratJalanReceipt,
     spkList,
+    productionPOs,
     userRole,
     activeBrand,
     brands,
@@ -888,13 +890,7 @@ export const BarangMasukView: React.FC = () => {
                             const allSJPOs = Array.from(
                               new Set(
                                 items
-                                  .map(
-                                    (it) =>
-                                      it.sourcePONumber ||
-                                      spkList.find(
-                                        (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
-                                      )?.sourcePONumber
-                                  )
+                                  .map((it) => resolveItemPONumber(it, spkList, sj, productionPOs))
                                   .filter(Boolean)
                               )
                             ) as string[];
@@ -925,11 +921,7 @@ export const BarangMasukView: React.FC = () => {
                         </td>
                         <td className="p-3 space-y-2">
                           {items.map((it, idx) => {
-                            const itemPO =
-                              it.sourcePONumber ||
-                              spkList.find(
-                                (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
-                              )?.sourcePONumber;
+                            const itemPO = resolveItemPONumber(it, spkList, sj, productionPOs);
 
                             return (
                               <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-1">
@@ -1334,13 +1326,7 @@ export const BarangMasukView: React.FC = () => {
                       const distinctPOs = Array.from(
                         new Set(
                           detailItems
-                            .map(
-                              (it) =>
-                                it.sourcePONumber ||
-                                spkList.find(
-                                  (s) => s.id === it.spkId || s.spkNumber === it.spkNumber
-                                )?.sourcePONumber
-                            )
+                            .map((it) => resolveItemPONumber(it, spkList, selectedSJDetail, productionPOs))
                             .filter(Boolean)
                         )
                       ) as string[];
@@ -1411,11 +1397,7 @@ export const BarangMasukView: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {getSuratJalanItems(selectedSJDetail).map((item, idx) => {
-                          const itemPO =
-                            item.sourcePONumber ||
-                            spkList.find(
-                              (s) => s.id === item.spkId || s.spkNumber === item.spkNumber
-                            )?.sourcePONumber;
+                          const itemPO = resolveItemPONumber(item, spkList, selectedSJDetail, productionPOs);
 
                           return (
                             <tr key={idx} className="align-top">

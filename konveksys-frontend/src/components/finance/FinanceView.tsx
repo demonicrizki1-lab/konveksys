@@ -4,6 +4,7 @@ import { SlipGajiModal } from './SlipGajiModal';
 import { InvoiceModal } from './InvoiceModal';
 import { BuyerInvoiceSummary } from '../../types';
 import { formatRupiahInput, parseRupiahInput, formatDateIndo, getSabtuanPeriod } from '../../utils/formatters';
+import { resolveItemPONumber } from '../../utils/spkHelper';
 import {
   ReceiptText,
   DollarSign,
@@ -43,6 +44,7 @@ export const FinanceView: React.FC = () => {
     unsettleVendorPO,
     productionPOs,
     inboundRolls,
+    spkList,
     suratJalanList,
     getSuratJalanItems,
     getBuyerRates,
@@ -340,12 +342,12 @@ export const FinanceView: React.FC = () => {
           rateAnak16: rates.rateAnak16,
           totalPcs: it.totalPcs,
           totalAmount,
-          itemPo: it.sourcePONumber || sj.items?.[0]?.sourcePONumber,
+          itemPo: resolveItemPONumber(it, spkList, sj, productionPOs) || undefined,
         });
       });
     });
     return list;
-  }, [suratJalanList, effectiveBrand, activeStartDate, activeEndDate, getSuratJalanItems, getBuyerRates]);
+  }, [suratJalanList, spkList, productionPOs, effectiveBrand, activeStartDate, activeEndDate, getSuratJalanItems, getBuyerRates]);
 
   // Available Fabric Rolls for this Brand
   const availableRolls = useMemo(() => {

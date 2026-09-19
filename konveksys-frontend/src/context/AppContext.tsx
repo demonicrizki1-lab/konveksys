@@ -876,6 +876,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak16: s.deliveredAnak16 || 0,
           };
 
+          const rawItems = typeof s.items === 'string'
+            ? (() => { try { return JSON.parse(s.items); } catch { return undefined; } })()
+            : s.items;
+
           const rawSJs = results[7].status === 'fulfilled' && Array.isArray(results[7].value.data) ? results[7].value.data : [];
           const resolvedItems = buildSplitSpkItems(
             s.id,
@@ -884,9 +888,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             s.vendor,
             targetCutQty,
             deliveredQty,
-            s.items || cached?.items,
+            rawItems || cached?.items,
             rawSJs
           );
+
+          const mappedPONumbers = Array.isArray(s.sourcePONumbers)
+            ? s.sourcePONumbers
+            : typeof s.sourcePONumbers === 'string'
+            ? (() => { try { return JSON.parse(s.sourcePONumbers); } catch { return []; } })()
+            : cached?.sourcePONumbers || [];
 
           return {
             id: s.id,
@@ -905,7 +915,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             fabricSourceType: s.fabricSourceType || cached?.fabricSourceType || (s.rolsDigunakan?.length ? 'ROLL_GUDANG' : undefined),
             depositId: s.depositId || cached?.depositId,
             depositInfo: s.depositInfo || cached?.depositInfo,
+            sourcePOId: s.sourcePOId || cached?.sourcePOId || null,
             sourcePONumber: s.sourcePONumber || cached?.sourcePONumber || null,
+            sourcePONumbers: mappedPONumbers,
           };
         });
         setSpkList(mapped);
