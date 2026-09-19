@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getCache, setCache, clearAllCache } from '../utils/cacheManager';
-import { buildSplitSpkItems } from '../utils/spkHelper';
+import { buildSplitSpkItems, resolveItemPONumber } from '../utils/spkHelper';
 import {
   apiLogin,
   saveToken,
@@ -4289,7 +4289,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       for (const it of sjItems) {
         if (it.vendor === vendorName) {
           const linkedSPK = spkList.find(s => s.id === it.spkId || s.spkNumber === it.spkId || s.spkNumber === it.spkNumber);
-          const poKey = it.sourcePONumber || linkedSPK?.sourcePONumber || it.spkNumber || it.legacyPoNumber || 'NON-PO';
+          const resolvedPO = resolveItemPONumber(it, spkList, sj, productionPOs);
+          const poKey = resolvedPO || it.sourcePONumber || linkedSPK?.sourcePONumber || it.spkNumber || it.legacyPoNumber || 'NON-PO';
           poTotalDeliveredMap.set(poKey, (poTotalDeliveredMap.get(poKey) || 0) + (it.totalPcs || 0));
         }
       }
@@ -4306,10 +4307,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     for (const spk of spkList) {
       if (spk.vendor === vendorName || (spk.items && spk.items.some(it => it.vendor === vendorName))) {
-        const key = spk.sourcePONumber || spk.spkNumber;
-        if (!poTargetMap.has(key)) {
-          const targetTotal = Object.values(spk.targetCutQty || {}).reduce((a, b) => a + b, 0);
-          poTargetMap.set(key, { targetPcs: targetTotal, brand: spk.brand, produk: spk.produk });
+        if (spk.items && spk.items.length > 0) {
+          for (const spkItem of spk.items) {
+            if (!spkItem.vendor || spkItem.vendor === vendorName) {
+              const itemKey = spkItem.sourcePONumber || spk.sourcePONumber || spk.spkNumber;
+              if (itemKey && !poTargetMap.has(itemKey)) {
+                const targetTotal = Object.values(spkItem.targetCutQty || {}).reduce((a, b) => a + b, 0);
+                poTargetMap.set(itemKey, { targetPcs: targetTotal, brand: spk.brand, produk: spkItem.produk });
+              }
+            }
+          }
+        } else {
+          const key = spk.sourcePONumber || spk.spkNumber;
+          if (!poTargetMap.has(key)) {
+            const targetTotal = Object.values(spk.targetCutQty || {}).reduce((a, b) => a + b, 0);
+            poTargetMap.set(key, { targetPcs: targetTotal, brand: spk.brand, produk: spk.produk });
+          }
         }
       }
     }
@@ -4337,7 +4350,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       for (const it of sjItems) {
         if (it.vendor === vendorName) {
           const linkedSPK = spkList.find(s => s.id === it.spkId || s.spkNumber === it.spkId || s.spkNumber === it.spkNumber);
-          const poKey = it.sourcePONumber || linkedSPK?.sourcePONumber || it.spkNumber || it.legacyPoNumber || 'NON-PO';
+          const resolvedPO = resolveItemPONumber(it, spkList, sj, productionPOs);
+          const poKey = resolvedPO || it.sourcePONumber || linkedSPK?.sourcePONumber || it.spkNumber || it.legacyPoNumber || 'NON-PO';
           const rate = getVendorRate(it.vendor, it.produk, it.brand);
           const subtotal = it.totalPcs * rate;
 
