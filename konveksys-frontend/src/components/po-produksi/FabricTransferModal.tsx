@@ -48,17 +48,22 @@ export const FabricTransferModal: React.FC<FabricTransferModalProps> = ({
       setPanjang('');
       setSatuan('METER');
       
-      // Pilih target vendor selain vendor asal jika ada
-      const otherVendor = vendors.find(v => v.name !== sourcePO.vendorTujuan);
-      setTargetVendor(otherVendor ? otherVendor.name : '');
+      // Default ke vendor asal agar sisa kain bisa langsung disimpan standby di konveksi awal, atau bisa dioper ke konveksi lain
+      setTargetVendor(sourcePO.vendorTujuan || '');
       setDriverName(currentUser?.name || 'Rizki Maulana');
       setKondisiKain('Utuh gulungan bersih, diukur langsung di konveksi');
-      setCatatan(`Sisa produksi kain dari PO ${sourcePO.noPO}`);
+      setCatatan(`Sisa produksi kain dari PO ${sourcePO.noPO} (standby di konveksi untuk produk lain)`);
       setErrorMsg(null);
     }
-  }, [sourcePO, vendors, currentUser]);
+  }, [sourcePO, currentUser]);
 
   if (!isOpen || !sourcePO) return null;
+
+  const isSameVendor = Boolean(
+    targetVendor &&
+    sourcePO.vendorTujuan &&
+    targetVendor.trim().toLowerCase() === sourcePO.vendorTujuan.trim().toLowerCase()
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,12 +75,7 @@ export const FabricTransferModal: React.FC<FabricTransferModalProps> = ({
     }
 
     if (!targetVendor) {
-      setErrorMsg('Pilih konveksi tujuan yang akan menerima titipan bahan.');
-      return;
-    }
-
-    if (targetVendor === sourcePO.vendorTujuan) {
-      setErrorMsg('Konveksi tujuan titipan harus berbeda dengan konveksi asal.');
+      setErrorMsg('Pilih konveksi tujuan penyimpanan atau penitipan bahan.');
       return;
     }
 
@@ -120,12 +120,20 @@ export const FabricTransferModal: React.FC<FabricTransferModalProps> = ({
         <div className="px-6 py-4 bg-gradient-to-r from-indigo-700 to-violet-700 text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/20">
-              <ArrowRightLeft className="w-5 h-5 text-indigo-100" />
+              {isSameVendor ? (
+                <Building2 className="w-5 h-5 text-indigo-100" />
+              ) : (
+                <ArrowRightLeft className="w-5 h-5 text-indigo-100" />
+              )}
             </div>
             <div>
-              <h2 className="text-base font-bold tracking-tight">Oper Sisa Kain Antar-Konveksi</h2>
+              <h2 className="text-base font-bold tracking-tight">
+                {isSameVendor ? 'Simpan Sisa Kain di Konveksi Asal' : 'Oper Sisa Kain Antar-Konveksi'}
+              </h2>
               <p className="text-[11px] text-indigo-100">
-                Pencatatan hasil ukur di lokasi & penitipan bahan ke vendor lain
+                {isSameVendor
+                  ? 'Pencatatan sisa kain standby di konveksi awal untuk produksi produk / PO berikutnya'
+                  : 'Pencatatan hasil ukur di lokasi & penitipan bahan ke vendor lain'}
               </p>
             </div>
           </div>
@@ -223,39 +231,60 @@ export const FabricTransferModal: React.FC<FabricTransferModalProps> = ({
               </div>
             </div>
 
-            {/* Konveksi Tujuan (Tempat Penitipan) */}
+            {/* Konveksi Tujuan (Tempat Penitipan / Penyimpanan) */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Konveksi Tujuan Penitipan <span className="text-rose-500">*</span>
+                Konveksi Lokasi Simpan / Penitipan <span className="text-rose-500">*</span>
               </label>
               <select
                 value={targetVendor}
-                onChange={e => setTargetVendor(e.target.value)}
+                onChange={e => {
+                  const nextVendor = e.target.value;
+                  setTargetVendor(nextVendor);
+                  if (
+                    nextVendor &&
+                    sourcePO.vendorTujuan &&
+                    nextVendor.trim().toLowerCase() === sourcePO.vendorTujuan.trim().toLowerCase()
+                  ) {
+                    if (!catatan || catatan.includes('dioper ke')) {
+                      setCatatan(`Sisa produksi kain dari PO ${sourcePO.noPO} (standby di konveksi untuk produk lain)`);
+                    }
+                  }
+                }}
                 required
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               >
-                <option value="">-- Pilih Konveksi Tujuan --</option>
-                {vendors
-                  .filter(v => v.name !== sourcePO.vendorTujuan)
-                  .map(v => (
-                    <option key={v.id} value={v.name}>
-                      {v.name}
-                    </option>
-                  ))}
+                <option value="">-- Pilih Lokasi Penyimpanan Sisa Kain --</option>
+                {sourcePO.vendorTujuan && (
+                  <option value={sourcePO.vendorTujuan} className="font-bold text-indigo-700">
+                    📍 {sourcePO.vendorTujuan} (Tetap di Konveksi Asal - Standby Produk Lain)
+                  </option>
+                )}
+                {vendors.filter(v => v.name !== sourcePO.vendorTujuan).length > 0 && (
+                  <optgroup label="Oper / Kirim ke Konveksi Lain:">
+                    {vendors
+                      .filter(v => v.name !== sourcePO.vendorTujuan)
+                      .map(v => (
+                        <option key={v.id} value={v.name}>
+                          🚚 Oper ke {v.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 
             {/* Petugas Pengukur / Kurir */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Petugas Pengukur & Pengantar
+                {isSameVendor ? 'Petugas Pengukur Lapangan / QC' : 'Petugas Pengukur & Pengantar'}
               </label>
               <div className="relative">
                 <input
                   type="text"
                   value={driverName}
                   onChange={e => setDriverName(e.target.value)}
-                  placeholder="Nama kurir / admin"
+                  placeholder={isSameVendor ? 'Nama pemeriksa / admin' : 'Nama kurir / admin'}
                   className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
                 <UserCheck className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
@@ -288,13 +317,24 @@ export const FabricTransferModal: React.FC<FabricTransferModalProps> = ({
           </div>
 
           {/* Info Banner Alur */}
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-[11px] text-amber-800">
-            <Truck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              Kain sisa ini akan langsung dioper ke <b>{targetVendor || 'Konveksi Tujuan'}</b> dan berstatus{' '}
-              <b>Saldo Titipan Tersedia</b>. Anda bisa mengalokasikannya saat menerbitkan PO Produksi baru untuk vendor tersebut.
+          {isSameVendor ? (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-2.5 text-[11px] text-emerald-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                Kain sisa ini akan <b>tetap disimpan standby di {targetVendor}</b> dengan status{' '}
+                <b>Saldo Titipan Tersedia</b>. Tidak memerlukan pengiriman fisik keluar konveksi. Anda bisa langsung
+                mengalokasikannya saat menerbitkan PO Produksi baru untuk <b>produk yang berbeda</b> di konveksi ini.
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-[11px] text-amber-800">
+              <Truck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                Kain sisa ini akan langsung dioper ke <b>{targetVendor || 'Konveksi Tujuan'}</b> dan berstatus{' '}
+                <b>Saldo Titipan Tersedia</b>. Anda bisa mengalokasikannya saat menerbitkan PO Produksi baru untuk vendor tersebut.
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
@@ -316,7 +356,7 @@ export const FabricTransferModal: React.FC<FabricTransferModalProps> = ({
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Simpan & Buat Surat Jalan</span>
+                  <span>{isSameVendor ? 'Simpan Saldo Titipan Standby' : 'Simpan & Buat Surat Jalan Oper'}</span>
                 </>
               )}
             </button>

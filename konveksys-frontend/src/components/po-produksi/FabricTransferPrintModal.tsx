@@ -32,19 +32,29 @@ export const FabricTransferPrintModal: React.FC<FabricTransferPrintModalProps> =
     transferNote.driverName.toLowerCase().includes('rizki') ||
     transferNote.driverName.toLowerCase().includes('maulana');
 
+  const isSameVendor = Boolean(
+    transferNote.sourceVendor &&
+    transferNote.targetVendor &&
+    transferNote.sourceVendor.trim().toLowerCase() === transferNote.targetVendor.trim().toLowerCase()
+  );
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-start p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
       {/* Top Floating Control Bar */}
       <div className="sticky top-2 z-20 w-full max-w-4xl bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 p-3 mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-700">
-            <ArrowRightLeft className="w-5 h-5" />
+            {isSameVendor ? <Building2 className="w-5 h-5" /> : <ArrowRightLeft className="w-5 h-5" />}
           </div>
           <div>
             <div className="text-xs font-bold text-slate-800 flex items-center gap-2">
-              <span>Surat Jalan Transfer & Penitipan Bahan Baku</span>
+              <span>
+                {isSameVendor
+                  ? 'Berita Acara Saldo Titipan Standby di Konveksi'
+                  : 'Surat Jalan Transfer & Penitipan Bahan Baku'}
+              </span>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">
-                Resmi
+                {isSameVendor ? 'Standby Workshop' : 'Resmi Oper'}
               </span>
             </div>
             <div className="text-[11px] text-slate-500 font-mono">
@@ -100,7 +110,7 @@ export const FabricTransferPrintModal: React.FC<FabricTransferPrintModalProps> =
 
             <div className="text-right">
               <span className="inline-block px-2.5 py-1 bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider rounded">
-                Surat Jalan Oper Bahan
+                {isSameVendor ? 'Berita Acara Sisa Bahan (Standby)' : 'Surat Jalan Oper Bahan'}
               </span>
               <div className="font-mono font-bold text-xs text-slate-900 mt-1.5">
                 {transferNote.transferNumber}
@@ -111,13 +121,13 @@ export const FabricTransferPrintModal: React.FC<FabricTransferPrintModalProps> =
             </div>
           </div>
 
-          {/* Transfer Metadata: Asal -> Tujuan */}
+          {/* Transfer Metadata: Asal -> Tujuan / Penyimpanan */}
           <div className="grid grid-cols-2 gap-4 mb-4 text-xs">
             {/* Konveksi Asal */}
             <div className="border border-slate-300 rounded-lg p-3 bg-slate-50/60">
               <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                 <Building2 className="w-3 h-3 text-slate-700" />
-                <span>Pihak Menyerahkan (Asal):</span>
+                <span>{isSameVendor ? 'Konveksi Penyimpan (Lokasi Bahan):' : 'Pihak Menyerahkan (Asal):'}</span>
               </div>
               <div className="text-sm font-bold text-slate-900">{transferNote.sourceVendor}</div>
               <div className="text-[11px] text-slate-600 mt-0.5">
@@ -131,20 +141,28 @@ export const FabricTransferPrintModal: React.FC<FabricTransferPrintModalProps> =
             {/* Konveksi Tujuan */}
             <div className="border border-indigo-200 rounded-lg p-3 bg-indigo-50/40">
               <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Truck className="w-3 h-3 text-indigo-700" />
-                <span>Pihak Penerima (Tempat Penitipan):</span>
+                {isSameVendor ? <ShieldCheck className="w-3 h-3 text-indigo-700" /> : <Truck className="w-3 h-3 text-indigo-700" />}
+                <span>{isSameVendor ? 'Status Alokasi & Pengawasan:' : 'Pihak Penerima (Tempat Penitipan):'}</span>
               </div>
-              <div className="text-sm font-bold text-indigo-950">{transferNote.targetVendor}</div>
+              <div className="text-sm font-bold text-indigo-950">
+                {isSameVendor ? `Tetap Disimpan di ${transferNote.targetVendor}` : transferNote.targetVendor}
+              </div>
               <div className="text-[11px] text-indigo-900 mt-0.5 font-medium">
-                Status Bahan: <b>Saldo Titipan Bahan (Menunggu PO Jahit)</b>
+                Status Bahan:{' '}
+                <b>
+                  {isSameVendor
+                    ? 'Saldo Standby (Siap Dipakai PO / Produk Berbeda)'
+                    : 'Saldo Titipan Bahan (Menunggu PO Jahit)'}
+                </b>
               </div>
               <div className="text-[10.5px] text-slate-600 mt-0.5">
-                Petugas Pengukur & Pengantar: <b>{transferNote.driverName}</b>
+                {isSameVendor ? 'Petugas Pengukur / QC:' : 'Petugas Pengukur & Pengantar:'}{' '}
+                <b>{transferNote.driverName}</b>
               </div>
             </div>
           </div>
 
-          {/* Rincian Bahan yang Dioper */}
+          {/* Rincian Bahan yang Dioper / Dititipkan */}
           <div className="mb-4">
             <table className="w-full text-left border-collapse border border-slate-300 text-xs">
               <thead>
@@ -188,36 +206,52 @@ export const FabricTransferPrintModal: React.FC<FabricTransferPrintModalProps> =
               <ShieldCheck className="w-3 h-3 text-indigo-600" />
               <span>Ketentuan & Tanggung Jawab Penitipan Bahan:</span>
             </div>
-            <ul className="list-disc list-inside space-y-0.5 text-[8.5px] leading-tight text-slate-600">
-              <li>
-                Sisa kain di atas telah diukur bersama di lokasi <b>{transferNote.sourceVendor}</b> dan diserahterimakan dalam kondisi bersih.
-              </li>
-              <li>
-                Bahan baku berstatus <b>Titipan Aset Maison Rayyan</b> di <b>{transferNote.targetVendor}</b> dan tidak boleh digunakan untuk pesanan lain selain PO resmi yang akan diterbitkan.
-              </li>
-              <li>
-                Penerima titipan wajib menjaga fisik bahan dari basah, debu, dan risiko kerusakan sampai proses jahit dimulai.
-              </li>
-            </ul>
+            {isSameVendor ? (
+              <ul className="list-disc list-inside space-y-0.5 text-[8.5px] leading-tight text-slate-600">
+                <li>
+                  Sisa kain di atas telah diukur bersama di lokasi workshop <b>{transferNote.sourceVendor}</b> dan disimpan dalam kondisi bersih & baik.
+                </li>
+                <li>
+                  Bahan baku berstatus <b>Titipan Standby Aset Maison Rayyan</b> di <b>{transferNote.targetVendor}</b> dan siap dialokasikan untuk pesanan PO / produk berikutnya yang diterbitkan.
+                </li>
+                <li>
+                  Pihak konveksi bertanggung jawab penuh menjaga fisik bahan dari basah, debu, dan risiko kerusakan selama masa penyimpanan standby.
+                </li>
+              </ul>
+            ) : (
+              <ul className="list-disc list-inside space-y-0.5 text-[8.5px] leading-tight text-slate-600">
+                <li>
+                  Sisa kain di atas telah diukur bersama di lokasi <b>{transferNote.sourceVendor}</b> dan diserahterimakan dalam kondisi bersih.
+                </li>
+                <li>
+                  Bahan baku berstatus <b>Titipan Aset Maison Rayyan</b> di <b>{transferNote.targetVendor}</b> dan tidak boleh digunakan untuk pesanan lain selain PO resmi yang akan diterbitkan.
+                </li>
+                <li>
+                  Penerima titipan wajib menjaga fisik bahan dari basah, debu, dan risiko kerusakan sampai proses jahit dimulai.
+                </li>
+              </ul>
+            )}
           </div>
 
           {/* 3 Kolom Tanda Tangan Formal */}
           <div className="grid grid-cols-3 gap-4 text-center pt-2" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-            {/* Kolom 1: Konveksi Asal */}
+            {/* Kolom 1: Konveksi */}
             <div>
-              <div className="text-[9px] text-slate-500 mb-0.5">Diserahkan Oleh:</div>
+              <div className="text-[9px] text-slate-500 mb-0.5">{isSameVendor ? 'Disimpan Oleh:' : 'Diserahkan Oleh:'}</div>
               <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">
-                Konveksi Asal ({transferNote.sourceVendor})
+                Konveksi ({transferNote.sourceVendor})
               </div>
               <div className="h-12 flex items-end justify-center">
                 <div className="w-32 border-b border-slate-400"></div>
               </div>
-              <div className="text-[9px] text-slate-600 mt-1 font-mono">( Pihak Konveksi Asal )</div>
+              <div className="text-[9px] text-slate-600 mt-1 font-mono">( Pihak Konveksi )</div>
             </div>
 
             {/* Kolom 2: Kurir / Pengukur Lapangan */}
             <div>
-              <div className="text-[9px] text-slate-500 mb-0.5">Pengukur & Pengantar:</div>
+              <div className="text-[9px] text-slate-500 mb-0.5">
+                {isSameVendor ? 'Petugas Pengukur / QC:' : 'Pengukur & Pengantar:'}
+              </div>
               <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">
                 Tim Logistik Maison Rayyan
               </div>
@@ -236,16 +270,20 @@ export const FabricTransferPrintModal: React.FC<FabricTransferPrintModalProps> =
               </div>
             </div>
 
-            {/* Kolom 3: Konveksi Penerima */}
+            {/* Kolom 3: Konveksi Penerima / SPV */}
             <div>
-              <div className="text-[9px] text-slate-500 mb-0.5">Diterima & Disimpan Oleh:</div>
+              <div className="text-[9px] text-slate-500 mb-0.5">
+                {isSameVendor ? 'Mengetahui / Menyetujui:' : 'Diterima & Disimpan Oleh:'}
+              </div>
               <div className="text-[10px] font-bold text-slate-800 whitespace-nowrap">
-                Konveksi Penerima ({transferNote.targetVendor})
+                {isSameVendor ? 'SPV Produksi / Management' : `Konveksi Penerima (${transferNote.targetVendor})`}
               </div>
               <div className="h-12 flex items-end justify-center">
                 <div className="w-32 border-b border-slate-400"></div>
               </div>
-              <div className="text-[9px] text-slate-600 mt-1 font-mono">( Pihak Konveksi Penerima )</div>
+              <div className="text-[9px] text-slate-600 mt-1 font-mono">
+                {isSameVendor ? '( SPV / Owner )' : '( Pihak Konveksi Penerima )'}
+              </div>
             </div>
           </div>
         </div>

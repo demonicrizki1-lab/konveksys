@@ -1734,7 +1734,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const transferId = `trf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
       const rand = Math.floor(100 + Math.random() * 900);
-      const transferNumber = `SJ-TRF-${dateStr}-${rand}`;
+      const isSameVendor = Boolean(
+        data.sourceVendor &&
+        data.targetVendor &&
+        data.sourceVendor.trim().toLowerCase() === data.targetVendor.trim().toLowerCase()
+      );
+      const prefix = isSameVendor ? 'BA-STB' : 'SJ-TRF';
+      const transferNumber = `${prefix}-${dateStr}-${rand}`;
       const now = new Date().toISOString();
 
       const newDeposit: VendorFabricDeposit = {
@@ -1791,7 +1797,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return {
         success: true,
-        message: `Sisa kain berhasil dititipkan ke ${data.targetVendor} dengan Surat Jalan ${transferNumber}.`,
+        message: isSameVendor
+          ? `Sisa kain berhasil dicatat standby di ${data.targetVendor} dengan Berita Acara ${transferNumber}.`
+          : `Sisa kain berhasil dititipkan ke ${data.targetVendor} dengan Surat Jalan ${transferNumber}.`,
         deposit: newDeposit,
         transferNote: newTransferNote,
       };

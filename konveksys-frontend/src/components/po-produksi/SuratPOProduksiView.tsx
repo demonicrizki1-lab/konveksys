@@ -769,10 +769,10 @@ export const SuratPOProduksiView: React.FC = () => {
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
 
-                              {/* Tombol Oper Sisa Kain ke Konveksi Lain */}
+                              {/* Tombol Titip / Oper Sisa Kain */}
                               <button
                                 onClick={() => setTransferModalPO(po)}
-                                title="Oper Sisa Kain ke Konveksi Lain (Surat Jalan Transfer)"
+                                title="Titip / Oper Sisa Kain (Bisa Standby di Konveksi Asal atau Oper ke Konveksi Lain)"
                                 className="p-1.5 rounded-lg border border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 transition cursor-pointer"
                               >
                                 <ArrowRightLeft className="w-3.5 h-3.5" />
@@ -947,6 +947,11 @@ export const SuratPOProduksiView: React.FC = () => {
                             <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                               <Building2 className="w-3.5 h-3.5 text-violet-600 shrink-0" />
                               <span>{dep.targetVendor}</span>
+                              {dep.targetVendor.trim().toLowerCase() === dep.sourceVendor.trim().toLowerCase() && (
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Standby Asal
+                                </span>
+                              )}
                             </div>
                             <div className="text-[10px] text-slate-400 mt-0.5">
                               Brand: <span className="font-semibold uppercase text-slate-600">{dep.brand}</span>
@@ -1021,15 +1026,17 @@ export const SuratPOProduksiView: React.FC = () => {
                           {/* Actions */}
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* Cetak Surat Jalan */}
+                              {/* Cetak Surat Jalan / Berita Acara */}
                               <button
                                 onClick={() => {
                                   if (matchedNote) {
                                     setPrintTransferNote(matchedNote);
                                   } else {
+                                    const isSame = dep.targetVendor.trim().toLowerCase() === dep.sourceVendor.trim().toLowerCase();
+                                    const prefix = isSame ? 'BA-STB' : 'SJ-TRF';
                                     setPrintTransferNote({
                                       id: `trf-transient-${dep.id}`,
-                                      transferNumber: `SJ-TRF-${dep.id.slice(-6).toUpperCase()}`,
+                                      transferNumber: `${prefix}-${dep.id.slice(-6).toUpperCase()}`,
                                       depositId: dep.id,
                                       sourcePOId: dep.sourcePOId,
                                       sourcePONumber: dep.sourcePONumber,
@@ -1042,12 +1049,17 @@ export const SuratPOProduksiView: React.FC = () => {
                                       satuan: dep.satuan,
                                       driverName: dep.measuredBy || 'Tim Logistik',
                                       tanggal: dep.tanggalTitip,
-                                      kondisiKain: 'Utuh, diukur di lokasi',
+                                      kondisiKain: isSame ? 'Utuh, disimpan standby di konveksi' : 'Utuh, diukur di lokasi',
                                       createdAt: dep.createdAt,
                                     });
                                   }
                                 }}
-                                title="Lihat / Cetak Surat Jalan Transfer"
+                                title={
+                                  matchedNote?.transferNumber.startsWith('BA-STB') ||
+                                  dep.targetVendor.trim().toLowerCase() === dep.sourceVendor.trim().toLowerCase()
+                                    ? 'Lihat / Cetak Berita Acara Titipan Standby'
+                                    : 'Lihat / Cetak Surat Jalan Transfer'
+                                }
                                 className="p-1.5 rounded-lg border border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 transition cursor-pointer"
                               >
                                 <Printer className="w-3.5 h-3.5" />
@@ -1566,7 +1578,11 @@ export const SuratPOProduksiView: React.FC = () => {
           sourcePO={transferModalPO}
           onClose={() => setTransferModalPO(null)}
           onSuccess={(deposit, note) => {
-            showToast('success', `Surat Jalan ${note.transferNumber} berhasil dibuat.`);
+            const isStandby = note.transferNumber.startsWith('BA-STB');
+            showToast(
+              'success',
+              `${isStandby ? 'Berita Acara Saldo Titipan' : 'Surat Jalan Transfer'} ${note.transferNumber} berhasil dibuat.`
+            );
             setPrintTransferNote(note);
           }}
         />
