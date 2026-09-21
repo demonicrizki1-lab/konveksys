@@ -2997,17 +2997,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     // Calculate total targets and delivered
-    const targetTotal = Object.values(updatedTargetCutQty).reduce((a, b) => a + b, 0);
+    const targetTotal = Object.values(updatedTargetCutQty).reduce<number>((a: number, b) => a + (Number(b) || 0), 0);
     const effectiveDeliv = spkData.deliveredQty || existingSpk.deliveredQty || {};
     const itemsDelivTotal = spkData.items
-      ? spkData.items.reduce(
+      ? spkData.items.reduce<number>(
           (acc, it) =>
             acc +
-            Object.values(it.deliveredQty || {}).reduce((a, b) => a + (Number(b) || 0), 0),
+            Object.values(it.deliveredQty || {}).reduce<number>((a: number, b) => a + (Number(b) || 0), 0),
           0
         )
       : 0;
-    const rawDelivTotal = Object.values(effectiveDeliv).reduce((a, b) => a + (Number(b) || 0), 0);
+    const rawDelivTotal = Object.values(effectiveDeliv).reduce<number>((a: number, b) => a + (Number(b) || 0), 0);
     const delivTotal = Math.max(rawDelivTotal, itemsDelivTotal);
 
     let newStatus = existingSpk.status;
