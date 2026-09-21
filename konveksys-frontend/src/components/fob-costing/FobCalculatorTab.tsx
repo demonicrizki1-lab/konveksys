@@ -36,6 +36,7 @@ interface FobCalculatorTabProps {
 export const FOB_LETTER_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL', 'ALL SIZE'];
 export const FOB_NUMBER_SIZES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16'];
 export const AVAILABLE_SIZES = [...FOB_LETTER_SIZES, ...FOB_NUMBER_SIZES];
+export const SATUAN_OPTIONS = ['Yard', 'Meter', 'Pcs', 'Lusin', 'Kodi', 'Gross'];
 const COMPONENT_TYPES: { key: HPPComponentType; label: string }[] = [
   { key: 'BAHAN_BAKU', label: 'Bahan Baku Utama' },
   { key: 'BAHAN_PENDUKUNG', label: 'Bahan Pendukung / Furing' },
@@ -648,7 +649,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                 <th className="py-2 px-2 text-center w-8">#</th>
                 <th className="py-2 px-2.5 text-left w-36">Kategori Biaya</th>
                 <th className="py-2 px-2.5 text-left min-w-[200px]">Nama Komponen Bahan</th>
-                <th className="py-2 px-2 text-center w-20">Satuan</th>
+                <th className="py-2 px-2 text-center w-24">Satuan</th>
                 <th className="py-2 px-2.5 text-right w-24">Pemakaian / Pcs</th>
                 <th className="py-2 px-2.5 text-right w-28">Harga Satuan (Rp)</th>
                 <th className="py-2 px-2 text-center w-20">Waste %</th>
@@ -721,15 +722,31 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                     </div>
                   </td>
 
-                  {/* Satuan */}
+                  {/* Satuan Dropdown */}
                   <td className="py-2 px-2">
-                    <input
-                      type="text"
-                      value={item.satuan}
+                    <select
+                      value={(() => {
+                        const current = (item.satuan || '').trim().toLowerCase();
+                        const matched = SATUAN_OPTIONS.find(
+                          opt => opt.toLowerCase() === current
+                        );
+                        return matched || item.satuan || 'Meter';
+                      })()}
                       onChange={e => handleUpdateComponent(idx, 'satuan', e.target.value)}
-                      className="w-full py-1 px-1.5 text-center text-xs rounded-md border border-slate-200 text-slate-800 font-medium"
-                      placeholder="Yard/Pcs"
-                    />
+                      className="w-full py-1 px-1 text-center text-xs font-semibold rounded-md border border-slate-200 text-slate-800 bg-white focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      {item.satuan &&
+                        !SATUAN_OPTIONS.some(
+                          opt => opt.toLowerCase() === (item.satuan || '').trim().toLowerCase()
+                        ) && (
+                          <option value={item.satuan}>{item.satuan}</option>
+                        )}
+                      {SATUAN_OPTIONS.map(sat => (
+                        <option key={sat} value={sat}>
+                          {sat}
+                        </option>
+                      ))}
+                    </select>
                   </td>
 
                   {/* Pemakaian */}
