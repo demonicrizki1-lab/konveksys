@@ -651,7 +651,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                 <th className="py-2 px-2 text-center w-8">#</th>
                 <th className="py-2 px-2.5 text-left w-36">Kategori Biaya</th>
                 <th className="py-2 px-2.5 text-left min-w-[200px]">Nama Komponen Bahan</th>
-                <th className="py-2 px-2 text-center w-28">Satuan</th>
+                <th className="py-2 px-1 text-center w-20">Satuan</th>
                 <th className="py-2 px-2.5 text-right w-24">Pemakaian / Pcs</th>
                 <th className="py-2 px-2.5 text-right w-28">Harga Satuan (Rp)</th>
                 <th className="py-2 px-2 text-center w-20">Waste %</th>
@@ -725,7 +725,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                   </td>
 
                   {/* Satuan Dropdown */}
-                  <td className="py-2 px-2">
+                  <td className="py-2 px-1">
                     <SatuanDropdown
                       value={item.satuan}
                       onChange={(newSat: string) => handleUpdateComponent(idx, 'satuan', newSat)}
