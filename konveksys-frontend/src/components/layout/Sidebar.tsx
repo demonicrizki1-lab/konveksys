@@ -22,6 +22,7 @@ import {
   ShoppingBag,
   ClipboardList,
   Calculator,
+  ShieldAlert,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -227,6 +228,13 @@ export const Sidebar: React.FC = () => {
           description: 'Kelola User Aktif & Brand Mitra',
           icon: Users,
           badge: managedUsers && managedUsers.length > 0 ? `${managedUsers.length} User` : undefined,
+          roles: ['ADMIN'],
+        },
+        {
+          id: 'audit-trail',
+          label: 'Rekam Jejak & Audit',
+          description: 'Anti-Manipulasi & Log Aktivitas',
+          icon: ShieldAlert,
           roles: ['ADMIN'],
         },
       ],

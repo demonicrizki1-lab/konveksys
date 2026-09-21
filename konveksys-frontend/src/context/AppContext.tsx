@@ -141,6 +141,10 @@ import {
   FobDownPayment,
   FobDepositStatus,
   FobFabricAllocation,
+  AuditLogEntry,
+  AuditModule,
+  AuditActionType,
+  AuditSeverity,
 } from '../types';
 import {
   demoUsers,
@@ -160,10 +164,27 @@ import {
   initialFobOrders,
   initialProductionTimelines,
   initialFobDeposits,
+  initialAuditLogs,
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
-export type ActiveTab = 'dashboard' | 'master-harga' | 'inbound' | 'spk' | 'outbound' | 'return' | 'finance' | 'arus-kas' | 'margin-analytics' | 'accessories' | 'barang-masuk' | 'manajemen-user' | 'stok-penjualan' | 'po-produksi' | 'kalkulator-fob';
+export type ActiveTab =
+  | 'dashboard'
+  | 'master-harga'
+  | 'inbound'
+  | 'spk'
+  | 'outbound'
+  | 'return'
+  | 'finance'
+  | 'arus-kas'
+  | 'margin-analytics'
+  | 'accessories'
+  | 'barang-masuk'
+  | 'manajemen-user'
+  | 'stok-penjualan'
+  | 'po-produksi'
+  | 'kalkulator-fob'
+  | 'audit-trail';
 
 interface AppContextType {
   // Auth & Session
@@ -530,6 +551,10 @@ interface AppContextType {
   ) => VendorPayrollSummary;
   calculateBuyerInvoice: (brandName: string, startDate?: string, endDate?: string) => BuyerInvoiceSummary;
   resetToDefaultData: () => void;
+
+  // Audit Trail & Anti-Manipulasi
+  auditLogs: AuditLogEntry[];
+  logAudit: (entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'userId' | 'userName' | 'userRole'>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -622,6 +647,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [];
     }
   });
+
+  // Audit Trail State (Persisten di localStorage)
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('konvek_audit_logs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return initialAuditLogs;
+  });
+
+  const logAudit = useCallback(
+    (entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'userId' | 'userName' | 'userRole'>) => {
+      const newLog: AuditLogEntry = {
+        ...entry,
+        id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: new Date().toISOString(),
+        userId: currentUser?.id || 'u-admin',
+        userName: currentUser?.name || 'Admin Sistem',
+        userRole: currentUser?.role || 'ADMIN',
+      };
+
+      setAuditLogs(prev => {
+        const updated = [newLog, ...prev].slice(0, 500);
+        try {
+          localStorage.setItem('konvek_audit_logs', JSON.stringify(updated));
+        } catch (e) {
+          console.warn('Gagal menyimpan log audit ke localStorage:', e);
+        }
+        return updated;
+      });
+    },
+    [currentUser]
+  );
 
   const settleVendorPO = async (
     data: Omit<VendorPayrollSettlement, 'id' | 'createdAt'>
@@ -2621,6 +2682,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: `Kain tidak dapat dihapus karena sedang digunakan pada ${linkedSpk.spkNumber}. Hapus SPK terkait terlebih dahulu.` };
     }
 
+    const target = inboundRolls.find(r => r.id === id);
+    if (target) {
+      logAudit({
+        module: 'STOK_KAIN',
+        action: 'DELETE',
+        severity: 'CRITICAL',
+        entityId: target.rollCode || id,
+        entityName: `Rol Kain: ${target.jenisKain || ''} (${target.rollCode || id})`,
+        details: `Menghapus rol kain ${target.jenisKain || ''} sepanjang ${target.meterLength || 0} Meter (Brand: ${target.brand || '-'})`,
+        previousData: target,
+      });
+    }
+
     try {
       const { data, error } = await apiDeleteInboundRoll(id);
       if (error) {
@@ -2720,6 +2794,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteFobDeposit = async (id: string) => {
+    const target = fobDeposits.find((d) => d.id === id);
+    if (target) {
+      logAudit({
+        module: 'INBOUND_DP',
+        action: 'DELETE',
+        severity: 'CRITICAL',
+        entityId: target.depositNumber || id,
+        entityName: `DP ${target.brand} (${target.poNumber})`,
+        details: `Menghapus pencatatan DP uang masuk sebesar Rp ${(target.nominalDp || 0).toLocaleString('id-ID')} (${target.depositNumber})`,
+        previousData: target,
+      });
+    }
+
     setFobDeposits((prev) => {
       const updated = prev.filter((d) => d.id !== id);
       setCache('fob_deposits', updated);
@@ -3174,6 +3261,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         message: `SPK ${targetSpk.spkNumber} memiliki ${linkedReturn.length} tiket retur. Hapus tiket retur terkait terlebih dahulu.`,
       };
     }
+
+    logAudit({
+      module: 'SPK_CUTTING',
+      action: 'DELETE',
+      severity: 'CRITICAL',
+      entityId: targetSpk.spkNumber,
+      entityName: `SPK: ${targetSpk.spkNumber} (${targetSpk.brand})`,
+      details: `Menghapus surat perintah potong ${targetSpk.spkNumber} untuk brand ${targetSpk.brand} (Produk: ${targetSpk.produk}, Vendor: ${targetSpk.vendor})`,
+      previousData: targetSpk,
+    });
 
     try {
       const { data, error } = await apiDeleteSpk(id);
@@ -3692,6 +3789,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         message: `Surat Jalan ${targetSJ.noSuratJalan} memiliki ${linkedReturn.length} tiket retur. Hapus tiket retur terlebih dahulu.`,
       };
     }
+
+    logAudit({
+      module: 'SURAT_JALAN',
+      action: 'DELETE',
+      severity: 'CRITICAL',
+      entityId: targetSJ.noSuratJalan || id,
+      entityName: `Surat Jalan: ${targetSJ.noSuratJalan || id}`,
+      details: `Menghapus surat jalan pengiriman ${targetSJ.noSuratJalan || id} (Total: ${targetSJ.totalPcs || 0} Pcs untuk ${targetSJ.brand})`,
+      previousData: targetSJ,
+    });
 
     try {
       const { error } = await apiDeleteSuratJalan(id);
@@ -4609,6 +4716,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
 
+    logAudit({
+      module: 'ARUS_KAS',
+      action: 'CREATE',
+      severity: 'INFO',
+      entityId: tempId,
+      entityName: `Kas Masuk - ${p.brand}`,
+      details: `Mencatat kas masuk sebesar Rp ${p.jumlah.toLocaleString('id-ID')} via ${p.metode}${p.keterangan ? ` (${p.keterangan})` : ''}`,
+      newData: p,
+    });
+
     try {
       const { data } = await apiAddPembayaran({
         brand: p.brand,
@@ -4631,11 +4748,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePembayaran = async (id: string, p: Partial<Omit<PembayaranBrand, 'id'>>) => {
+    const prevItem = pembayaranList.find(item => item.id === id);
     setPembayaranList(prev => {
       const next = prev.map(item => (item.id === id ? { ...item, ...p } : item));
       setCache('pembayaran', next);
       return next;
     });
+
+    logAudit({
+      module: 'ARUS_KAS',
+      action: 'UPDATE',
+      severity: 'CRITICAL',
+      entityId: id,
+      entityName: `Kas Masuk - ${prevItem?.brand || 'Brand'}`,
+      details: `Mengubah data pembayaran ${prevItem?.brand || ''}. Jumlah lama: Rp ${(prevItem?.jumlah || 0).toLocaleString('id-ID')}${p.jumlah !== undefined ? ` -> Baru: Rp ${p.jumlah.toLocaleString('id-ID')}` : ''}`,
+      previousData: prevItem,
+      newData: p,
+    });
+
     try {
       await apiUpdatePembayaran(id, p);
     } catch (err) {
@@ -4644,11 +4774,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deletePembayaran = async (id: string) => {
+    const target = pembayaranList.find(p => p.id === id);
     setPembayaranList(prev => {
       const next = prev.filter(p => p.id !== id);
       setCache('pembayaran', next);
       return next;
     });
+
+    logAudit({
+      module: 'ARUS_KAS',
+      action: 'DELETE',
+      severity: 'CRITICAL',
+      entityId: id,
+      entityName: `Kas Masuk - ${target?.brand || 'Brand'}`,
+      details: `Menghapus pembayaran kas masuk senilai Rp ${(target?.jumlah || 0).toLocaleString('id-ID')} dari brand ${target?.brand || '-'}`,
+      previousData: target,
+    });
+
     try {
       await apiDeletePembayaran(id);
     } catch (err) {
@@ -5206,6 +5348,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         calculateVendorPayroll,
         calculateBuyerInvoice,
         resetToDefaultData,
+        auditLogs,
+        logAudit,
         isSyncing,
         lastSyncedAt,
       }}

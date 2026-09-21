@@ -957,3 +957,45 @@ export interface FobDownPayment {
   updatedAt?: string;
 }
 
+// ================= AUDIT TRAIL & REKAM JEJAK =================
+export type AuditModule =
+  | 'ARUS_KAS'
+  | 'INBOUND_DP'
+  | 'STOK_KAIN'
+  | 'STOK_AKSESORIS'
+  | 'SPK_CUTTING'
+  | 'SURAT_JALAN'
+  | 'HPP_FOB'
+  | 'FINANCE_INVOICE'
+  | 'USER_AUTH'
+  | 'PENGEMBALIAN_RETUR'
+  | 'SISTEM';
+
+export type AuditActionType =
+  | 'CREATE'
+  | 'UPDATE'
+  | 'DELETE'
+  | 'APPROVE'
+  | 'REJECT'
+  | 'STATUS_CHANGE';
+
+export type AuditSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string; // ISO 8601 string
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  module: AuditModule;
+  action: AuditActionType;
+  severity: AuditSeverity;
+  entityId: string;
+  entityName: string;
+  details: string;
+  previousData?: Record<string, any> | null;
+  newData?: Record<string, any> | null;
+  ipAddress?: string;
+  notes?: string;
+}
+
