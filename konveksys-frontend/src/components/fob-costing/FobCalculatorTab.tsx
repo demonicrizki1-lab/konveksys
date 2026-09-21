@@ -36,7 +36,9 @@ interface FobCalculatorTabProps {
 export const FOB_LETTER_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL', '8XL', 'ALL SIZE'];
 export const FOB_NUMBER_SIZES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16'];
 export const AVAILABLE_SIZES = [...FOB_LETTER_SIZES, ...FOB_NUMBER_SIZES];
-export const SATUAN_OPTIONS = ['Yard', 'Meter', 'Pcs', 'Lusin', 'Kodi', 'Gross'];
+import { SATUAN_OPTIONS, SatuanDropdown } from './SatuanDropdown';
+export { SATUAN_OPTIONS, SatuanDropdown };
+
 const COMPONENT_TYPES: { key: HPPComponentType; label: string }[] = [
   { key: 'BAHAN_BAKU', label: 'Bahan Baku Utama' },
   { key: 'BAHAN_PENDUKUNG', label: 'Bahan Pendukung / Furing' },
@@ -649,7 +651,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                 <th className="py-2 px-2 text-center w-8">#</th>
                 <th className="py-2 px-2.5 text-left w-36">Kategori Biaya</th>
                 <th className="py-2 px-2.5 text-left min-w-[200px]">Nama Komponen Bahan</th>
-                <th className="py-2 px-2 text-center w-24">Satuan</th>
+                <th className="py-2 px-2 text-center w-28">Satuan</th>
                 <th className="py-2 px-2.5 text-right w-24">Pemakaian / Pcs</th>
                 <th className="py-2 px-2.5 text-right w-28">Harga Satuan (Rp)</th>
                 <th className="py-2 px-2 text-center w-20">Waste %</th>
@@ -685,7 +687,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                     <select
                       value={item.jenisBiaya}
                       onChange={e => handleUpdateComponent(idx, 'jenisBiaya', e.target.value)}
-                      className="w-full py-1 px-2 rounded-md border border-slate-200 text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-indigo-500"
+                      className="w-full h-8 py-1 px-2 rounded-md border border-slate-200 text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-indigo-500 bg-white"
                     >
                       {COMPONENT_TYPES.map(ct => (
                         <option key={ct.key} value={ct.key}>{ct.label}</option>
@@ -701,7 +703,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                         value={item.namaBahan}
                         onChange={e => handleUpdateComponent(idx, 'namaBahan', e.target.value)}
                         placeholder="Ketik nama bahan/aksesoris..."
-                        className="w-full py-1 px-2 rounded-md border border-slate-200 font-medium text-slate-900 focus:ring-1 focus:ring-indigo-500"
+                        className="w-full h-8 py-1 px-2 rounded-md border border-slate-200 font-medium text-slate-900 focus:ring-1 focus:ring-indigo-500"
                       />
                       {materials.length > 0 && (
                         <select
@@ -724,29 +726,10 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
 
                   {/* Satuan Dropdown */}
                   <td className="py-2 px-2">
-                    <select
-                      value={(() => {
-                        const current = (item.satuan || '').trim().toLowerCase();
-                        const matched = SATUAN_OPTIONS.find(
-                          opt => opt.toLowerCase() === current
-                        );
-                        return matched || item.satuan || 'Meter';
-                      })()}
-                      onChange={e => handleUpdateComponent(idx, 'satuan', e.target.value)}
-                      className="w-full py-1 px-1 text-center text-xs font-semibold rounded-md border border-slate-200 text-slate-800 bg-white focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                    >
-                      {item.satuan &&
-                        !SATUAN_OPTIONS.some(
-                          opt => opt.toLowerCase() === (item.satuan || '').trim().toLowerCase()
-                        ) && (
-                          <option value={item.satuan}>{item.satuan}</option>
-                        )}
-                      {SATUAN_OPTIONS.map(sat => (
-                        <option key={sat} value={sat}>
-                          {sat}
-                        </option>
-                      ))}
-                    </select>
+                    <SatuanDropdown
+                      value={item.satuan}
+                      onChange={(newSat: string) => handleUpdateComponent(idx, 'satuan', newSat)}
+                    />
                   </td>
 
                   {/* Pemakaian */}
@@ -757,7 +740,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                       min="0"
                       value={item.pemakaian}
                       onChange={e => handleUpdateComponent(idx, 'pemakaian', parseFloat(e.target.value) || 0)}
-                      className="w-full py-1 px-2 text-right font-semibold text-xs rounded-md border border-slate-200 text-slate-900 tabular-nums"
+                      className="w-full h-8 py-1 px-2 text-right font-semibold text-xs rounded-md border border-slate-200 text-slate-900 tabular-nums"
                     />
                   </td>
 
@@ -767,7 +750,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                       type="text"
                       value={formatRupiahInput(item.hargaSatuan)}
                       onChange={e => handleUpdateComponent(idx, 'hargaSatuan', parseRupiahInput(e.target.value))}
-                      className="w-full py-1 px-2 text-right font-semibold text-xs rounded-md border border-slate-200 text-slate-800 tabular-nums"
+                      className="w-full h-8 py-1 px-2 text-right font-semibold text-xs rounded-md border border-slate-200 text-slate-800 tabular-nums"
                       placeholder="0"
                     />
                   </td>
@@ -780,7 +763,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                       min="0"
                       value={item.wastePercent}
                       onChange={e => handleUpdateComponent(idx, 'wastePercent', parseFloat(e.target.value) || 0)}
-                      className="w-full py-1 px-1 text-center font-semibold text-xs rounded-md border border-slate-200 text-slate-700 tabular-nums"
+                      className="w-full h-8 py-1 px-1 text-center font-semibold text-xs rounded-md border border-slate-200 text-slate-700 tabular-nums"
                       title="Susut pemotongan kain (Cutting waste %)"
                     />
                   </td>
@@ -797,7 +780,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                       value={item.supplier || ''}
                       onChange={e => handleUpdateComponent(idx, 'supplier', e.target.value)}
                       placeholder="Nama supplier..."
-                      className="w-full py-1 px-2 rounded-md border border-slate-200 text-[11px] text-slate-600"
+                      className="w-full h-8 py-1 px-2 rounded-md border border-slate-200 text-[11px] text-slate-600"
                     />
                   </td>
 

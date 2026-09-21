@@ -16,7 +16,7 @@ import {
   HPPComponentType,
 } from '../../types';
 import { formatRp, formatRupiahInput, parseRupiahInput } from '../../utils/formatters';
-import { SATUAN_OPTIONS } from './FobCalculatorTab';
+import { SATUAN_OPTIONS, SatuanDropdown } from './FobCalculatorTab';
 
 interface FobMasterDataTabProps {
   materials: FOBMaterialMaster[];
@@ -238,18 +238,11 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
 
               <div>
                 <label className="block text-slate-500 font-semibold mb-1">Satuan</label>
-                <select
+                <SatuanDropdown
                   value={matSatuan}
-                  onChange={e => setMatSatuan(e.target.value)}
-                  className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 text-slate-800 font-semibold bg-white cursor-pointer"
-                >
-                  {matSatuan && !SATUAN_OPTIONS.includes(matSatuan) && (
-                    <option value={matSatuan}>{matSatuan}</option>
-                  )}
-                  {SATUAN_OPTIONS.map(sat => (
-                    <option key={sat} value={sat}>{sat}</option>
-                  ))}
-                </select>
+                  onChange={setMatSatuan}
+                  size="md"
+                />
               </div>
 
               <div>
