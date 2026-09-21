@@ -430,9 +430,19 @@ export function resolveItemPONumber(
 ): string | null {
   if (!item) return null;
 
+  // 1. Explicit item-level PO takes top priority
+  if (item.sourcePONumber) {
+    return item.sourcePONumber;
+  }
+
+  // 2. Legacy PO takes priority if manual migration
+  if (item.legacyPoNumber) {
+    return item.legacyPoNumber;
+  }
+
   const itemProd = (item.produk || '').trim().toUpperCase();
 
-  // 1. Find linked SPK first to inspect item-level PO
+  // 3. Find linked SPK to inspect item-level PO
   const targetSpkId = item.spkId || sjFallback?.spkId;
   const targetSpkNumber = item.spkNumber || sjFallback?.spkNumber;
 
@@ -456,7 +466,7 @@ export function resolveItemPONumber(
     );
   }
 
-  // 2. In linked SPK, find the exact product item
+  // 4. In linked SPK, find the exact product item
   if (linkedSPK) {
     const spkItems = linkedSPK.items || [];
     const targetItemId = item.spkItemId || sjFallback?.spkItemId;
@@ -469,16 +479,6 @@ export function resolveItemPONumber(
     if (matchedItem?.sourcePONumber) {
       return matchedItem.sourcePONumber;
     }
-  }
-
-  // 3. Next, check if the item itself already has an explicit sourcePONumber
-  if (item.sourcePONumber) {
-    return item.sourcePONumber;
-  }
-
-  // 4. Next, check legacyPoNumber
-  if (item.legacyPoNumber) {
-    return item.legacyPoNumber;
   }
 
   // 5. Next, if linkedSPK has a sourcePONumber (single PO SPK)

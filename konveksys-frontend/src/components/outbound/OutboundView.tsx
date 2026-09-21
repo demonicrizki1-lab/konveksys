@@ -18,6 +18,7 @@ import {
   Trash2,
   Printer,
   Package,
+  PackageCheck,
   Layers,
   Sparkles,
   ArrowRight,
@@ -131,12 +132,19 @@ export const OutboundView: React.FC = () => {
   const [customJenisKain, setCustomJenisKain] = useState<string>('');
   const [qtySend, setQtySend] = useState<SizeBreakdown>(emptySizeBreakdown());
 
-  // Mode Muatan: 'SPK' (dari cutting) vs 'MANUAL' (PO Lama / Non-SPK)
-  const [cargoSourceMode, setCargoSourceMode] = useState<'SPK' | 'MANUAL'>('SPK');
+  // Mode Muatan: 'SPK' (dari cutting) vs 'PO_BRAND' (PO Brand FOB langsung) vs 'MANUAL' (PO Lama / Non-SPK)
+  const [cargoSourceMode, setCargoSourceMode] = useState<'SPK' | 'PO_BRAND' | 'MANUAL'>('SPK');
   const [manualVendor, setManualVendor] = useState<string>('');
   const [manualProduk, setManualProduk] = useState<string>('');
   const [manualJenisKain, setManualJenisKain] = useState<string>('');
   const [manualPoNumber, setManualPoNumber] = useState<string>('');
+
+  // PO Brand State for 'PO_BRAND' mode
+  const [selectedPOId, setSelectedPOId] = useState<string>('');
+  const [selectedPOItemIndex, setSelectedPOItemIndex] = useState<number>(0);
+  const [poArticleName, setPoArticleName] = useState<string>('');
+  const [poVendor, setPoVendor] = useState<string>('');
+  const [poJenisKain, setPoJenisKain] = useState<string>('');
 
   // Modal State for View / Print Detail Surat Jalan
   const [selectedSJDetail, setSelectedSJDetail] = useState<SuratJalan | null>(null);
@@ -271,6 +279,70 @@ export const OutboundView: React.FC = () => {
     setQtySend(emptySizeBreakdown());
   };
 
+  // Active POs available for the selected brand
+  const activePOsForBrand = productionPOs.filter((po) => {
+    if (!po.brand) return false;
+    if (po.brand.trim().toUpperCase() !== selectedBrand.trim().toUpperCase()) return false;
+    if (editingSJ && draftItems.some((it) => it.sourcePOId === po.id || it.sourcePONumber === po.noPO)) return true;
+    return true;
+  });
+
+  const currentPO = productionPOs.find((p) => p.id === selectedPOId) || activePOsForBrand[0];
+
+  // Helper to get total delivered pieces for a PO across all Surat Jalan
+  const getPODeliveredPcs = (poNo?: string | null, poId?: string | null) => {
+    if (!poNo && !poId) return 0;
+    let delivered = 0;
+    suratJalanList.forEach((sj) => {
+      if (editingSJ && sj.id === editingSJ.id) return;
+      const items = getSuratJalanItems(sj);
+      items.forEach((it) => {
+        const itemPoNo = it.sourcePONumber || resolveItemPONumber(it, spkList, sj, productionPOs);
+        if ((poNo && itemPoNo === poNo) || (poId && it.sourcePOId === poId)) {
+          delivered += it.totalPcs || 0;
+        }
+      });
+    });
+    return delivered;
+  };
+
+  const getPODraftDeliveredPcs = (poNo?: string | null, poId?: string | null, excludeDraftIdx: number | null = null) => {
+    let count = 0;
+    draftItems.forEach((it, idx) => {
+      if (excludeDraftIdx !== null && idx === excludeDraftIdx) return;
+      if ((poNo && it.sourcePONumber === poNo) || (poId && it.sourcePOId === poId)) {
+        count += it.totalPcs || 0;
+      }
+    });
+    return count;
+  };
+
+  const selectPO = (poId: string, itemIdx = 0) => {
+    setSelectedPOId(poId);
+    setSelectedPOItemIndex(itemIdx);
+    const po = productionPOs.find((p) => p.id === poId);
+    if (po) {
+      const it = po.items && po.items[itemIdx] ? po.items[itemIdx] : po.items?.[0];
+      setPoArticleName(it?.namaProduk || (po.items?.map((i) => i.namaProduk).join(', ') || ''));
+      setPoVendor(po.vendorTujuan || (vendors && vendors[0] ? vendors[0].name : ''));
+      setPoJenisKain(it?.bahanKain || '');
+    } else {
+      setPoArticleName('');
+      setPoVendor('');
+      setPoJenisKain('');
+    }
+    setQtySend(emptySizeBreakdown());
+  };
+
+  const selectPOItem = (itemIdx: number) => {
+    setSelectedPOItemIndex(itemIdx);
+    if (currentPO && currentPO.items && currentPO.items[itemIdx]) {
+      const it = currentPO.items[itemIdx];
+      setPoArticleName(it.namaProduk);
+      if (it.bahanKain) setPoJenisKain(it.bahanKain);
+    }
+  };
+
   // Open Create Modal
   const handleOpenCreate = () => {
     setEditingSJ(null);
@@ -287,6 +359,16 @@ export const OutboundView: React.FC = () => {
       setSelectedArticleVendor('');
       setSelectedSpkItemId('');
       setCustomJenisKain('');
+    }
+
+    const availablePos = productionPOs.filter((p) => p.brand?.trim().toUpperCase() === initialBrand.trim().toUpperCase());
+    if (availablePos.length > 0) {
+      selectPO(availablePos[0].id, 0);
+    } else {
+      setSelectedPOId('');
+      setPoArticleName('');
+      setPoVendor('');
+      setPoJenisKain('');
     }
 
     setDriverName('Pak Wardi');
@@ -334,6 +416,17 @@ export const OutboundView: React.FC = () => {
       setSelectedSpkItemId('');
       setCustomJenisKain('');
     }
+
+    const availablePos = productionPOs.filter((p) => p.brand?.trim().toUpperCase() === sj.brand.trim().toUpperCase());
+    if (availablePos.length > 0) {
+      selectPO(availablePos[0].id, 0);
+    } else {
+      setSelectedPOId('');
+      setPoArticleName('');
+      setPoVendor('');
+      setPoJenisKain('');
+    }
+
     setCargoSourceMode('SPK');
     setManualVendor(vendors && vendors.length > 0 ? vendors[0].name : '');
     setManualProduk('');
@@ -355,6 +448,17 @@ export const OutboundView: React.FC = () => {
       setSelectedSpkItemId('');
       setCustomJenisKain('');
     }
+
+    const availablePos = productionPOs.filter((p) => p.brand?.trim().toUpperCase() === brand.trim().toUpperCase());
+    if (availablePos.length > 0) {
+      selectPO(availablePos[0].id, 0);
+    } else {
+      setSelectedPOId('');
+      setPoArticleName('');
+      setPoVendor('');
+      setPoJenisKain('');
+    }
+
     // PERBAIKAN: Jangan hapus draftItems! Pertahankan muatan yang sudah ditambahkan dari brand lain
     setQtySend(emptySizeBreakdown());
   };
@@ -406,6 +510,55 @@ export const OutboundView: React.FC = () => {
       setQtySend(emptySizeBreakdown());
       setManualProduk('');
       setManualJenisKain('');
+      return;
+    }
+
+    if (cargoSourceMode === 'PO_BRAND') {
+      if (!currentPO) {
+        alert('Harap pilih Nomor PO Brand / FOB!');
+        return;
+      }
+      if (!poArticleName.trim()) {
+        alert('Harap masukkan atau pilih Nama Produk / Artikel untuk PO ini!');
+        return;
+      }
+      if (currentSendingPcs <= 0) {
+        alert(`Harap masukkan kuantiti minimal 1 pcs untuk artikel "${poArticleName}"!`);
+        return;
+      }
+
+      const newItem: SuratJalanItem = {
+        id: `draft-po-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        spkId: undefined,
+        spkNumber: undefined,
+        sourcePOId: currentPO.id,
+        sourcePONumber: currentPO.noPO,
+        isManual: false,
+        brand: selectedBrand,
+        produk: poArticleName.trim().toUpperCase(),
+        vendor: poVendor.trim() || currentPO.vendorTujuan || 'CMT',
+        jenisKain: poJenisKain.trim() || 'Kain Standar PO',
+        qtyDelivered: { ...qtySend },
+        totalPcs: currentSendingPcs,
+      };
+
+      if (editingDraftIndex !== null) {
+        setDraftItems((prev) => {
+          const next = [...prev];
+          next[editingDraftIndex] = newItem;
+          return next;
+        });
+        setEditingDraftIndex(null);
+        setQtySend(emptySizeBreakdown());
+        return;
+      }
+
+      setDraftItems((prev) => [...prev, newItem]);
+      setQtySend(emptySizeBreakdown());
+
+      if (currentPO.items && currentPO.items.length > selectedPOItemIndex + 1) {
+        selectPOItem(selectedPOItemIndex + 1);
+      }
       return;
     }
 
@@ -469,7 +622,23 @@ export const OutboundView: React.FC = () => {
     const item = draftItems[index];
     if (!item) return;
     setEditingDraftIndex(index);
-    if (item.isManual) {
+    if (item.sourcePONumber && !item.spkId) {
+      setCargoSourceMode('PO_BRAND');
+      const matchedPO = productionPOs.find(
+        (p) => (item.sourcePOId && p.id === item.sourcePOId) || p.noPO === item.sourcePONumber
+      );
+      if (matchedPO) {
+        setSelectedPOId(matchedPO.id);
+        const artIdx = matchedPO.items?.findIndex(
+          (i) => i.namaProduk.trim().toUpperCase() === item.produk.trim().toUpperCase()
+        );
+        setSelectedPOItemIndex(artIdx !== undefined && artIdx !== -1 ? artIdx : 0);
+      }
+      setPoArticleName(item.produk);
+      setPoVendor(item.vendor);
+      setPoJenisKain(item.jenisKain || '');
+      setQtySend({ ...item.qtyDelivered });
+    } else if (item.isManual) {
       setCargoSourceMode('MANUAL');
       setManualVendor(item.vendor || (vendors && vendors[0] ? vendors[0].name : ''));
       setManualProduk(item.produk || '');
@@ -543,7 +712,22 @@ export const OutboundView: React.FC = () => {
 
     // If no draft items yet, but user filled quantities in the current form, auto-add it
     if (finalItems.length === 0 && currentSendingPcs > 0) {
-      if (cargoSourceMode === 'MANUAL' && manualProduk.trim() && manualVendor) {
+      if (cargoSourceMode === 'PO_BRAND' && currentPO && poArticleName.trim()) {
+        finalItems.push({
+          id: `draft-po-${Date.now()}`,
+          spkId: undefined,
+          spkNumber: undefined,
+          sourcePOId: currentPO.id,
+          sourcePONumber: currentPO.noPO,
+          isManual: false,
+          brand: selectedBrand,
+          produk: poArticleName.trim().toUpperCase(),
+          vendor: poVendor.trim() || currentPO.vendorTujuan || 'CMT',
+          jenisKain: poJenisKain.trim() || 'Kain Standar PO',
+          qtyDelivered: { ...qtySend },
+          totalPcs: currentSendingPcs,
+        });
+      } else if (cargoSourceMode === 'MANUAL' && manualProduk.trim() && manualVendor) {
         finalItems.push({
           id: `draft-manual-${Date.now()}`,
           spkId: undefined,
@@ -1031,7 +1215,12 @@ export const OutboundView: React.FC = () => {
                             <span className="font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-[10px] border border-slate-200 uppercase">
                               {item.brand}
                             </span>
-                            {item.isManual ? (
+                            {item.sourcePONumber ? (
+                              <span className="font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
+                                <span>📋</span>
+                                <span>PO: {item.sourcePONumber}</span>
+                              </span>
+                            ) : item.isManual ? (
                               <span className="font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
                                 <span>📦</span>
                                 <span>PO LAMA {item.legacyPoNumber ? `(${item.legacyPoNumber})` : ''}</span>
@@ -1122,12 +1311,12 @@ export const OutboundView: React.FC = () => {
                     Pilih & Muat Artikel ke Surat Jalan
                   </span>
 
-                  {/* Mode Tab Switcher: SPK vs Non-SPK / PO Lama */}
-                  <div className="flex p-1 bg-slate-200/70 rounded-xl gap-1 self-start sm:self-auto">
+                  {/* Mode Tab Switcher: SPK vs PO Brand vs Non-SPK */}
+                  <div className="flex p-1 bg-slate-200/70 rounded-xl gap-1 self-start sm:self-auto overflow-x-auto max-w-full">
                     <button
                       type="button"
                       onClick={() => setCargoSourceMode('SPK')}
-                      className={`py-1 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      className={`py-1 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                         cargoSourceMode === 'SPK'
                           ? 'bg-white text-indigo-700 shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
@@ -1138,20 +1327,302 @@ export const OutboundView: React.FC = () => {
                     </button>
                     <button
                       type="button"
+                      onClick={() => setCargoSourceMode('PO_BRAND')}
+                      className={`py-1 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                        cargoSourceMode === 'PO_BRAND'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <PackageCheck className="w-3.5 h-3.5" />
+                      <span>2. Dari PO Brand / FOB ({activePOsForBrand.length} PO)</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setCargoSourceMode('MANUAL')}
-                      className={`py-1 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      className={`py-1 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                         cargoSourceMode === 'MANUAL'
                           ? 'bg-amber-600 text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>2. Non-SPK / PO Lama (Migrasi)</span>
+                      <span>3. Non-SPK / PO Lama</span>
                     </button>
                   </div>
                 </div>
 
-                {cargoSourceMode === 'MANUAL' ? (
+                {cargoSourceMode === 'PO_BRAND' ? (
+                  /* ======================================================== */
+                  /* SUB-FORM PO BRAND FOB                                    */
+                  /* ======================================================== */
+                  <div className="space-y-3">
+                    <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-blue-900 text-xs flex items-start gap-2">
+                      <PackageCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Mode Pengiriman PO Brand / FOB Langsung:</strong>
+                        <p className="text-[11px] text-blue-800 mt-0.5">
+                          Pilih nomor PO pesanan aktif milik Brand <strong>{selectedBrand}</strong>. Anda dapat mengirimkan sebagian atau mencampur beberapa PO sekaligus dalam satu Surat Jalan ini. Progres pemenuhan PO akan ter-update otomatis.
+                        </p>
+                      </div>
+                    </div>
+
+                    {activePOsForBrand.length === 0 ? (
+                      <div className="p-4 bg-white border border-dashed border-blue-200 rounded-xl text-center text-slate-500">
+                        <p className="font-bold text-slate-700">Tidak ada PO Brand yang ditemukan untuk {selectedBrand}.</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Pastikan sudah membuat Surat PO Produksi untuk brand ini, atau gunakan tab "1. Dari SPK Cutting" atau "3. Non-SPK".
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Selector PO */}
+                        <div className="space-y-1.5">
+                          <label className="block font-bold text-slate-700 text-xs">
+                            1. Pilih Nomor PO Pesanan Brand ({activePOsForBrand.length} PO Terdaftar):
+                          </label>
+                          <select
+                            value={selectedPOId}
+                            onChange={(e) => selectPO(e.target.value, 0)}
+                            className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold font-mono text-slate-800 outline-none text-xs"
+                          >
+                            {activePOsForBrand.map((po) => {
+                              const targetPcs = po.totalPcs || po.items.reduce((s, i) => s + (Number(i.qty) || 0), 0);
+                              const delivPcs = getPODeliveredPcs(po.noPO, po.id);
+                              const draftPcs = getPODraftDeliveredPcs(po.noPO, po.id, editingDraftIndex);
+                              const remPcs = Math.max(0, targetPcs - delivPcs - draftPcs);
+                              const prods = po.items?.map((i) => i.namaProduk).filter(Boolean).join(', ') || 'Produk';
+                              return (
+                                <option key={po.id} value={po.id}>
+                                  {po.noPO} - {prods} ({targetPcs} Pcs • Sisa: {remPcs} Pcs) • CMT: {po.vendorTujuan || '-'}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        {/* PO Summary Card */}
+                        {currentPO && (
+                          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                              <div>
+                                <span className="text-[10px] text-slate-400 font-bold uppercase block">Nomor PO & Vendor CMT:</span>
+                                <div className="font-bold font-mono text-indigo-700 text-xs flex items-center gap-2">
+                                  <span>{currentPO.noPO}</span>
+                                  <span className="font-sans text-slate-500 font-normal">(@ {currentPO.vendorTujuan || 'CMT'})</span>
+                                </div>
+                              </div>
+                              {(() => {
+                                const targetPcs = currentPO.totalPcs || currentPO.items.reduce((s, i) => s + (Number(i.qty) || 0), 0);
+                                const delivPcs = getPODeliveredPcs(currentPO.noPO, currentPO.id);
+                                const draftPcs = getPODraftDeliveredPcs(currentPO.noPO, currentPO.id, editingDraftIndex);
+                                const remPcs = Math.max(0, targetPcs - delivPcs - draftPcs);
+
+                                return (
+                                  <div className="flex items-center gap-3 text-xs">
+                                    <div className="text-right">
+                                      <span className="text-[10px] text-slate-400 block font-medium">Target Kontrak</span>
+                                      <strong className="text-slate-800">{targetPcs} Pcs</strong>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-[10px] text-slate-400 block font-medium">Sudah Terkirim</span>
+                                      <strong className="text-blue-600">{delivPcs + draftPcs} Pcs</strong>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-[10px] text-slate-400 block font-medium">Sisa Belum Kirim</span>
+                                      <strong className="text-emerald-700">{remPcs} Pcs</strong>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+
+                            {/* Article Selector if PO has multiple items */}
+                            {currentPO.items && currentPO.items.length > 1 && (
+                              <div className="space-y-1.5 pt-1">
+                                <label className="text-[11px] font-bold text-slate-700 block">
+                                  Pilih Artikel dalam PO ini ({currentPO.items.length} Artikel):
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                  {currentPO.items.map((it, idx) => {
+                                    const isSelected = selectedPOItemIndex === idx;
+                                    return (
+                                      <button
+                                        key={it.id || idx}
+                                        type="button"
+                                        onClick={() => selectPOItem(idx)}
+                                        className={`p-2 rounded-lg text-left border transition text-xs font-bold flex items-center justify-between gap-1.5 cursor-pointer ${
+                                          isSelected
+                                            ? 'bg-blue-50 border-blue-500 text-blue-900 ring-2 ring-blue-200'
+                                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                                        }`}
+                                      >
+                                        <div className="truncate">
+                                          <div className="truncate">{it.namaProduk}</div>
+                                          <div className="text-[10px] font-normal text-slate-400">
+                                            {it.warna ? `${it.warna} • ` : ''}{it.qty} pcs
+                                          </div>
+                                        </div>
+                                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Form Input fields */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                                  Nama Produk / Artikel: <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={poArticleName}
+                                  onChange={(e) => setPoArticleName(e.target.value)}
+                                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-800 outline-none text-xs uppercase"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                                  Vendor CMT / Penjahit: <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={poVendor}
+                                  onChange={(e) => setPoVendor(e.target.value)}
+                                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-800 outline-none text-xs"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                                  Bahan / Kain (Opsional):
+                                </label>
+                                <input
+                                  type="text"
+                                  value={poJenisKain}
+                                  onChange={(e) => setPoJenisKain(e.target.value)}
+                                  placeholder="Contoh: Poly Taslan / Parasut"
+                                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-800 outline-none text-xs"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Size Inputs Grid for PO */}
+                        <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span className="font-bold text-slate-800 text-xs">
+                              2. Masukkan Kuantitas Ukuran Kirim ({poArticleName || 'Artikel PO'}):
+                            </span>
+                            <span className="font-bold text-blue-600 text-xs">
+                              Subtotal Artikel Ini: {currentSendingPcs} Pcs
+                            </span>
+                          </div>
+
+                          {/* Ukuran Seri Huruf */}
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                              Ukuran Seri Huruf (S - 2XL)
+                            </div>
+                            <div className="grid grid-cols-5 gap-2">
+                              {(['s', 'm', 'l', 'xl', 'xxl'] as (keyof SizeBreakdown)[]).map((sz) => {
+                                const val = qtySend[sz] || 0;
+                                return (
+                                  <div key={sz} className="space-y-1">
+                                    <div className="flex justify-between text-[10px]">
+                                      <span className="uppercase font-bold text-slate-700">Size {sz}</span>
+                                    </div>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={val === 0 ? '' : val}
+                                      placeholder="0"
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) =>
+                                        setQtySend({
+                                          ...qtySend,
+                                          [sz]: Number(e.target.value) || 0,
+                                        })
+                                      }
+                                      className={`w-full p-2 border rounded-lg font-bold text-center outline-none text-xs transition ${
+                                        val > 0
+                                          ? 'bg-blue-50 border-blue-400 text-blue-900 font-extrabold'
+                                          : 'bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-400 text-slate-800'
+                                      }`}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Ukuran Seri Angka */}
+                          <div className="pt-2 border-t border-slate-100">
+                            <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                              Ukuran Anak - Seri Angka (4 - 16)
+                            </div>
+                            <div className="grid grid-cols-7 gap-1.5">
+                              {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                                const val = qtySend[sz] || 0;
+                                return (
+                                  <div key={sz} className="space-y-1">
+                                    <div className="text-[9px] text-center font-bold text-slate-600 truncate">
+                                      {sz.replace('anak', 'A')}
+                                    </div>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={val === 0 ? '' : val}
+                                      placeholder="0"
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) =>
+                                        setQtySend({
+                                          ...qtySend,
+                                          [sz]: Number(e.target.value) || 0,
+                                        })
+                                      }
+                                      className={`w-full p-1.5 border rounded-lg font-bold text-center outline-none text-xs transition ${
+                                        val > 0
+                                          ? 'bg-blue-50 border-blue-400 text-blue-900 font-extrabold'
+                                          : 'bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-400 text-slate-800'
+                                      }`}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Tombol Tambahkan / Perbarui Artikel PO */}
+                          <div className="flex justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={handleAddItemToDraft}
+                              disabled={currentSendingPcs <= 0 || !poArticleName.trim()}
+                              className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition ${
+                                currentSendingPcs <= 0 || !poArticleName.trim()
+                                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/25 cursor-pointer'
+                              }`}
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>
+                                {editingDraftIndex !== null
+                                  ? `Perbarui Artikel [${currentPO?.noPO}: ${poArticleName}] (${currentSendingPcs} Pcs)`
+                                  : `+ Tambahkan Artikel [${currentPO?.noPO}: ${poArticleName}] (${currentSendingPcs} Pcs) ke Surat Jalan`}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : cargoSourceMode === 'MANUAL' ? (
                   /* ======================================================== */
                   /* SUB-FORM NON-SPK / PO LAMA                               */
                   /* ======================================================== */

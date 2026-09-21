@@ -28,11 +28,12 @@ import {
   Eye,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { ProductionPO, ProductionPOItem, ProductionPOStatus, VendorFabricDeposit, FabricTransferNote, SizeBreakdown } from '../../types';
+import { ProductionPO, ProductionPOItem, ProductionPOStatus, VendorFabricDeposit, FabricTransferNote, SizeBreakdown, SuratJalan, SuratJalanItem } from '../../types';
 import { ProductionPOPrintModal } from './ProductionPOPrintModal';
 import { FabricTransferModal } from './FabricTransferModal';
 import { FabricTransferPrintModal } from './FabricTransferPrintModal';
 import { formatDateIndo } from '../../utils/formatters';
+import { resolveItemPONumber } from '../../utils/spkHelper';
 
 interface ItemFormState {
   id?: string;
@@ -62,6 +63,8 @@ export const SuratPOProduksiView: React.FC = () => {
     setPendingSpkPrefillFromPO,
     spkList,
     inboundRolls,
+    suratJalanList,
+    getSuratJalanItems,
   } = useApp();
 
   // Search & Filter State
@@ -81,6 +84,7 @@ export const SuratPOProduksiView: React.FC = () => {
   const [printingPO, setPrintingPO] = useState<ProductionPO | null>(null);
   const [deleteConfirmPO, setDeleteConfirmPO] = useState<ProductionPO | null>(null);
   const [statusMenuPO, setStatusMenuPO] = useState<ProductionPO | null>(null);
+  const [deliveryHistoryPO, setDeliveryHistoryPO] = useState<ProductionPO | null>(null);
 
   // Transfer & Consignment Modals State
   const [transferModalPO, setTransferModalPO] = useState<ProductionPO | null>(null);
@@ -530,6 +534,56 @@ export const SuratPOProduksiView: React.FC = () => {
     );
   }, [formVendor, vendorFabricDeposits]);
 
+  // Helper to compute live delivery fulfillment progress for a PO
+  const getPODeliveryStats = (po: ProductionPO) => {
+    const targetPcs = po.totalPcs || po.items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
+    let deliveredPcs = 0;
+    const relatedShipments: {
+      sj: SuratJalan;
+      item: SuratJalanItem;
+      pcs: number;
+    }[] = [];
+
+    suratJalanList.forEach((sj) => {
+      const items = getSuratJalanItems(sj);
+      items.forEach((it) => {
+        const itemPO = it.sourcePONumber || resolveItemPONumber(it, spkList, sj, productionPOs);
+        const matchesPO =
+          (itemPO && itemPO.trim().toUpperCase() === po.noPO.trim().toUpperCase()) ||
+          (it.sourcePOId && it.sourcePOId === po.id);
+
+        if (matchesPO) {
+          const pcs = it.totalPcs || 0;
+          deliveredPcs += pcs;
+          relatedShipments.push({ sj, item: it, pcs });
+        }
+      });
+    });
+
+    const remainingPcs = Math.max(0, targetPcs - deliveredPcs);
+    const percentage = targetPcs > 0 ? Math.min(100, Math.round((deliveredPcs / targetPcs) * 100)) : 0;
+
+    let deliveryStatus: 'BELUM_KIRIM' | 'SEBAGIAN' | 'LENGKAP' | 'OVER' = 'BELUM_KIRIM';
+    if (deliveredPcs === 0) {
+      deliveryStatus = 'BELUM_KIRIM';
+    } else if (deliveredPcs < targetPcs) {
+      deliveryStatus = 'SEBAGIAN';
+    } else if (deliveredPcs === targetPcs) {
+      deliveryStatus = 'LENGKAP';
+    } else {
+      deliveryStatus = 'OVER';
+    }
+
+    return {
+      targetPcs,
+      deliveredPcs,
+      remainingPcs,
+      percentage,
+      deliveryStatus,
+      relatedShipments,
+    };
+  };
+
   const getStatusBadgeUI = (status: string) => {
     switch (status) {
       case 'SELESAI':
@@ -792,7 +846,7 @@ export const SuratPOProduksiView: React.FC = () => {
                     <th className="py-3 px-3">Brand Pemesan</th>
                     <th className="py-3 px-3">Vendor / Penjahit</th>
                     <th className="py-3 px-3">Rincian Artikel</th>
-                    <th className="py-3 px-3 text-right">Total Qty</th>
+                    <th className="py-3 px-3 text-right">Total Qty & Progres Kirim</th>
                     <th className="py-3 px-3 text-center">Status</th>
                     <th className="py-3 px-4 text-right">Aksi</th>
                   </tr>
@@ -810,6 +864,8 @@ export const SuratPOProduksiView: React.FC = () => {
                     </tr>
                   ) : (
                     filteredPOs.map(po => {
+                      const stats = getPODeliveryStats(po);
+
                       return (
                         <tr key={po.id} className="hover:bg-slate-50/70 transition">
                           {/* No PO */}
@@ -876,9 +932,47 @@ export const SuratPOProduksiView: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* Total Qty */}
-                          <td className="py-3 px-3 text-right font-mono font-bold text-xs text-indigo-700">
-                            {Number(po.totalPcs).toLocaleString('id-ID')} Pcs
+                          {/* Total Target Qty & Progres Pengiriman */}
+                          <td className="py-3 px-3 text-right">
+                            <div className="font-mono font-bold text-xs text-slate-900">
+                              {Number(po.totalPcs).toLocaleString('id-ID')} Pcs
+                            </div>
+                            <div className="mt-1 space-y-1">
+                              {/* Progress bar */}
+                              <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    stats.deliveryStatus === 'LENGKAP'
+                                      ? 'bg-emerald-500'
+                                      : stats.deliveryStatus === 'OVER'
+                                      ? 'bg-purple-600'
+                                      : stats.deliveryStatus === 'SEBAGIAN'
+                                      ? 'bg-blue-600'
+                                      : 'bg-slate-300'
+                                  }`}
+                                  style={{ width: `${Math.min(100, stats.percentage)}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-end">
+                                {stats.deliveryStatus === 'LENGKAP' ? (
+                                  <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                                    ✓ Kirim Lengkap ({stats.deliveredPcs} Pcs)
+                                  </span>
+                                ) : stats.deliveryStatus === 'SEBAGIAN' ? (
+                                  <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                                    Kirim {stats.deliveredPcs} / {stats.targetPcs} Pcs ({stats.percentage}%)
+                                  </span>
+                                ) : stats.deliveryStatus === 'OVER' ? (
+                                  <span className="text-[9.5px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">
+                                    Over {stats.deliveredPcs} / {stats.targetPcs} Pcs
+                                  </span>
+                                ) : (
+                                  <span className="text-[9.5px] text-slate-400 font-medium">
+                                    Belum Kirim (0 Pcs)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </td>
 
                           {/* Status */}
@@ -895,6 +989,20 @@ export const SuratPOProduksiView: React.FC = () => {
                           {/* Actions */}
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
+
+                              {/* Tombol Riwayat Pengiriman Surat Jalan */}
+                              <button
+                                onClick={() => setDeliveryHistoryPO(po)}
+                                title={`Lihat Riwayat Pengiriman Surat Jalan (${stats.relatedShipments.length} Kiriman)`}
+                                className="p-1.5 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition cursor-pointer relative"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                                {stats.relatedShipments.length > 0 && (
+                                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white rounded-full text-[8px] font-bold flex items-center justify-center">
+                                    {stats.relatedShipments.length}
+                                  </span>
+                                )}
+                              </button>
 
                               <button
                                 onClick={() => setPrintingPO(po)}
@@ -1714,6 +1822,168 @@ export const SuratPOProduksiView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ============================================================ */}
+      {/* MODAL: RIWAYAT SURAT JALAN PENGIRIMAN PO                     */}
+      {/* ============================================================ */}
+      {deliveryHistoryPO && (() => {
+        const stats = getPODeliveryStats(deliveryHistoryPO);
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Truck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <span>Riwayat Pengiriman Surat Jalan</span>
+                      <span className="font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded text-xs border border-indigo-100">
+                        {deliveryHistoryPO.noPO}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Brand: <strong className="text-slate-700">{deliveryHistoryPO.brand}</strong> • CMT: {deliveryHistoryPO.vendorTujuan || '-'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDeliveryHistoryPO(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Progress Summary Cards */}
+              <div className="grid grid-cols-3 gap-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200 text-center text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium uppercase">Target Kontrak</span>
+                  <span className="text-slate-900 font-bold text-sm">{stats.targetPcs} Pcs</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium uppercase">Sudah Terkirim</span>
+                  <span className="text-blue-600 font-bold text-sm">{stats.deliveredPcs} Pcs</span>
+                  <div className="text-[10px] text-slate-500 font-medium">({stats.percentage}%)</div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium uppercase">Sisa Belum Kirim</span>
+                  <span className="text-emerald-700 font-bold text-sm">{stats.remainingPcs} Pcs</span>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    stats.deliveryStatus === 'LENGKAP'
+                      ? 'bg-emerald-500'
+                      : stats.deliveryStatus === 'OVER'
+                      ? 'bg-purple-600'
+                      : stats.deliveryStatus === 'SEBAGIAN'
+                      ? 'bg-blue-600'
+                      : 'bg-slate-300'
+                  }`}
+                  style={{ width: `${Math.min(100, stats.percentage)}%` }}
+                />
+              </div>
+
+              {/* Shipments List */}
+              <div className="space-y-2">
+                <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                  <span>Daftar Pengiriman ({stats.relatedShipments.length} Surat Jalan):</span>
+                  {stats.deliveryStatus === 'LENGKAP' && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      ✓ Pesanan PO Terpenuhi Lengkap
+                    </span>
+                  )}
+                </div>
+
+                {stats.relatedShipments.length === 0 ? (
+                  <div className="p-6 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-slate-400 text-xs">
+                    <Truck className="w-8 h-8 mx-auto text-slate-300 mb-1.5" />
+                    <p className="font-semibold text-slate-600">Belum ada pengiriman untuk PO ini.</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Surat Jalan pengiriman dapat dibuat di menu Outbound Surat Jalan dengan memilih tab "Dari PO Brand".
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 bg-white">
+                    {stats.relatedShipments.map((shipment, sIdx) => {
+                      const { sj, item, pcs } = shipment;
+                      return (
+                        <div key={sIdx} className="p-3 hover:bg-slate-50/70 transition space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-indigo-700 text-xs">
+                                {sj.noSuratJalan}
+                              </span>
+                              <span className="text-[11px] text-slate-500">
+                                ({formatDateIndo(sj.tanggal ? String(sj.tanggal).split('T')[0] : '')})
+                              </span>
+                              {sj.status === 'VERIFIED' && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  ✓ Diterima Brand
+                                </span>
+                              )}
+                              {sj.status === 'DISCREPANCY' && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                  ⚠️ Selisih
+                                </span>
+                              )}
+                            </div>
+                            <strong className="text-sm font-bold text-indigo-600">
+                              {pcs} Pcs
+                            </strong>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-600">
+                            <div>
+                              <strong className="text-slate-900">{item.produk}</strong>
+                              {item.jenisKain && <span className="text-slate-400"> • {item.jenisKain}</span>}
+                              {item.vendor && <span className="text-slate-400"> • @ {item.vendor}</span>}
+                            </div>
+                            <div className="text-slate-400 text-[10px]">
+                              Driver: {sj.driverName || '-'} ({sj.nomorKendaraan || '-'})
+                            </div>
+                          </div>
+
+                          {/* Size breakdown */}
+                          {item.qtyDelivered && (
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {Object.entries(item.qtyDelivered).map(([sz, q]) => {
+                                if (q === 0) return null;
+                                return (
+                                  <span key={sz} className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded text-[9px] font-semibold">
+                                    {sz.toUpperCase()}: {q}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryHistoryPO(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ============================================================ */}
       {/* MODAL: FORM TRANSFER SISA KAIN ANTAR-KONVEKSI */}
