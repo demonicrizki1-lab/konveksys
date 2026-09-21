@@ -1,4 +1,4 @@
-import { SPKProductItem, SizeBreakdown, SuratJalan, SPKCutting, ProductionPO } from '../types';
+import { SPKProductItem, SizeBreakdown, SuratJalan, SPKCutting, ProductionPO, FobPurchaseOrder } from '../types';
 
 export const emptySizeBreakdown: SizeBreakdown = {
   s: 0,
@@ -19,6 +19,51 @@ export const SIZE_KEYS = [
   's', 'm', 'l', 'xl', 'xxl',
   'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16',
 ] as (keyof SizeBreakdown)[];
+
+/**
+ * Mencocokkan nama brand dengan toleransi format (misal MONTURE vs MONTURE OUTDOOR)
+ */
+export function matchBrand(b1?: string | null, b2?: string | null): boolean {
+  if (!b1 || !b2) return false;
+  const s1 = b1.trim().toUpperCase();
+  const s2 = b2.trim().toUpperCase();
+  if (s1 === s2) return true;
+  if (s1.includes(s2) || s2.includes(s1)) return true;
+  const words1 = s1.split(/\s+/);
+  const words2 = s2.split(/\s+/);
+  return words1.some((w) => words2.includes(w) && w.length >= 3);
+}
+
+/**
+ * Mengubah array item order FOB menjadi SizeBreakdown untuk surat jalan
+ */
+export function convertFobItemsToSizeBreakdown(items: any[] = []): SizeBreakdown {
+  const sb: SizeBreakdown = { ...emptySizeBreakdown };
+  if (!Array.isArray(items)) return sb;
+
+  items.forEach((it) => {
+    const rawSize = (it.size || '').trim().toUpperCase();
+    const qty = Number(it.qty) || 0;
+    if (rawSize === 'S') sb.s += qty;
+    else if (rawSize === 'M') sb.m += qty;
+    else if (rawSize === 'L') sb.l += qty;
+    else if (rawSize === 'XL') sb.xl += qty;
+    else if (rawSize === '2XL' || rawSize === 'XXL') sb.xxl += qty;
+    else if (rawSize === '3XL' || rawSize === 'XXXL' || rawSize === '4XL' || rawSize === 'XXXXL') {
+      sb.xxl += qty;
+    } else if (rawSize === '4' || rawSize === 'ANAK 4' || rawSize === 'ANAK4') sb.anak4 += qty;
+    else if (rawSize === '6' || rawSize === 'ANAK 6' || rawSize === 'ANAK6') sb.anak6 += qty;
+    else if (rawSize === '8' || rawSize === 'ANAK 8' || rawSize === 'ANAK8') sb.anak8 += qty;
+    else if (rawSize === '10' || rawSize === 'ANAK 10' || rawSize === 'ANAK10') sb.anak10 += qty;
+    else if (rawSize === '12' || rawSize === 'ANAK 12' || rawSize === 'ANAK12') sb.anak12 += qty;
+    else if (rawSize === '14' || rawSize === 'ANAK 14' || rawSize === 'ANAK14') sb.anak14 += qty;
+    else if (rawSize === '16' || rawSize === 'ANAK 16' || rawSize === 'ANAK16') sb.anak16 += qty;
+    else {
+      sb.l += qty;
+    }
+  });
+  return sb;
+}
 
 /**
  * Memisahkan artikel produk SPK jika merupakan produk kombinasi (Combo) yang digabung dengan tanda "+",
@@ -426,7 +471,8 @@ export function resolveItemPONumber(
     vendor?: string;
     items?: any[];
   } | null,
-  productionPOs: ProductionPO[] = []
+  productionPOs: ProductionPO[] = [],
+  fobOrders: FobPurchaseOrder[] = []
 ): string | null {
   if (!item) return null;
 
@@ -460,7 +506,7 @@ export function resolveItemPONumber(
     const brandName = item.brand || sjFallback?.brand;
     linkedSPK = spkList.find(
       (s) =>
-        (!brandName || s.brand?.trim().toUpperCase() === brandName.trim().toUpperCase()) &&
+        (!brandName || matchBrand(s.brand, brandName)) &&
         (s.items?.some((p) => p.produk?.trim().toUpperCase() === itemProd) ||
          s.produk?.trim().toUpperCase().includes(itemProd))
     );
@@ -490,7 +536,7 @@ export function resolveItemPONumber(
   if (itemProd && spkList.length > 0) {
     const brandName = item.brand || sjFallback?.brand;
     for (const spk of spkList) {
-      if (brandName && spk.brand?.trim().toUpperCase() !== brandName.trim().toUpperCase()) continue;
+      if (brandName && !matchBrand(spk.brand, brandName)) continue;
       const matched = spk.items?.find(
         (p) => p.produk?.trim().toUpperCase() === itemProd && p.sourcePONumber
       );
@@ -505,7 +551,7 @@ export function resolveItemPONumber(
     const brandName = item.brand || sjFallback?.brand;
     const matchedPO = productionPOs.find(
       (po) =>
-        (!brandName || po.brand?.trim().toUpperCase() === brandName.trim().toUpperCase()) &&
+        (!brandName || matchBrand(po.brand, brandName)) &&
         po.items?.some((it) => it.namaProduk?.trim().toUpperCase() === itemProd)
     );
     if (matchedPO?.noPO) {
@@ -513,7 +559,21 @@ export function resolveItemPONumber(
     }
   }
 
-  // 8. Fallback to first item in sj if any
+  // 8. Check fobOrders (HPP & Penawaran -> Order Masuk PO)
+  if (fobOrders && fobOrders.length > 0 && itemProd) {
+    const brandName = item.brand || sjFallback?.brand;
+    const matchedFOB = fobOrders.find(
+      (fob) =>
+        (!brandName || matchBrand(fob.brand, brandName)) &&
+        ((fob.skuInduk && itemProd.includes(fob.skuInduk.trim().toUpperCase())) ||
+         fob.items?.some((it) => it.sku && itemProd.includes(it.sku.trim().toUpperCase())))
+    );
+    if (matchedFOB?.poNumber) {
+      return matchedFOB.poNumber;
+    }
+  }
+
+  // 9. Fallback to first item in sj if any
   if (sjFallback?.items?.[0]?.sourcePONumber) {
     return sjFallback.items[0].sourcePONumber;
   }

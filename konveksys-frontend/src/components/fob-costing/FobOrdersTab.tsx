@@ -17,9 +17,14 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Truck,
+  X,
+  Package,
 } from 'lucide-react';
-import { FobPurchaseOrder, FobOrderStatus } from '../../types';
+import { useApp } from '../../context/AppContext';
+import { FobPurchaseOrder, FobOrderStatus, SuratJalanItem } from '../../types';
 import { formatRp, formatDateIndo } from '../../utils/formatters';
+import { matchBrand } from '../../utils/spkHelper';
 
 interface FobOrdersTabProps {
   orders: FobPurchaseOrder[];
@@ -38,9 +43,54 @@ export const FobOrdersTab: React.FC<FobOrdersTabProps> = ({
   onUpdateStatus,
   onPrintOrder,
 }) => {
+  const { suratJalanList, getSuratJalanItems } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedTrackingOrder, setSelectedTrackingOrder] = useState<FobPurchaseOrder | null>(null);
+
+  // Helper to compute shipment history and total delivered pcs for a FOB order
+  const getFobOrderShipments = (order: FobPurchaseOrder) => {
+    const shipments: Array<{
+      sjId: string;
+      noSuratJalan: string;
+      tanggal: string;
+      driverName: string;
+      nomorKendaraan: string;
+      pcs: number;
+      status: string;
+      items: SuratJalanItem[];
+    }> = [];
+
+    suratJalanList.forEach((sj) => {
+      const items = getSuratJalanItems(sj);
+      const matchedItems = items.filter(
+        (it) =>
+          it.sourcePONumber === order.poNumber ||
+          it.sourcePOId === order.id ||
+          (it.produk &&
+            order.skuInduk &&
+            it.produk.trim().toUpperCase().includes(order.skuInduk.trim().toUpperCase()) &&
+            matchBrand(it.brand || sj.brand, order.brand))
+      );
+
+      if (matchedItems.length > 0) {
+        const pcs = matchedItems.reduce((s, it) => s + (it.totalPcs || 0), 0);
+        shipments.push({
+          sjId: sj.id,
+          noSuratJalan: sj.noSuratJalan,
+          tanggal: sj.tanggal,
+          driverName: sj.driverName,
+          nomorKendaraan: sj.nomorKendaraan,
+          pcs,
+          status: sj.status,
+          items: matchedItems,
+        });
+      }
+    });
+
+    return shipments;
+  };
 
   // Pagination (Default 10)
   const [currentPage, setCurrentPage] = useState(1);
@@ -289,12 +339,54 @@ export const FobOrdersTab: React.FC<FobOrdersTabProps> = ({
                         </div>
                       </td>
 
-                      {/* Total Qty */}
+                      {/* Total Qty & Progres Kirim */}
                       <td className="py-3 px-4 text-center">
-                        <div className="font-black text-slate-900">{order.totalQty} Pcs</div>
-                        <div className="text-[10.5px] text-slate-400">
-                          @ {formatRp(order.hargaRataRata)}
-                        </div>
+                        {(() => {
+                          const shipments = getFobOrderShipments(order);
+                          const deliveredPcs = shipments.reduce((s, sh) => s + sh.pcs, 0);
+                          const percentDeliv =
+                            order.totalQty > 0
+                              ? Math.min(100, Math.round((deliveredPcs / order.totalQty) * 100))
+                              : 0;
+
+                          return (
+                            <div>
+                              <div className="font-black text-slate-900">{order.totalQty} Pcs</div>
+                              <div className="text-[10px] text-slate-400 mb-1">
+                                @ {formatRp(order.hargaRataRata)}
+                              </div>
+
+                              {/* Live Delivery Progress Bar */}
+                              <div className="w-full max-w-[120px] mx-auto space-y-0.5">
+                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      percentDeliv >= 100
+                                        ? 'bg-emerald-500'
+                                        : deliveredPcs > 0
+                                        ? 'bg-blue-500'
+                                        : 'bg-transparent'
+                                    }`}
+                                    style={{ width: `${percentDeliv}%` }}
+                                  />
+                                </div>
+                                <div className="text-[9.5px]">
+                                  {deliveredPcs === 0 ? (
+                                    <span className="text-slate-400">Belum Kirim (0%)</span>
+                                  ) : percentDeliv >= 100 ? (
+                                    <span className="font-black text-emerald-600 flex items-center justify-center gap-0.5">
+                                      <CheckCircle2 className="w-2.5 h-2.5" /> Lunas Kirim
+                                    </span>
+                                  ) : (
+                                    <span className="font-bold text-blue-600">
+                                      Terkirim {deliveredPcs} Pcs ({percentDeliv}%)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Grand Total */}
@@ -352,33 +444,54 @@ export const FobOrdersTab: React.FC<FobOrdersTabProps> = ({
 
                       {/* Actions */}
                       <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => onPrintOrder(order)}
-                            className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition cursor-pointer"
-                            title="Cetak Purchase Order (A4 / PDF)"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => onEditOrder(order)}
-                            className="p-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer"
-                            title="Edit Data PO"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (confirm(`Apakah Anda yakin ingin menghapus PO ${order.poNumber}?`)) {
-                                await onDeleteOrder(order.id);
-                              }
-                            }}
-                            className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition cursor-pointer"
-                            title="Hapus PO"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {(() => {
+                          const shipments = getFobOrderShipments(order);
+                          return (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setSelectedTrackingOrder(order)}
+                                className={`p-1.5 rounded-lg transition cursor-pointer relative ${
+                                  shipments.length > 0
+                                    ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                }`}
+                                title="Lihat Riwayat Surat Jalan / Pengiriman"
+                              >
+                                <Truck className="w-4 h-4" />
+                                {shipments.length > 0 && (
+                                  <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[9px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
+                                    {shipments.length}
+                                  </span>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => onPrintOrder(order)}
+                                className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition cursor-pointer"
+                                title="Cetak Purchase Order (A4 / PDF)"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => onEditOrder(order)}
+                                className="p-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                                title="Edit Data PO"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (confirm(`Apakah Anda yakin ingin menghapus PO ${order.poNumber}?`)) {
+                                    await onDeleteOrder(order.id);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition cursor-pointer"
+                                title="Hapus PO"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   );
@@ -442,6 +555,146 @@ export const FobOrdersTab: React.FC<FobOrdersTabProps> = ({
           </div>
         )}
       </div>
+
+      {/* 4. MODAL RIWAYAT PENGIRIMAN SURAT JALAN UNTUK PO INI */}
+      {selectedTrackingOrder && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                  <Truck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Riwayat Pengiriman Surat Jalan (SJ)
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+                    <span className="font-mono font-bold text-indigo-600">{selectedTrackingOrder.poNumber}</span>
+                    <span>• {selectedTrackingOrder.brand}</span>
+                    <span>• {selectedTrackingOrder.skuInduk}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedTrackingOrder(null)}
+                className="w-8 h-8 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-600 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            {(() => {
+              const shipments = getFobOrderShipments(selectedTrackingOrder);
+              const deliveredPcs = shipments.reduce((s, sh) => s + sh.pcs, 0);
+              const remainingPcs = Math.max(0, selectedTrackingOrder.totalQty - deliveredPcs);
+              const percent =
+                selectedTrackingOrder.totalQty > 0
+                  ? Math.min(100, Math.round((deliveredPcs / selectedTrackingOrder.totalQty) * 100))
+                  : 0;
+
+              return (
+                <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Target Kontrak</span>
+                      <strong className="text-sm font-black text-slate-800">{selectedTrackingOrder.totalQty} Pcs</strong>
+                    </div>
+                    <div className="bg-blue-50 p-3 rounded-xl border border-blue-200 text-center">
+                      <span className="text-[10px] text-blue-600 font-bold uppercase block">Sudah Terkirim</span>
+                      <strong className="text-sm font-black text-blue-700">{deliveredPcs} Pcs</strong>
+                    </div>
+                    <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-center">
+                      <span className="text-[10px] text-amber-600 font-bold uppercase block">Sisa Belum Kirim</span>
+                      <strong className="text-sm font-black text-amber-700">{remainingPcs} Pcs</strong>
+                    </div>
+                    <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-200 text-center">
+                      <span className="text-[10px] text-indigo-600 font-bold uppercase block">Progres Pemenuhan</span>
+                      <strong className="text-sm font-black text-indigo-700">{percent}%</strong>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="space-y-1">
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          percent >= 100 ? 'bg-emerald-500' : 'bg-blue-500'
+                        }`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Shipment Table / List */}
+                  {shipments.length === 0 ? (
+                    <div className="p-6 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center space-y-2">
+                      <Package className="w-8 h-8 text-slate-300 mx-auto" />
+                      <p className="font-bold text-slate-700 text-xs">
+                        Belum Ada Pengiriman Surat Jalan Tercatat untuk {selectedTrackingOrder.poNumber}
+                      </p>
+                      <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                        Anda dapat menerbitkan Surat Jalan pengiriman di menu <strong>Outbound Surat Jalan</strong> dengan memilih tab <strong>"2. Dari PO Brand / FOB"</strong>.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                        <span>Daftar Trip Pengiriman ({shipments.length} Surat Jalan):</span>
+                      </div>
+                      <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full text-left text-xs text-slate-700">
+                          <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b border-slate-200">
+                            <tr>
+                              <th className="p-3">No Surat Jalan</th>
+                              <th className="p-3">Tgl Kirim</th>
+                              <th className="p-3">Driver & Armada</th>
+                              <th className="p-3 text-center">Muatan Pcs</th>
+                              <th className="p-3 text-center">Status SJ</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {shipments.map((sh, sIdx) => (
+                              <tr key={sh.sjId || sIdx} className="hover:bg-slate-50/70 transition">
+                                <td className="p-3 font-mono font-bold text-indigo-700">{sh.noSuratJalan}</td>
+                                <td className="p-3 text-slate-600">{formatDateIndo(sh.tanggal)}</td>
+                                <td className="p-3 text-slate-700">
+                                  <div>{sh.driverName || '-'}</div>
+                                  <div className="text-[10px] text-slate-400">{sh.nomorKendaraan || '-'}</div>
+                                </td>
+                                <td className="p-3 text-center font-bold text-blue-600">{sh.pcs} Pcs</td>
+                                <td className="p-3 text-center">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    {sh.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedTrackingOrder(null)}
+                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

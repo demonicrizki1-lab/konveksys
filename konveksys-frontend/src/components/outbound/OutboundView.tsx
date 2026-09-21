@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
-import { SuratJalan, SuratJalanItem, SizeBreakdown, SPKCutting } from '../../types';
+import { SuratJalan, SuratJalanItem, SizeBreakdown, SPKCutting, ProductionPO, FobPurchaseOrder } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
-import { resolveItemPONumber } from '../../utils/spkHelper';
+import { resolveItemPONumber, matchBrand, convertFobItemsToSizeBreakdown } from '../../utils/spkHelper';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Check,
   Edit2,
+  Zap,
 } from 'lucide-react';
 
 interface ArticleOption {
@@ -32,6 +33,30 @@ interface ArticleOption {
   vendor: string;
   sourcePOId?: string | null;
   sourcePONumber?: string | null;
+}
+
+export interface SelectablePOItem {
+  id: string;
+  namaProduk: string;
+  warna?: string | null;
+  size?: string | null;
+  qty: number;
+  bahanKain?: string | null;
+  sizeBreakdown?: SizeBreakdown;
+}
+
+export interface SelectablePO {
+  id: string;
+  sourceType: 'FOB' | 'PRODUCTION';
+  noPO: string;
+  internalId?: string | null;
+  brand: string;
+  vendorTujuan: string;
+  productName: string;
+  totalPcs: number;
+  fobOrder?: FobPurchaseOrder;
+  productionPO?: ProductionPO;
+  items: SelectablePOItem[];
 }
 
 const emptySizeBreakdown = (): SizeBreakdown => ({
@@ -90,6 +115,7 @@ export const OutboundView: React.FC = () => {
     getSuratJalanItems,
     spkList,
     productionPOs,
+    fobOrders,
     getSPKRemainingQty,
     userRole,
     activeBrand,
@@ -279,15 +305,110 @@ export const OutboundView: React.FC = () => {
     setQtySend(emptySizeBreakdown());
   };
 
-  // Active POs available for the selected brand
-  const activePOsForBrand = productionPOs.filter((po) => {
-    if (!po.brand) return false;
-    if (po.brand.trim().toUpperCase() !== selectedBrand.trim().toUpperCase()) return false;
-    if (editingSJ && draftItems.some((it) => it.sourcePOId === po.id || it.sourcePONumber === po.noPO)) return true;
-    return true;
-  });
+  // Function to build unified PO list for any brand (combines fobOrders & productionPOs)
+  const getActivePOs = useCallback(
+    (brandName: string): SelectablePO[] => {
+      const list: SelectablePO[] = [];
+      const cleanBrand = (brandName || '').trim().toUpperCase();
 
-  const currentPO = productionPOs.find((p) => p.id === selectedPOId) || activePOsForBrand[0];
+      // 1. Add from fobOrders (HPP & Penawaran -> Order Masuk (PO))
+      fobOrders.forEach((fob) => {
+        if (!fob.brand || !matchBrand(fob.brand, cleanBrand)) return;
+
+        const distinctColors: string[] = [];
+        fob.items?.forEach((it) => {
+          const col = (it.warna || '').trim().toUpperCase();
+          if (col && !distinctColors.includes(col)) distinctColors.push(col);
+        });
+
+        const poItems: SelectablePOItem[] = [];
+
+        // All variants combined
+        poItems.push({
+          id: `${fob.id}-all`,
+          namaProduk: fob.skuInduk || 'PRODUK FOB',
+          warna: distinctColors.length > 0 ? distinctColors.join(', ') : 'SEMUA WARNA',
+          qty: fob.totalQty,
+          bahanKain: fob.keterangan ? fob.keterangan.split('\n')[0].replace(/^[0-9.]+\s*/, '') : 'Kain FOB',
+          sizeBreakdown: convertFobItemsToSizeBreakdown(fob.items),
+        });
+
+        // Individual colors if multiple
+        if (distinctColors.length > 1) {
+          distinctColors.forEach((col) => {
+            const cItems = fob.items.filter((it) => (it.warna || '').trim().toUpperCase() === col);
+            const cQty = cItems.reduce((s, it) => s + (Number(it.qty) || 0), 0);
+            poItems.push({
+              id: `${fob.id}-col-${col}`,
+              namaProduk: `${fob.skuInduk} (${col})`,
+              warna: col,
+              qty: cQty,
+              bahanKain: 'Kain FOB',
+              sizeBreakdown: convertFobItemsToSizeBreakdown(cItems),
+            });
+          });
+        }
+
+        list.push({
+          id: fob.id,
+          sourceType: 'FOB',
+          noPO: fob.poNumber,
+          internalId: fob.internalId,
+          brand: fob.brand,
+          vendorTujuan: fob.vendor,
+          productName: fob.skuInduk,
+          totalPcs: fob.totalQty,
+          fobOrder: fob,
+          items: poItems,
+        });
+      });
+
+      // 2. Add from productionPOs (Surat PO Produksi CMT)
+      productionPOs.forEach((po) => {
+        if (!po.brand || !matchBrand(po.brand, cleanBrand)) return;
+
+        const poItems: SelectablePOItem[] = (po.items || []).map((it, idx) => {
+          let sb: SizeBreakdown | undefined = undefined;
+          if (it.ukuran) {
+            sb = convertFobItemsToSizeBreakdown([{ size: it.ukuran, qty: it.qty }]);
+          }
+          return {
+            id: it.id || `${po.id}-it-${idx}`,
+            namaProduk: it.namaProduk,
+            warna: it.warna || undefined,
+            size: it.ukuran || undefined,
+            qty: it.qty,
+            bahanKain: it.bahanKain || undefined,
+            sizeBreakdown: sb,
+          };
+        });
+
+        list.push({
+          id: po.id,
+          sourceType: 'PRODUCTION',
+          noPO: po.noPO,
+          internalId: undefined,
+          brand: po.brand,
+          vendorTujuan: po.vendorTujuan,
+          productName: po.items?.map((i) => i.namaProduk).filter(Boolean).join(', ') || 'Produk PO',
+          totalPcs: po.totalPcs || po.items.reduce((s, i) => s + (Number(i.qty) || 0), 0),
+          productionPO: po,
+          items: poItems,
+        });
+      });
+
+      return list;
+    },
+    [fobOrders, productionPOs]
+  );
+
+  // Active POs available for the selected brand
+  const activePOsForBrand = useMemo(() => {
+    return getActivePOs(selectedBrand);
+  }, [getActivePOs, selectedBrand]);
+
+  const currentPO: SelectablePO | undefined =
+    activePOsForBrand.find((p) => p.id === selectedPOId) || activePOsForBrand[0];
 
   // Helper to get total delivered pieces for a PO across all Surat Jalan
   const getPODeliveredPcs = (poNo?: string | null, poId?: string | null) => {
@@ -297,7 +418,7 @@ export const OutboundView: React.FC = () => {
       if (editingSJ && sj.id === editingSJ.id) return;
       const items = getSuratJalanItems(sj);
       items.forEach((it) => {
-        const itemPoNo = it.sourcePONumber || resolveItemPONumber(it, spkList, sj, productionPOs);
+        const itemPoNo = it.sourcePONumber || resolveItemPONumber(it, spkList, sj, productionPOs, fobOrders);
         if ((poNo && itemPoNo === poNo) || (poId && it.sourcePOId === poId)) {
           delivered += it.totalPcs || 0;
         }
@@ -320,18 +441,23 @@ export const OutboundView: React.FC = () => {
   const selectPO = (poId: string, itemIdx = 0) => {
     setSelectedPOId(poId);
     setSelectedPOItemIndex(itemIdx);
-    const po = productionPOs.find((p) => p.id === poId);
+    const po = activePOsForBrand.find((p) => p.id === poId);
     if (po) {
       const it = po.items && po.items[itemIdx] ? po.items[itemIdx] : po.items?.[0];
-      setPoArticleName(it?.namaProduk || (po.items?.map((i) => i.namaProduk).join(', ') || ''));
+      setPoArticleName(it?.namaProduk || po.productName);
       setPoVendor(po.vendorTujuan || (vendors && vendors[0] ? vendors[0].name : ''));
       setPoJenisKain(it?.bahanKain || '');
+      if (it?.sizeBreakdown) {
+        setQtySend({ ...it.sizeBreakdown });
+      } else {
+        setQtySend(emptySizeBreakdown());
+      }
     } else {
       setPoArticleName('');
       setPoVendor('');
       setPoJenisKain('');
+      setQtySend(emptySizeBreakdown());
     }
-    setQtySend(emptySizeBreakdown());
   };
 
   const selectPOItem = (itemIdx: number) => {
@@ -340,6 +466,9 @@ export const OutboundView: React.FC = () => {
       const it = currentPO.items[itemIdx];
       setPoArticleName(it.namaProduk);
       if (it.bahanKain) setPoJenisKain(it.bahanKain);
+      if (it.sizeBreakdown) {
+        setQtySend({ ...it.sizeBreakdown });
+      }
     }
   };
 
@@ -347,7 +476,12 @@ export const OutboundView: React.FC = () => {
   const handleOpenCreate = () => {
     setEditingSJ(null);
     setEditingDraftIndex(null);
-    const initialBrand = userRole === 'BRAND' ? activeBrand : 'NAMI';
+    const initialBrand =
+      userRole === 'BRAND'
+        ? activeBrand
+        : brandFilter !== 'ALL'
+        ? brandFilter
+        : brands.find((b) => matchBrand(b.name, 'MONTURE'))?.name || brands[0]?.name || 'MONTURE OUTDOOR';
     setSelectedBrand(initialBrand);
 
     const availableSpks = spkList.filter((s) => s.brand === initialBrand && s.status !== 'COMPLETED');
@@ -361,7 +495,7 @@ export const OutboundView: React.FC = () => {
       setCustomJenisKain('');
     }
 
-    const availablePos = productionPOs.filter((p) => p.brand?.trim().toUpperCase() === initialBrand.trim().toUpperCase());
+    const availablePos = getActivePOs(initialBrand);
     if (availablePos.length > 0) {
       selectPO(availablePos[0].id, 0);
     } else {
@@ -369,6 +503,7 @@ export const OutboundView: React.FC = () => {
       setPoArticleName('');
       setPoVendor('');
       setPoJenisKain('');
+      setQtySend(emptySizeBreakdown());
     }
 
     setDriverName('Pak Wardi');
@@ -417,7 +552,7 @@ export const OutboundView: React.FC = () => {
       setCustomJenisKain('');
     }
 
-    const availablePos = productionPOs.filter((p) => p.brand?.trim().toUpperCase() === sj.brand.trim().toUpperCase());
+    const availablePos = getActivePOs(sj.brand);
     if (availablePos.length > 0) {
       selectPO(availablePos[0].id, 0);
     } else {
@@ -425,6 +560,7 @@ export const OutboundView: React.FC = () => {
       setPoArticleName('');
       setPoVendor('');
       setPoJenisKain('');
+      setQtySend(emptySizeBreakdown());
     }
 
     setCargoSourceMode('SPK');
@@ -449,7 +585,7 @@ export const OutboundView: React.FC = () => {
       setCustomJenisKain('');
     }
 
-    const availablePos = productionPOs.filter((p) => p.brand?.trim().toUpperCase() === brand.trim().toUpperCase());
+    const availablePos = getActivePOs(brand);
     if (availablePos.length > 0) {
       selectPO(availablePos[0].id, 0);
     } else {
@@ -457,6 +593,7 @@ export const OutboundView: React.FC = () => {
       setPoArticleName('');
       setPoVendor('');
       setPoJenisKain('');
+      setQtySend(emptySizeBreakdown());
     }
 
     // PERBAIKAN: Jangan hapus draftItems! Pertahankan muatan yang sudah ditambahkan dari brand lain
@@ -1371,7 +1508,7 @@ export const OutboundView: React.FC = () => {
                       <div className="p-4 bg-white border border-dashed border-blue-200 rounded-xl text-center text-slate-500">
                         <p className="font-bold text-slate-700">Tidak ada PO Brand yang ditemukan untuk {selectedBrand}.</p>
                         <p className="text-xs text-slate-400 mt-1">
-                          Pastikan sudah membuat Surat PO Produksi untuk brand ini, atau gunakan tab "1. Dari SPK Cutting" atau "3. Non-SPK".
+                          Pastikan sudah membuat Order Masuk (PO) di menu <strong>HPP & Penawaran</strong> atau Surat PO Produksi untuk brand ini, atau gunakan tab "1. Dari SPK Cutting" atau "3. Non-SPK".
                         </p>
                       </div>
                     ) : (
@@ -1382,19 +1519,19 @@ export const OutboundView: React.FC = () => {
                             1. Pilih Nomor PO Pesanan Brand ({activePOsForBrand.length} PO Terdaftar):
                           </label>
                           <select
-                            value={selectedPOId}
+                            value={currentPO ? currentPO.id : ''}
                             onChange={(e) => selectPO(e.target.value, 0)}
                             className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold font-mono text-slate-800 outline-none text-xs"
                           >
                             {activePOsForBrand.map((po) => {
-                              const targetPcs = po.totalPcs || po.items.reduce((s, i) => s + (Number(i.qty) || 0), 0);
+                              const targetPcs = po.totalPcs;
                               const delivPcs = getPODeliveredPcs(po.noPO, po.id);
                               const draftPcs = getPODraftDeliveredPcs(po.noPO, po.id, editingDraftIndex);
                               const remPcs = Math.max(0, targetPcs - delivPcs - draftPcs);
-                              const prods = po.items?.map((i) => i.namaProduk).filter(Boolean).join(', ') || 'Produk';
+                              const typeBadge = po.sourceType === 'FOB' ? '[PO FOB]' : '[PO CMT]';
                               return (
                                 <option key={po.id} value={po.id}>
-                                  {po.noPO} - {prods} ({targetPcs} Pcs • Sisa: {remPcs} Pcs) • CMT: {po.vendorTujuan || '-'}
+                                  {typeBadge} {po.noPO} - {po.productName} ({targetPcs} Pcs • Sisa: {remPcs} Pcs) • CMT: {po.vendorTujuan || '-'}
                                 </option>
                               );
                             })}
@@ -1406,14 +1543,28 @@ export const OutboundView: React.FC = () => {
                           <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2.5">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
                               <div>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase block">Nomor PO & Vendor CMT:</span>
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">
+                                    Nomor PO & Vendor CMT:
+                                  </span>
+                                  <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
+                                    currentPO.sourceType === 'FOB'
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  }`}>
+                                    {currentPO.sourceType === 'FOB' ? 'FOB Order Masuk' : 'PO Jahit CMT'}
+                                  </span>
+                                </div>
                                 <div className="font-bold font-mono text-indigo-700 text-xs flex items-center gap-2">
                                   <span>{currentPO.noPO}</span>
+                                  {currentPO.internalId && (
+                                    <span className="text-slate-400 font-normal">({currentPO.internalId})</span>
+                                  )}
                                   <span className="font-sans text-slate-500 font-normal">(@ {currentPO.vendorTujuan || 'CMT'})</span>
                                 </div>
                               </div>
                               {(() => {
-                                const targetPcs = currentPO.totalPcs || currentPO.items.reduce((s, i) => s + (Number(i.qty) || 0), 0);
+                                const targetPcs = currentPO.totalPcs;
                                 const delivPcs = getPODeliveredPcs(currentPO.noPO, currentPO.id);
                                 const draftPcs = getPODraftDeliveredPcs(currentPO.noPO, currentPO.id, editingDraftIndex);
                                 const remPcs = Math.max(0, targetPcs - delivPcs - draftPcs);
@@ -1441,7 +1592,7 @@ export const OutboundView: React.FC = () => {
                             {currentPO.items && currentPO.items.length > 1 && (
                               <div className="space-y-1.5 pt-1">
                                 <label className="text-[11px] font-bold text-slate-700 block">
-                                  Pilih Artikel dalam PO ini ({currentPO.items.length} Artikel):
+                                  Pilih Varian / Artikel dalam PO ini ({currentPO.items.length} Opsi):
                                 </label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                   {currentPO.items.map((it, idx) => {
@@ -1515,10 +1666,34 @@ export const OutboundView: React.FC = () => {
 
                         {/* Size Inputs Grid for PO */}
                         <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-3">
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                            <span className="font-bold text-slate-800 text-xs">
-                              2. Masukkan Kuantitas Ukuran Kirim ({poArticleName || 'Artikel PO'}):
-                            </span>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-slate-800 text-xs">
+                                2. Kuantitas Ukuran Kirim ({poArticleName || 'Artikel PO'}):
+                              </span>
+                              {currentPO && currentPO.items && currentPO.items[selectedPOItemIndex]?.sizeBreakdown && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const sb = currentPO.items[selectedPOItemIndex].sizeBreakdown;
+                                    if (sb) setQtySend({ ...sb });
+                                  }}
+                                  className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[10px] font-bold cursor-pointer transition flex items-center gap-1"
+                                  title="Muat kuantiti ukuran sesuai kontrak PO"
+                                >
+                                  <Zap className="w-3 h-3" />
+                                  <span>Isi Sesuai PO</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setQtySend(emptySizeBreakdown())}
+                                className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 text-[10px] font-medium cursor-pointer transition"
+                                title="Kosongkan kuantiti ukuran"
+                              >
+                                Reset 0
+                              </button>
+                            </div>
                             <span className="font-bold text-blue-600 text-xs">
                               Subtotal Artikel Ini: {currentSendingPcs} Pcs
                             </span>
