@@ -328,7 +328,7 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
                       <td className="py-2.5 px-3 text-slate-600">{m.supplier || '-'}</td>
                       <td className="py-2.5 px-3 text-center">
                         <button
-                          onClick={() => onDeleteMaterial(m.id)}
+                          onClick={() => onDeleteMaterial(m.id || m.kodeMaterial)}
                           className="p-1 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
                           title="Hapus Material"
                         >
@@ -497,7 +497,7 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
                       <td className="py-2.5 px-3 text-slate-600">{p.vendorCmt || '-'}</td>
                       <td className="py-2.5 px-3 text-center">
                         <button
-                          onClick={() => onDeleteProduct(p.id)}
+                          onClick={() => onDeleteProduct(p.id || p.kodeProduk)}
                           className="p-1 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
                           title="Hapus Model"
                         >

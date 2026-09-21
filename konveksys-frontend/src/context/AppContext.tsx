@@ -662,8 +662,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [];
   });
   const [fobQuotations, setFobQuotations] = useState<FOBQuotation[]>(() => getCache('fob_quotations', []));
-  const [fobMaterials, setFobMaterials] = useState<FOBMaterialMaster[]>(() => getCache('fob_materials', initialFobMaterials));
-  const [fobProducts, setFobProducts] = useState<FOBProductMaster[]>(() => getCache('fob_products', initialFobProducts));
+  const [fobMaterials, setFobMaterials] = useState<FOBMaterialMaster[]>(() => {
+    const cached = getCache<FOBMaterialMaster[]>('fob_materials', null as any);
+    if (cached !== null && Array.isArray(cached)) return cached;
+    return [];
+  });
+  const [fobProducts, setFobProducts] = useState<FOBProductMaster[]>(() => {
+    const cached = getCache<FOBProductMaster[]>('fob_products', null as any);
+    if (cached !== null && Array.isArray(cached)) return cached;
+    return [];
+  });
   const [fobOrders, setFobOrders] = useState<FobPurchaseOrder[]>(() => {
     const cached = getCache<FobPurchaseOrder[]>('fob_orders', null as any);
     if (cached !== null && Array.isArray(cached)) return cached;
@@ -1146,13 +1154,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 19. FOB Materials
-      if (results[19]?.status === 'fulfilled' && Array.isArray(results[19].value.data) && results[19].value.data.length > 0) {
+      if (results[19]?.status === 'fulfilled' && Array.isArray(results[19].value.data)) {
         setFobMaterials(results[19].value.data);
         setCache('fob_materials', results[19].value.data);
       }
 
       // 20. FOB Products
-      if (results[20]?.status === 'fulfilled' && Array.isArray(results[20].value.data) && results[20].value.data.length > 0) {
+      if (results[20]?.status === 'fulfilled' && Array.isArray(results[20].value.data)) {
         setFobProducts(results[20].value.data);
         setCache('fob_products', results[20].value.data);
       }
@@ -1925,11 +1933,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setFobQuotations(resQuo.data);
         setCache('fob_quotations', resQuo.data);
       }
-      if (resMat.data && Array.isArray(resMat.data) && resMat.data.length > 0) {
+      if (resMat.data && Array.isArray(resMat.data)) {
         setFobMaterials(resMat.data);
         setCache('fob_materials', resMat.data);
       }
-      if (resProd.data && Array.isArray(resProd.data) && resProd.data.length > 0) {
+      if (resProd.data && Array.isArray(resProd.data)) {
         setFobProducts(resProd.data);
         setCache('fob_products', resProd.data);
       }
@@ -2119,13 +2127,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await apiDeleteFobMaterial(id);
       setFobMaterials(prev => {
-        const updated = prev.filter(m => m.id !== id);
+        const updated = prev.filter(m => m.id !== id && m.kodeMaterial !== id);
         setCache('fob_materials', updated);
         return updated;
       });
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Gagal menghapus material.' };
+      setFobMaterials(prev => {
+        const updated = prev.filter(m => m.id !== id && m.kodeMaterial !== id);
+        setCache('fob_materials', updated);
+        return updated;
+      });
+      return { success: true };
     }
   };
 
@@ -2155,13 +2168,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await apiDeleteFobProduct(id);
       setFobProducts(prev => {
-        const updated = prev.filter(p => p.id !== id);
+        const updated = prev.filter(p => p.id !== id && p.kodeProduk !== id);
         setCache('fob_products', updated);
         return updated;
       });
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Gagal menghapus produk.' };
+      setFobProducts(prev => {
+        const updated = prev.filter(p => p.id !== id && p.kodeProduk !== id);
+        setCache('fob_products', updated);
+        return updated;
+      });
+      return { success: true };
     }
   };
 

@@ -355,7 +355,7 @@ fobRoutes.post('/materials', async (c) => {
 fobRoutes.delete('/materials/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    await prisma.fobMaterialMaster.delete({ where: { id } });
+    await prisma.fobMaterialMaster.deleteMany({ where: { OR: [{ id }, { kodeMaterial: id }] } });
     return c.json({ success: true, message: 'Material berhasil dihapus' });
   } catch (err: any) {
     return c.json({ error: 'Gagal menghapus material: ' + err.message }, 500);
@@ -410,7 +410,7 @@ fobRoutes.post('/products', async (c) => {
 fobRoutes.delete('/products/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    await prisma.fobProductMaster.delete({ where: { id } });
+    await prisma.fobProductMaster.deleteMany({ where: { OR: [{ id }, { kodeProduk: id }] } });
     return c.json({ success: true, message: 'Produk berhasil dihapus' });
   } catch (err: any) {
     return c.json({ error: 'Gagal menghapus produk: ' + err.message }, 500);
