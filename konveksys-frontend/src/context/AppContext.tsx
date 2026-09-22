@@ -164,7 +164,6 @@ import {
   initialFobOrders,
   initialProductionTimelines,
   initialFobDeposits,
-  initialAuditLogs,
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
@@ -648,16 +647,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  // Audit Trail State (Persisten di localStorage)
+  // Audit Trail State (Persisten di localStorage, murni data riil mulai dari 0)
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     try {
       const saved = localStorage.getItem('konvek_audit_logs');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          // Bersihkan data contoh awal (log-seed-*) agar langsung bersih saat refresh
+          const realLogs = parsed.filter((item: any) => !item.id?.startsWith('log-seed-'));
+          if (realLogs.length !== parsed.length) {
+            localStorage.setItem('konvek_audit_logs', JSON.stringify(realLogs));
+          }
+          return realLogs;
+        }
       }
     } catch {}
-    return initialAuditLogs;
+    return [];
   });
 
   const logAudit = useCallback(
