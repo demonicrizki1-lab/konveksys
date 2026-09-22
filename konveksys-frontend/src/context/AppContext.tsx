@@ -95,6 +95,8 @@ import {
   apiCreateFobDeposit,
   apiUpdateFobDeposit,
   apiDeleteFobDeposit,
+  apiGetAuditLogs,
+  apiCreateAuditLog,
 } from '../services/api';
 import {
   AuthUser,
@@ -554,6 +556,8 @@ interface AppContextType {
   // Audit Trail & Anti-Manipulasi
   auditLogs: AuditLogEntry[];
   logAudit: (entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'userId' | 'userName' | 'userRole'>) => void;
+  refreshAuditLogs: () => Promise<void>;
+  isSyncingAudit: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -647,36 +651,75 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  // Audit Trail State (Persisten di localStorage, murni data riil mulai dari 0)
+  // Audit Trail State (Tersinkronisasi dengan Database PostgreSQL Supabase)
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     try {
       const saved = localStorage.getItem('konvek_audit_logs');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // Bersihkan data contoh awal (log-seed-*) agar langsung bersih saat refresh
-          const realLogs = parsed.filter((item: any) => !item.id?.startsWith('log-seed-'));
-          if (realLogs.length !== parsed.length) {
-            localStorage.setItem('konvek_audit_logs', JSON.stringify(realLogs));
-          }
-          return realLogs;
+          return parsed.filter((item: any) => !item.id?.startsWith('log-seed-'));
         }
       }
     } catch {}
     return [];
   });
+  const [isSyncingAudit, setIsSyncingAudit] = useState(false);
 
+  // Muat audit logs segar langsung dari database PostgreSQL
+  const refreshAuditLogs = useCallback(async () => {
+    setIsSyncingAudit(true);
+    try {
+      const { data } = await apiGetAuditLogs({ limit: 250 });
+      if (data && Array.isArray(data.data)) {
+        const mapped: AuditLogEntry[] = data.data.map((l: any) => ({
+          id: l.id,
+          timestamp: typeof l.timestamp === 'string' ? l.timestamp : new Date(l.timestamp).toISOString(),
+          userId: l.userId,
+          userName: l.userName,
+          userRole: l.userRole as UserRole,
+          module: l.module as any,
+          action: l.action as any,
+          severity: l.severity as any,
+          entityId: l.entityId,
+          entityName: l.entityName,
+          details: l.details,
+          previousData: l.previousData,
+          newData: l.newData,
+          ipAddress: l.ipAddress || undefined,
+          notes: l.notes || undefined,
+        }));
+        setAuditLogs(mapped);
+        try {
+          localStorage.setItem('konvek_audit_logs', JSON.stringify(mapped));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Gagal memuat audit log dari database server:', err);
+    } finally {
+      setIsSyncingAudit(false);
+    }
+  }, []);
+
+  // Catat audit trail: Optimistik di UI + Asinkron tersimpan ke PostgreSQL Supabase
   const logAudit = useCallback(
     (entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'userId' | 'userName' | 'userRole'>) => {
+      const tempId = `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const timestamp = new Date().toISOString();
+      const userId = currentUser?.id || 'u-admin';
+      const userName = currentUser?.name || 'Admin Sistem';
+      const userRole = currentUser?.role || 'ADMIN';
+
       const newLog: AuditLogEntry = {
         ...entry,
-        id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        timestamp: new Date().toISOString(),
-        userId: currentUser?.id || 'u-admin',
-        userName: currentUser?.name || 'Admin Sistem',
-        userRole: currentUser?.role || 'ADMIN',
+        id: tempId,
+        timestamp,
+        userId,
+        userName,
+        userRole,
       };
 
+      // 1. Update optimistik state UI & cache lokal
       setAuditLogs(prev => {
         const updated = [newLog, ...prev].slice(0, 500);
         try {
@@ -686,6 +729,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return updated;
       });
+
+      // 2. Kirim ke REST API backend untuk disimpan permanen ke PostgreSQL
+      apiCreateAuditLog({
+        userId,
+        userName,
+        userRole,
+        module: entry.module,
+        action: entry.action,
+        severity: entry.severity,
+        entityId: entry.entityId,
+        entityName: entry.entityName,
+        details: entry.details,
+        previousData: entry.previousData || null,
+        newData: entry.newData || null,
+        notes: entry.notes || null,
+        timestamp,
+      })
+        .then(res => {
+          if (res.data?.success && res.data.data?.id) {
+            const dbRecord = res.data.data;
+            setAuditLogs(prev =>
+              prev.map(l =>
+                l.id === tempId
+                  ? { ...l, id: dbRecord.id, ipAddress: dbRecord.ipAddress || l.ipAddress }
+                  : l
+              )
+            );
+          }
+        })
+        .catch(err => {
+          console.warn('[Audit Log API] Gagal menyimpan log ke database server:', err);
+        });
     },
     [currentUser]
   );
@@ -814,6 +889,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobProducts(), // 20
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobOrders(), // 21
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobDeposits(), // 22
+        apiGetAuditLogs({ limit: 250 }), // 23
       ]);
 
       // 0. Brands
@@ -1287,6 +1363,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }));
         setFobDeposits(rawDep);
         setCache('fob_deposits', rawDep);
+      }
+
+      // 23. Audit Logs from PostgreSQL Database
+      if (results[23]?.status === 'fulfilled' && (results[23].value as any)?.data?.data && Array.isArray((results[23].value as any).data.data)) {
+        const rawLogs = (results[23].value as any).data.data;
+        const mapped: AuditLogEntry[] = rawLogs.map((l: any) => ({
+          id: l.id,
+          timestamp: typeof l.timestamp === 'string' ? l.timestamp : new Date(l.timestamp).toISOString(),
+          userId: l.userId,
+          userName: l.userName,
+          userRole: l.userRole as UserRole,
+          module: l.module as any,
+          action: l.action as any,
+          severity: l.severity as any,
+          entityId: l.entityId,
+          entityName: l.entityName,
+          details: l.details,
+          previousData: l.previousData,
+          newData: l.newData,
+          ipAddress: l.ipAddress || undefined,
+          notes: l.notes || undefined,
+        }));
+        setAuditLogs(mapped);
+        try { localStorage.setItem('konvek_audit_logs', JSON.stringify(mapped)); } catch {}
       }
 
       setLastSyncedAt(new Date());
@@ -2690,6 +2790,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           },
           ...prev,
         ]);
+        logAudit({
+          module: 'STOK_KAIN',
+          action: 'CREATE',
+          severity: 'INFO',
+          entityId: roll.rollCode,
+          entityName: `Rol Kain: ${roll.jenisKain} (${roll.rollCode})`,
+          details: `Penerimaan rol kain masuk ${roll.jenisKain} (${roll.rollCode}) sepanjang ${roll.meterLength} Meter (Brand: ${roll.brand})`,
+          newData: roll,
+        });
         await syncFromBackend();
       } else if (error) {
         console.error('Gagal menambahkan rol kain ke database:', error);
@@ -3026,6 +3135,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
+    logAudit({
+      module: 'SPK_CUTTING',
+      action: 'CREATE',
+      severity: 'INFO',
+      entityId: spkNumber,
+      entityName: `SPK: ${spkNumber} (${spkData.brand})`,
+      details: `Membuat SPK potong baru ${spkNumber} untuk brand ${spkData.brand} (Vendor: ${spkData.vendor}, Target: ${Object.values(spkData.targetCutQty || {}).reduce((a, b) => a + Number(b || 0), 0)} Pcs)`,
+      newData: newSPK,
+    });
+
     try {
       const { data, error } = await apiCreateSpk({
         spkNumber,
@@ -3228,6 +3347,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const updated = prev.map((s) => (s.id === id ? updatedSPK : s));
       setCache('spk_list', updated);
       return updated;
+    });
+
+    logAudit({
+      module: 'SPK_CUTTING',
+      action: 'UPDATE',
+      severity: 'WARNING',
+      entityId: existingSpk.spkNumber,
+      entityName: `SPK: ${existingSpk.spkNumber} (${existingSpk.brand})`,
+      details: `Mengubah data SPK ${existingSpk.spkNumber} (Status: ${updatedSPK.status}, Vendor: ${updatedSPK.vendor})`,
+      previousData: existingSpk,
+      newData: updatedSPK,
     });
 
     // 4. Send PUT to backend
@@ -3608,6 +3738,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setSuratJalanList(prev => [newSJ, ...prev]);
 
+    logAudit({
+      module: 'SURAT_JALAN',
+      action: 'CREATE',
+      severity: 'INFO',
+      entityId: noSuratJalan,
+      entityName: `Surat Jalan: ${noSuratJalan} (${sjData.brand})`,
+      details: `Membuat surat jalan baru ${noSuratJalan} untuk brand ${sjData.brand} (Total: ${grandTotalPcs} Pcs)`,
+      newData: newSJ,
+    });
+
     try {
       const { data, error } = await apiCreateSuratJalan({
         noSuratJalan,
@@ -3812,6 +3952,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       return updatedList;
+    });
+
+    logAudit({
+      module: 'SURAT_JALAN',
+      action: hasDiscrepancy ? 'UPDATE' : 'APPROVE',
+      severity: hasDiscrepancy ? 'WARNING' : 'INFO',
+      entityId: targetSJ.noSuratJalan,
+      entityName: `Surat Jalan: ${targetSJ.noSuratJalan} (${targetSJ.brand})`,
+      details: hasDiscrepancy
+        ? `Verifikasi penerimaan ${targetSJ.noSuratJalan} dengan selisih ${discrepancyPcs > 0 ? '+' : ''}${discrepancyPcs} Pcs.`
+        : `Verifikasi penerimaan ${targetSJ.noSuratJalan} lengkap sesuai dokumen (${newTotalPcs} Pcs).`,
+      previousData: targetSJ,
+      newData: { items: itemsWithAudit, totalPcs: newTotalPcs, status: newStatus },
     });
 
     try {
@@ -4198,6 +4351,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const tempId = `ksb-${Date.now()}`;
     const newKasbon: KasbonTransaction = { ...kasbonData, id: tempId };
     setKasbonList(prev => [newKasbon, ...prev]);
+
+    logAudit({
+      module: 'ARUS_KAS',
+      action: 'CREATE',
+      severity: kasbonData.tipe === 'PINJAMAN' ? 'WARNING' : 'INFO',
+      entityId: tempId,
+      entityName: `Kasbon - ${kasbonData.vendor}`,
+      details: `Mencatat transaksi kasbon ${kasbonData.tipe} senilai Rp ${kasbonData.jumlah.toLocaleString('id-ID')} untuk vendor ${kasbonData.vendor}${kasbonData.keterangan ? ` (${kasbonData.keterangan})` : ''}`,
+      newData: kasbonData,
+    });
 
     // Update Vendor currentKasbon
     setVendors(prev =>
@@ -5405,6 +5568,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetToDefaultData,
         auditLogs,
         logAudit,
+        refreshAuditLogs,
+        isSyncingAudit,
         isSyncing,
         lastSyncedAt,
       }}

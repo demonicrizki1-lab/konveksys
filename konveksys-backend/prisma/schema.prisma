@@ -612,3 +612,33 @@ model FobDownPayment {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
+
+// ============================================================
+// AUDIT TRAIL & ACTIVITY LOGS
+// ============================================================
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  userId       String
+  userName     String
+  userRole     String
+  module       String   // SPK_CUTTING, SURAT_JALAN, INBOUND_DP, ARUS_KAS, STOK_KAIN, STOK_AKSESORIS, HPP_FOB, FINANCE_INVOICE, USER_AUTH, PENGEMBALIAN_RETUR, SISTEM
+  action       String   // CREATE, UPDATE, DELETE, APPROVE, REJECT, STATUS_CHANGE
+  severity     String   @default("INFO") // INFO, WARNING, CRITICAL
+  entityId     String
+  entityName   String
+  details      String   @db.Text
+  previousData Json?
+  newData      Json?
+  ipAddress    String?
+  notes        String?  @db.Text
+
+  createdAt    DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([module])
+  @@index([action])
+  @@index([entityId])
+  @@index([userId])
+}

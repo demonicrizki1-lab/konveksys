@@ -1064,5 +1064,41 @@ export async function apiDeleteFobDeposit(id: string) {
   });
 }
 
+// ============================================================
+// AUDIT TRAIL LOGS
+// ============================================================
 
+export interface AuditLogFilterParams {
+  module?: string;
+  action?: string;
+  severity?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}
 
+export async function apiGetAuditLogs(params?: AuditLogFilterParams) {
+  const queryParts: string[] = [];
+  if (params?.module && params.module !== 'ALL') queryParts.push(`module=${encodeURIComponent(params.module)}`);
+  if (params?.action && params.action !== 'ALL') queryParts.push(`action=${encodeURIComponent(params.action)}`);
+  if (params?.severity && params.severity !== 'ALL') queryParts.push(`severity=${encodeURIComponent(params.severity)}`);
+  if (params?.search && params.search.trim()) queryParts.push(`search=${encodeURIComponent(params.search.trim())}`);
+  if (params?.startDate) queryParts.push(`startDate=${encodeURIComponent(params.startDate)}`);
+  if (params?.endDate) queryParts.push(`endDate=${encodeURIComponent(params.endDate)}`);
+  if (params?.limit) queryParts.push(`limit=${params.limit}`);
+
+  const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return apiFetch<{ success: boolean; count: number; data: any[] }>(`/api/audit${query}`);
+}
+
+export async function apiGetAuditStats() {
+  return apiFetch<{ total: number; todayCount: number; criticalCount: number; warningCount: number }>('/api/audit/stats');
+}
+
+export async function apiCreateAuditLog(data: any) {
+  return apiFetch<{ success: boolean; data: any }>('/api/audit', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

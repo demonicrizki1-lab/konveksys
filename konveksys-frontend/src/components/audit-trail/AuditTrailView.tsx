@@ -23,6 +23,8 @@ import {
   Building2,
   TrendingUp,
   Package,
+  RefreshCw,
+  Database,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AuditLogEntry, AuditModule, AuditActionType, AuditSeverity } from '../../types';
@@ -52,7 +54,7 @@ const ACTION_BADGES: Record<AuditActionType, { label: string; badge: string; ico
 };
 
 export const AuditTrailView: React.FC = () => {
-  const { auditLogs } = useApp();
+  const { auditLogs, refreshAuditLogs, isSyncingAudit } = useApp();
 
   // Filters State
   const [searchTerm, setSearchTerm] = useState('');
@@ -181,17 +183,27 @@ export const AuditTrailView: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
               Rekam Jejak & Audit Trail
-              <span className="text-[11px] font-semibold uppercase px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Anti-Manipulasi
+              <span className="text-[11px] font-semibold uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                PostgreSQL DB Synced
               </span>
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Pemantauan kronologis aktivitas sistem, integritas kas finansial, mutasi stok, dan pencegahan kecurangan.
+              Pemantauan kronologis aktivitas sistem, integritas kas finansial, mutasi stok, dan pencegahan kecurangan berbasis database server.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            onClick={() => refreshAuditLogs()}
+            disabled={isSyncingAudit}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-indigo-200 text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 shadow-2xs transition-base cursor-pointer disabled:opacity-50"
+            title="Muat ulang data audit terbaru dari database PostgreSQL"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isSyncingAudit ? 'animate-spin' : ''}`} />
+            <span>{isSyncingAudit ? 'Memuat DB...' : 'Segarkan DB'}</span>
+          </button>
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 shadow-2xs transition-base cursor-pointer"
@@ -531,8 +543,18 @@ export const AuditTrailView: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-slate-600 text-xs">{detailModalLog.details}</p>
-                <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500">
+                <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-slate-500">
                   <span>Pelaku: <strong className="text-slate-800">{detailModalLog.userName}</strong> ({detailModalLog.userRole})</span>
+                  {detailModalLog.ipAddress && (
+                    <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-mono text-[10px]">
+                      IP: {detailModalLog.ipAddress}
+                    </span>
+                  )}
+                  {detailModalLog.notes && (
+                    <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      Catatan: {detailModalLog.notes}
+                    </span>
+                  )}
                 </div>
               </div>
 
