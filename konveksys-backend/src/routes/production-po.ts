@@ -40,7 +40,7 @@ productionPoRoutes.get('/', async (c) => {
       where,
       include: {
         items: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -61,7 +61,7 @@ productionPoRoutes.get('/:id', async (c) => {
       where: { id },
       include: {
         items: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         },
       },
     });
@@ -126,18 +126,21 @@ productionPoRoutes.post('/', async (c) => {
         status: body.status || 'DRAFT',
         totalPcs,
         items: {
-          create: body.items.map((item) => ({
+          create: body.items.map((item, idx) => ({
             namaProduk: item.namaProduk.trim(),
             warna: item.warna?.trim() || null,
             ukuran: item.ukuran?.trim() || null,
             qty: Math.max(0, Number(item.qty) || 0),
             bahanKain: item.bahanKain?.trim() || null,
             catatan: item.catatan?.trim() || null,
+            sortOrder: typeof (item as any).sortOrder === 'number' ? (item as any).sortOrder : idx,
           })),
         },
       },
       include: {
-        items: true,
+        items: {
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        },
       },
     });
 
@@ -199,7 +202,7 @@ productionPoRoutes.put('/:id', async (c) => {
         await tx.productionPOItem.deleteMany({ where: { poId: id } });
         // Buat item baru
         await tx.productionPOItem.createMany({
-          data: body.items.map((item) => ({
+          data: body.items.map((item, idx) => ({
             poId: id,
             namaProduk: item.namaProduk.trim(),
             warna: item.warna?.trim() || null,
@@ -207,6 +210,7 @@ productionPoRoutes.put('/:id', async (c) => {
             qty: Math.max(0, Number(item.qty) || 0),
             bahanKain: item.bahanKain?.trim() || null,
             catatan: item.catatan?.trim() || null,
+            sortOrder: typeof (item as any).sortOrder === 'number' ? (item as any).sortOrder : idx,
           })),
         });
       }
@@ -224,7 +228,9 @@ productionPoRoutes.put('/:id', async (c) => {
           totalPcs,
         },
         include: {
-          items: true,
+          items: {
+            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          },
         },
       });
     });
@@ -254,7 +260,11 @@ productionPoRoutes.patch('/:id/status', async (c) => {
     const updated = await prisma.productionPO.update({
       where: { id },
       data: { status },
-      include: { items: true },
+      include: {
+        items: {
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        },
+      },
     });
 
     return c.json({

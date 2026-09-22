@@ -34,6 +34,7 @@ import { FabricTransferModal } from './FabricTransferModal';
 import { FabricTransferPrintModal } from './FabricTransferPrintModal';
 import { formatDateIndo } from '../../utils/formatters';
 import { resolveItemPONumber } from '../../utils/spkHelper';
+import { sortProductionPOItems, autoSortItemsByColorAndSize } from '../../utils/poItemSorter';
 
 interface ItemFormState {
   id?: string;
@@ -43,6 +44,7 @@ interface ItemFormState {
   qty: number;
   bahanKain: string;
   catatan: string;
+  sortOrder?: number;
 }
 
 export const SuratPOProduksiView: React.FC = () => {
@@ -168,8 +170,9 @@ export const SuratPOProduksiView: React.FC = () => {
     setFormCatatan(po.catatan || '');
     setFormUsedDepositId(po.usedDepositId || null);
     setFormUsedDepositInfo(po.usedDepositInfo || null);
+    const sortedItems = sortProductionPOItems(po.items || []);
     setFormItems(
-      po.items.map(item => ({
+      sortedItems.map((item, idx) => ({
         id: item.id,
         namaProduk: item.namaProduk,
         warna: item.warna || '',
@@ -177,6 +180,7 @@ export const SuratPOProduksiView: React.FC = () => {
         qty: Number(item.qty || 0),
         bahanKain: item.bahanKain || '',
         catatan: item.catatan || '',
+        sortOrder: typeof item.sortOrder === 'number' ? item.sortOrder : idx,
       }))
     );
     setIsFormModalOpen(true);
@@ -338,6 +342,14 @@ export const SuratPOProduksiView: React.FC = () => {
     setFormItems(prev => prev.filter((_, idx) => idx !== index));
   };
 
+  const handleAutoSortFormItems = () => {
+    setFormItems(prev => {
+      const sorted = autoSortItemsByColorAndSize(prev);
+      return sorted.map((it, idx) => ({ ...it, sortOrder: idx }));
+    });
+    showToast('success', 'Rincian artikel berhasil dirapikan per warna dan ukuran (4..16 / S..XXL).');
+  };
+
   const handleItemChange = (index: number, field: keyof ItemFormState, value: any) => {
     setFormItems(prev =>
       prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
@@ -380,13 +392,14 @@ export const SuratPOProduksiView: React.FC = () => {
           catatan: formCatatan.trim() || undefined,
           usedDepositId: formUsedDepositId || undefined,
           usedDepositInfo: formUsedDepositInfo || undefined,
-          items: formItems.map(i => ({
+          items: formItems.map((i, idx) => ({
             namaProduk: i.namaProduk.trim(),
             warna: i.warna.trim() || undefined,
             ukuran: i.ukuran.trim() || undefined,
             qty: Number(i.qty),
             bahanKain: i.bahanKain.trim() || undefined,
             catatan: i.catatan.trim() || undefined,
+            sortOrder: idx,
           })),
         });
 
@@ -410,13 +423,14 @@ export const SuratPOProduksiView: React.FC = () => {
           catatan: formCatatan.trim() || undefined,
           usedDepositId: formUsedDepositId || undefined,
           usedDepositInfo: formUsedDepositInfo || undefined,
-          items: formItems.map(i => ({
+          items: formItems.map((i, idx) => ({
             namaProduk: i.namaProduk.trim(),
             warna: i.warna.trim() || undefined,
             ukuran: i.ukuran.trim() || undefined,
             qty: Number(i.qty),
             bahanKain: i.bahanKain.trim() || undefined,
             catatan: i.catatan.trim() || undefined,
+            sortOrder: idx,
           })),
         });
 
@@ -917,7 +931,7 @@ export const SuratPOProduksiView: React.FC = () => {
                           {/* Item Preview */}
                           <td className="py-3 px-3">
                             <div className="space-y-0.5">
-                              {po.items.slice(0, 2).map((item, idx) => (
+                              {sortProductionPOItems(po.items).slice(0, 2).map((item, idx) => (
                                 <div key={idx} className="text-[11px] text-slate-700 truncate max-w-xs">
                                   <span className="font-semibold text-slate-900">{item.namaProduk}</span>
                                   {item.warna && <span className="text-slate-500"> ({item.warna})</span>}
@@ -1536,6 +1550,17 @@ export const SuratPOProduksiView: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
+                    {formItems.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleAutoSortFormItems}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 text-xs font-bold transition cursor-pointer shadow-xs"
+                        title="Otomatis rapikan urutan baris berdasarkan Warna dan Size (4..16 / S..XXL)"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Rapikan Urutan (Warna & Size)</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={handleSyncFromSPKCutting}
@@ -1560,13 +1585,18 @@ export const SuratPOProduksiView: React.FC = () => {
                   {formItems.map((item, idx) => (
                     <div
                       key={idx}
-                      className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end"
+                      className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end relative"
                     >
                       {/* Nama Produk / Model */}
                       <div className="sm:col-span-4">
-                        <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
-                          Model / Artikel <span className="text-rose-500">*</span>
-                        </label>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[10px] font-bold text-slate-600 uppercase">
+                            Model / Artikel <span className="text-rose-500">*</span>
+                          </label>
+                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-200 text-slate-600">
+                            #{idx + 1}
+                          </span>
+                        </div>
                         <input
                           type="text"
                           value={item.namaProduk}

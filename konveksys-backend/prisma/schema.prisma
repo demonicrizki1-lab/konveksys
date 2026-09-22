@@ -460,10 +460,13 @@ model ProductionPOItem {
   qty          Int          @default(1)
   bahanKain    String?
   catatan      String?
+  sortOrder    Int          @default(0)
 
   po           ProductionPO @relation(fields: [poId], references: [id], onDelete: Cascade)
 
   createdAt    DateTime     @default(now())
+
+  @@index([poId, sortOrder])
 }
 
 // ============================================================

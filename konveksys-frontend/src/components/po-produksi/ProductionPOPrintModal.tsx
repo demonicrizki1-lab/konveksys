@@ -3,6 +3,7 @@ import { Download, Printer, X, FileText, Building2, Calendar, Clock } from 'luci
 import { ProductionPO } from '../../types';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import { formatDateIndo } from '../../utils/formatters';
+import { sortProductionPOItems } from '../../utils/poItemSorter';
 import ttdRizkiMaulana from '../../assets/ttd-rizki-maulana.png';
 import ttdCecepDayat from '../../assets/ttd-cecep-dayat.png';
 
@@ -156,7 +157,8 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
 
           {/* Production Items Table */}
           {(() => {
-            const isCompact = po.items.length > 6;
+            const sortedItems = sortProductionPOItems(po.items || []);
+            const isCompact = sortedItems.length > 6;
             const thPad = isCompact ? 'py-1 px-1.5 text-[9px]' : 'py-1.5 px-2 text-[10px]';
             const tdPad = isCompact ? 'py-1 px-1.5 text-[10px]' : 'py-1.5 px-2 text-[11px]';
 
@@ -178,7 +180,7 @@ export const ProductionPOPrintModal: React.FC<ProductionPOPrintModalProps> = ({ 
                     </tr>
                   </tbody>
                   <tbody className="divide-y divide-slate-200 text-slate-800">
-                    {po.items.map((item, idx) => (
+                    {sortedItems.map((item, idx) => (
                       <tr key={item.id || idx} className="hover:bg-slate-50/60">
                         <td className={`${tdPad} border-r border-slate-300 text-center text-slate-500 font-mono`}>
                           {idx + 1}

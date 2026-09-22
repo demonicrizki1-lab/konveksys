@@ -573,6 +573,7 @@ export interface ProductionPOItem {
   catatan?: string | null;
   depositId?: string | null;
   depositInfo?: string | null;
+  sortOrder?: number;
   createdAt?: string;
 }
 
