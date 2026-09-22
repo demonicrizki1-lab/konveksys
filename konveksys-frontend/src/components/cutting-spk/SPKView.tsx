@@ -951,8 +951,8 @@ export const SPKView: React.FC = () => {
                   const rawDelivTotal = Object.values(spk.deliveredQty || {}).reduce((a, b) => a + (Number(b) || 0), 0);
                   const remaining = getSPKRemainingQty(spk);
                   const fulfilledTotal = Math.max(0, targetTotal - remaining.totalRemaining);
-                  const delivTotal = Math.max(rawDelivTotal, dynamicDelivTotal, fulfilledTotal);
-                  const percent = targetTotal > 0 ? Math.min(100, Math.round((fulfilledTotal / targetTotal) * 100)) : 0;
+                  const delivTotal = dynamicDelivTotal > 0 ? dynamicDelivTotal : (fulfilledTotal > 0 ? fulfilledTotal : rawDelivTotal);
+                  const percent = targetTotal > 0 ? Math.min(100, Math.round((delivTotal / targetTotal) * 100)) : 0;
                   const isOverDelivery = spk.status === 'OVER_DELIVERY' || (targetTotal > 0 && delivTotal > targetTotal);
                   const isCompleted = (spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal >= targetTotal)) && remaining.totalRemaining === 0;
                   const displayStatus = isCompleted
@@ -1409,11 +1409,16 @@ export const SPKView: React.FC = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {paginatedSPK.map((spk) => {
+              const spkItems = getSpkItems(spk);
               const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
-              const delivTotal = Object.values(spk.deliveredQty).reduce((a, b) => a + b, 0);
+              const dynamicDelivTotal = spkItems.reduce((acc, it) => {
+                return acc + Object.values(it.deliveredQty || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+              }, 0);
+              const rawDelivTotal = Object.values(spk.deliveredQty || {}).reduce((a, b) => a + (Number(b) || 0), 0);
               const remaining = getSPKRemainingQty(spk);
               const fulfilledTotal = Math.max(0, targetTotal - remaining.totalRemaining);
-              const percent = targetTotal > 0 ? Math.min(100, Math.round((fulfilledTotal / targetTotal) * 100)) : 0;
+              const delivTotal = dynamicDelivTotal > 0 ? dynamicDelivTotal : (fulfilledTotal > 0 ? fulfilledTotal : rawDelivTotal);
+              const percent = targetTotal > 0 ? Math.min(100, Math.round((delivTotal / targetTotal) * 100)) : 0;
               const isOverDelivery = spk.status === 'OVER_DELIVERY' || (targetTotal > 0 && delivTotal > targetTotal);
               const isCompleted = (spk.status === 'COMPLETED' || (targetTotal > 0 && delivTotal >= targetTotal)) && remaining.totalRemaining === 0;
               const displayStatus = isCompleted

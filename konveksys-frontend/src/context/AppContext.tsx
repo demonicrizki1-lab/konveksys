@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getCache, setCache, clearAllCache } from '../utils/cacheManager';
-import { buildSplitSpkItems, resolveItemPONumber } from '../utils/spkHelper';
+import { buildSplitSpkItems, resolveItemPONumber, isFabricCompatible } from '../utils/spkHelper';
 import {
   apiLogin,
   saveToken,
@@ -966,12 +966,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ) as string[];
 
           const rawRollList = results[4].status === 'fulfilled' && Array.isArray(results[4].value.data) ? results[4].value.data : [];
-          const spkRollIds = s.rolsDigunakan ? s.rolsDigunakan.map((r: any) => r.rollId) : (cached?.rollIds || []);
+          const spkRollIds = s.rolsDigunakan
+            ? s.rolsDigunakan.map((r: any) => r.rolId || r.rollId || r.rol?.id).filter(Boolean)
+            : (cached?.rollIds || []);
+          const rollFabricsFromRel = s.rolsDigunakan
+            ? s.rolsDigunakan.map((r: any) => r.rol?.jenisKain).filter(Boolean)
+            : [];
           const matchedRollFabrics = rawRollList
             .filter((r: any) => spkRollIds.includes(r.id) || spkRollIds.includes(r.rollCode))
             .map((r: any) => r.jenisKain)
             .filter(Boolean);
-          const spkFabric = s.depositInfo?.jenisKain || (matchedRollFabrics.length > 0 ? matchedRollFabrics.join(', ') : (s.jenisKain || ''));
+          const spkFabric = s.depositInfo?.jenisKain ||
+            (rollFabricsFromRel.length > 0 ? rollFabricsFromRel.join(', ') :
+              (matchedRollFabrics.length > 0 ? matchedRollFabrics.join(', ') : (s.jenisKain || '')));
 
           const rawItems = typeof s.items === 'string'
             ? (() => { try { return JSON.parse(s.items); } catch { return undefined; } })()
@@ -991,18 +998,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             spkFabric
           );
 
+          const dynamicDeliveredTotal = resolvedItems.reduce((acc, it) => {
+            return acc + Object.values(it.deliveredQty || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+          }, 0);
+          const rawDeliveredTotal = Object.values(deliveredQty).reduce((a, b) => a + (Number(b) || 0), 0);
+          const finalDeliveredQty = dynamicDeliveredTotal > 0 && resolvedItems.length === 1 && resolvedItems[0].deliveredQty
+            ? resolvedItems[0].deliveredQty
+            : deliveredQty;
+          const targetTotal = Object.values(targetCutQty).reduce((a, b) => a + b, 0);
+          const effectiveDelivTotal = Math.max(dynamicDeliveredTotal, rawDeliveredTotal);
+          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+          const hasUnfulfilled = SIZES_CHECK.some(sz => (targetCutQty[sz] || 0) > (finalDeliveredQty[sz] || 0));
+
+          const computedStatus: SPKCutting['status'] =
+            targetTotal > 0 && effectiveDelivTotal > targetTotal
+              ? 'OVER_DELIVERY'
+              : targetTotal > 0 && effectiveDelivTotal >= targetTotal && !hasUnfulfilled
+              ? 'COMPLETED'
+              : effectiveDelivTotal > 0
+              ? 'PARTIAL_DELIVERED'
+              : s.status;
+
           return {
             id: s.id,
             spkNumber: s.spkNumber,
             brand: normalizeBrandName(s.brand),
             produk: s.produk,
             vendor: s.vendor,
-            rollIds: s.rolsDigunakan ? s.rolsDigunakan.map((r: any) => r.rolId) : (cached?.rollIds || []),
+            rollIds: s.rolsDigunakan ? s.rolsDigunakan.map((r: any) => r.rolId || r.rollId || r.rol?.id).filter(Boolean) : (cached?.rollIds || []),
             targetCutQty,
-            deliveredQty,
+            deliveredQty: finalDeliveredQty,
             tanggalSPK: s.tanggalSPK,
             targetSelesai: s.targetSelesai || '',
-            status: s.status,
+            status: computedStatus,
             catatan: s.catatan || '',
             items: resolvedItems,
             fabricSourceType: s.fabricSourceType || cached?.fabricSourceType || (s.rolsDigunakan?.length ? 'ROLL_GUDANG' : undefined),
@@ -3436,11 +3464,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     for (const item of itemsToProcess) {
       grandTotalPcs += item.totalPcs;
-      if (!item.spkId || item.isManual) {
-        continue;
+      let targetSPKIndex = -1;
+      if (item.spkId && !item.isManual) {
+        targetSPKIndex = updatedSpkList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
+      } else if (!item.isManual && item.sourcePONumber) {
+        targetSPKIndex = updatedSpkList.findIndex(s => {
+          const poMatch = s.sourcePONumber === item.sourcePONumber || Boolean(item.sourcePONumber && s.sourcePONumbers?.includes(item.sourcePONumber));
+          const prodMatch = s.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
+          const spkFab = s.depositInfo?.jenisKain || (s as any).jenisKain || '';
+          const fabMatch = isFabricCompatible(item.jenisKain, spkFab);
+          return poMatch && prodMatch && fabMatch;
+        });
+        if (targetSPKIndex !== -1) {
+          item.spkId = updatedSpkList[targetSPKIndex].id;
+          item.spkNumber = updatedSpkList[targetSPKIndex].spkNumber;
+        }
       }
 
-      const targetSPKIndex = updatedSpkList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
       if (targetSPKIndex !== -1) {
         const targetSPK = updatedSpkList[targetSPKIndex];
         const deliv = item.qtyDelivered;
@@ -3670,10 +3710,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       for (let idx = 0; idx < itemsWithAudit.length; idx++) {
         const newItem = itemsWithAudit[idx];
         const oldItem = oldItems[idx];
-        const spkId = newItem.spkId || targetSJ.spkId;
-        if (!spkId) continue;
+        let spkId = newItem.spkId;
+        if (!spkId && (!targetSJ.items || targetSJ.items.length <= 1)) {
+          spkId = targetSJ.spkId;
+        }
 
-        const spkIdx = updatedList.findIndex(s => s.id === spkId || s.spkNumber === spkId);
+        let spkIdx = -1;
+        if (spkId) {
+          spkIdx = updatedList.findIndex(s => s.id === spkId || s.spkNumber === spkId);
+        } else if (newItem.sourcePONumber) {
+          spkIdx = updatedList.findIndex(s => {
+            const poMatch = s.sourcePONumber === newItem.sourcePONumber || Boolean(newItem.sourcePONumber && s.sourcePONumbers?.includes(newItem.sourcePONumber));
+            const prodMatch = s.produk.trim().toUpperCase() === newItem.produk.trim().toUpperCase();
+            const spkFab = s.depositInfo?.jenisKain || (s as any).jenisKain || '';
+            const fabMatch = isFabricCompatible(newItem.jenisKain, spkFab);
+            return poMatch && prodMatch && fabMatch;
+          });
+        }
         if (spkIdx === -1) continue;
 
         const spk = updatedList[spkIdx];
@@ -4273,25 +4326,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return (spk as any).jenisKain || '';
     })();
 
-    const isFabricCompatible = (itemFabric?: string, targetFabric?: string) => {
-      if (!itemFabric || !targetFabric) return true;
-      const f1 = itemFabric.trim().toUpperCase();
-      const f2 = targetFabric.trim().toUpperCase();
-      if (f1 === f2) return true;
-      if (f1.includes(f2) || f2.includes(f1)) return true;
-      const colors = [
-        'BW', 'PUTIH', 'PINK', 'MOCCA', 'MOKA', 'TERRACOTA', 'TERACOTTA',
-        'HITAM', 'NAVY', 'SAGE', 'LILAC', 'CREAM', 'MAROON', 'DENIM', 'ARMY'
-      ];
-      const f1Colors = colors.filter((c) => f1.includes(c));
-      const f2Colors = colors.filter((c) => f2.includes(c));
-      if (f1Colors.length > 0 && f2Colors.length > 0) {
-        const hasSharedColor = f1Colors.some((c) => f2Colors.includes(c));
-        if (!hasSharedColor) return false;
-      }
-      return true;
-    };
-
     // Hitung akumulasi terkirim secara dinamis dari daftar Surat Jalan aktif
     const matchedSJs = Array.isArray(suratJalanList)
       ? suratJalanList.filter(
@@ -4302,14 +4336,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const direct =
                 it.spkId === spk.id ||
                 it.spkNumber === spk.spkNumber ||
-                (it.spkItemId && spk.items?.some((ex) => ex.id === it.spkItemId));
+                Boolean(it.spkItemId && spk.items?.some((ex) => ex.id === it.spkItemId));
               const conflict =
                 (it.spkId && it.spkId !== spk.id && it.spkId !== spk.spkNumber) ||
                 (it.spkNumber && it.spkNumber !== spk.spkNumber && it.spkNumber !== spk.id);
               const fabOk = isFabricCompatible(it.jenisKain, spkFabric);
+              const itProd = (it.produk || '').trim().toUpperCase();
+              const spkProd = spk.produk.trim().toUpperCase();
+              const prodOk = !itProd || itProd === spkProd || spkProd.includes(itProd);
               const poOk =
                 !conflict &&
                 fabOk &&
+                prodOk &&
                 it.sourcePONumber &&
                 allSpkPos.includes(it.sourcePONumber.trim().toUpperCase());
               return direct || poOk;
@@ -4327,7 +4365,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               (item.spkId && (item.spkId === spk.id || item.spkId === spk.spkNumber)) ||
               (item.spkNumber && (item.spkNumber === spk.spkNumber || item.spkNumber === spk.id));
             const itemIdMatch =
-              item.spkItemId && spk.items?.some((ex) => ex.id === item.spkItemId);
+              Boolean(item.spkItemId && spk.items?.some((ex) => ex.id === item.spkItemId));
             const hasConflictingSpk =
               (item.spkId && item.spkId !== spk.id && item.spkId !== spk.spkNumber) ||
               (item.spkNumber && item.spkNumber !== spk.spkNumber && item.spkNumber !== spk.id);
@@ -4336,17 +4374,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               !hasConflictingSpk &&
               !item.spkId &&
               !item.spkNumber &&
-              (sj.spkId === spk.id || (sj as any).spkNumber === spk.spkNumber);
+              (sj.spkId === spk.id || (sj as any).spkNumber === spk.spkNumber) &&
+              fabricMatch;
+
+            const itemProd = (item.produk || '').trim().toUpperCase();
+            const spkProd = spk.produk.trim().toUpperCase();
+            const prodMatch = !itemProd || itemProd === targetProductName || spkProd === itemProd || spkProd.includes(itemProd);
+
             const poMatch =
               !hasConflictingSpk &&
               fabricMatch &&
+              prodMatch &&
               item.sourcePONumber &&
               allSpkPos.includes(item.sourcePONumber.trim().toUpperCase());
 
-            const isThisSpk = directMatch || itemIdMatch || sjHeaderMatch || poMatch;
+            const isThisSpk = (directMatch || itemIdMatch || sjHeaderMatch || poMatch) && prodMatch;
 
             if (isThisSpk) {
-              const itemProd = (item.produk || '').trim().toUpperCase();
               const qDeliv = item.qtyDelivered || (item as any).deliveredQty;
               if (matchedItem) {
                 if (itemProd === targetProductName || (item.spkItemId && item.spkItemId === matchedItem.id)) {
@@ -4364,24 +4408,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   deliv.anak16 += Number(qDeliv?.anak16) || 0;
                 }
               } else {
-                deliv.s += Number(qDeliv?.s) || 0;
-                deliv.m += Number(qDeliv?.m) || 0;
-                deliv.l += Number(qDeliv?.l) || 0;
-                deliv.xl += Number(qDeliv?.xl) || 0;
-                deliv.xxl += Number(qDeliv?.xxl) || 0;
-                deliv.anak4 += Number(qDeliv?.anak4) || 0;
-                deliv.anak6 += Number(qDeliv?.anak6) || 0;
-                deliv.anak8 += Number(qDeliv?.anak8) || 0;
-                deliv.anak10 += Number(qDeliv?.anak10) || 0;
-                deliv.anak12 += Number(qDeliv?.anak12) || 0;
-                deliv.anak14 += Number(qDeliv?.anak14) || 0;
-                deliv.anak16 += Number(qDeliv?.anak16) || 0;
+                if (directMatch || itemIdMatch || fabricMatch) {
+                  deliv.s += Number(qDeliv?.s) || 0;
+                  deliv.m += Number(qDeliv?.m) || 0;
+                  deliv.l += Number(qDeliv?.l) || 0;
+                  deliv.xl += Number(qDeliv?.xl) || 0;
+                  deliv.xxl += Number(qDeliv?.xxl) || 0;
+                  deliv.anak4 += Number(qDeliv?.anak4) || 0;
+                  deliv.anak6 += Number(qDeliv?.anak6) || 0;
+                  deliv.anak8 += Number(qDeliv?.anak8) || 0;
+                  deliv.anak10 += Number(qDeliv?.anak10) || 0;
+                  deliv.anak12 += Number(qDeliv?.anak12) || 0;
+                  deliv.anak14 += Number(qDeliv?.anak14) || 0;
+                  deliv.anak16 += Number(qDeliv?.anak16) || 0;
+                }
               }
             }
           }
         }
       }
-    } else {
+    }
+
+    const hasCalculatedDeliv = Object.values(deliv).some(v => v > 0);
+    if (!hasCalculatedDeliv) {
       if (matchedItem && matchedItem.deliveredQty) {
         deliv = matchedItem.deliveredQty;
       } else {

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useApp } from '../../context/AppContext';
 import { SuratJalan, SuratJalanItem, SizeBreakdown, SPKCutting, ProductionPO, FobPurchaseOrder } from '../../types';
 import { formatDateIndo } from '../../utils/formatters';
-import { resolveItemPONumber, matchBrand, convertFobItemsToSizeBreakdown } from '../../utils/spkHelper';
+import { resolveItemPONumber, matchBrand, convertFobItemsToSizeBreakdown, isFabricCompatible } from '../../utils/spkHelper';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import { ConfirmModal } from '../common/ConfirmModal';
 import {
@@ -664,17 +664,25 @@ export const OutboundView: React.FC = () => {
         return;
       }
 
+      const matchedSPK = spkList.find((s) => {
+        const poMatch = s.sourcePONumber === currentPO.noPO || s.sourcePONumbers?.includes(currentPO.noPO);
+        const prodMatch = s.produk.trim().toUpperCase() === poArticleName.trim().toUpperCase();
+        const spkFab = getSPKFabricName(s);
+        const fabMatch = isFabricCompatible(poJenisKain, spkFab);
+        return poMatch && prodMatch && fabMatch;
+      });
+
       const newItem: SuratJalanItem = {
         id: `draft-po-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        spkId: undefined,
-        spkNumber: undefined,
+        spkId: matchedSPK?.id,
+        spkNumber: matchedSPK?.spkNumber,
         sourcePOId: currentPO.id,
         sourcePONumber: currentPO.noPO,
         isManual: false,
         brand: selectedBrand,
         produk: poArticleName.trim().toUpperCase(),
-        vendor: poVendor.trim() || currentPO.vendorTujuan || 'CMT',
-        jenisKain: poJenisKain.trim() || 'Kain Standar PO',
+        vendor: poVendor.trim() || currentPO.vendorTujuan || (matchedSPK ? matchedSPK.vendor : 'CMT'),
+        jenisKain: poJenisKain.trim() || (matchedSPK ? getSPKFabricName(matchedSPK) : 'Kain Standar PO'),
         qtyDelivered: { ...qtySend },
         totalPcs: currentSendingPcs,
       };
@@ -850,17 +858,25 @@ export const OutboundView: React.FC = () => {
     // If no draft items yet, but user filled quantities in the current form, auto-add it
     if (finalItems.length === 0 && currentSendingPcs > 0) {
       if (cargoSourceMode === 'PO_BRAND' && currentPO && poArticleName.trim()) {
+        const matchedSPK = spkList.find((s) => {
+          const poMatch = s.sourcePONumber === currentPO.noPO || s.sourcePONumbers?.includes(currentPO.noPO);
+          const prodMatch = s.produk.trim().toUpperCase() === poArticleName.trim().toUpperCase();
+          const spkFab = getSPKFabricName(s);
+          const fabMatch = isFabricCompatible(poJenisKain, spkFab);
+          return poMatch && prodMatch && fabMatch;
+        });
+
         finalItems.push({
           id: `draft-po-${Date.now()}`,
-          spkId: undefined,
-          spkNumber: undefined,
+          spkId: matchedSPK?.id,
+          spkNumber: matchedSPK?.spkNumber,
           sourcePOId: currentPO.id,
           sourcePONumber: currentPO.noPO,
           isManual: false,
           brand: selectedBrand,
           produk: poArticleName.trim().toUpperCase(),
-          vendor: poVendor.trim() || currentPO.vendorTujuan || 'CMT',
-          jenisKain: poJenisKain.trim() || 'Kain Standar PO',
+          vendor: poVendor.trim() || currentPO.vendorTujuan || (matchedSPK ? matchedSPK.vendor : 'CMT'),
+          jenisKain: poJenisKain.trim() || (matchedSPK ? getSPKFabricName(matchedSPK) : 'Kain Standar PO'),
           qtyDelivered: { ...qtySend },
           totalPcs: currentSendingPcs,
         });
