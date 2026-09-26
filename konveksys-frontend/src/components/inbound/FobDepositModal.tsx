@@ -132,14 +132,14 @@ export const FobDepositModal: React.FC<FobDepositModalProps> = ({
   const [persentaseDp, setPersentaseDp] = useState<number>(50);
   const [nominalDp, setNominalDp] = useState<number>(0);
   const [metodePembayaran, setMetodePembayaran] = useState<MetodePembayaran>('TRANSFER');
-  const [bankTujuan, setBankTujuan] = useState<string>('BCA (Bisnis MRM)');
+  const [bankTujuan, setBankTujuan] = useState<string>('Direct Transfer ke Toko Supplier');
   const [nomorReferensi, setNomorReferensi] = useState<string>('');
   const [keterangan, setKeterangan] = useState<string>('');
   const [buktiBayarUrl, setBuktiBayarUrl] = useState<string>('');
   const [buktiFileName, setBuktiFileName] = useState<string>('');
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState<boolean>(false);
-  const [syncToFinance, setSyncToFinance] = useState<boolean>(true);
+  const [syncToFinance, setSyncToFinance] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Filter FOB orders according to role
@@ -857,19 +857,19 @@ export const FobDepositModal: React.FC<FobDepositModalProps> = ({
 
           {/* Integrasi Otomatis ke Arus Kas */}
           <div className="pt-1">
-            <label className="flex items-start gap-2.5 p-3 rounded-xl border border-emerald-200 bg-emerald-50/50 cursor-pointer hover:bg-emerald-50 transition-colors">
+            <label className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100/70 transition-colors">
               <input
                 type="checkbox"
                 checked={syncToFinance}
                 onChange={(e) => setSyncToFinance(e.target.checked)}
-                className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
               />
               <div className="text-xs">
-                <span className="font-bold text-emerald-900 block">
-                  Otomatis Catat Kas Masuk ke Arus Kas (Finance)
+                <span className="font-bold text-slate-800 block">
+                  Catat Kas Masuk ke Buku Keuangan Konveksi
                 </span>
-                <span className="text-emerald-700 text-[11px] leading-relaxed block mt-0.5">
-                  Setoran DP ini akan langsung memperbarui kartu arus kas brand {brand || 'terkait'} dan menambah saldo kas masuk sebesar <strong>{formatRp(nominalDp)}</strong> tanpa perlu input manual di menu Keuangan.
+                <span className="text-slate-500 text-[11px] leading-relaxed block mt-0.5">
+                  <strong>Biarkan tidak tercentang (default)</strong> jika buyer mentransfer pembayaran bahan langsung ke rekening toko supplier tanpa masuk ke kas konveksi. Centang opsi ini hanya jika uang DP benar-benar disetor ke rekening kas operasional konveksi Anda.
                 </span>
               </div>
             </label>

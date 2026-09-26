@@ -348,30 +348,7 @@ export const initialProductionTimelines: ProductionTimeline[] = [
   },
 ];
 
-export const initialFobDeposits: FobDownPayment[] = [
-  {
-    id: 'dp-fob-001',
-    depositNumber: 'DP-FOB-202609-001',
-    poId: 'po-fob-0002',
-    poNumber: 'PO-PH-0002',
-    brand: 'MONTURE',
-    tanggalBayar: '2026-09-16',
-    nominalTotalOrder: 9440000,
-    persentaseDp: 50,
-    nominalDp: 4720000,
-    metodePembayaran: 'TRANSFER',
-    bankTujuan: 'BCA (Bisnis MRM)',
-    nomorReferensi: 'TRF-BCA-889921',
-    keterangan: 'DP Termin 1 (50%) Produksi Rompi Hoodie Puffer Monture',
-    statusBahan: 'SUDAH_JADI_KAIN',
-    alokasiKain: {
-      totalMeter: 120,
-      totalBiaya: 4560000,
-      rolCodes: ['ROL-MON-001', 'ROL-MON-002'],
-    },
-    createdAt: '2026-09-16T09:30:00.000Z',
-  },
-];
+export const initialFobDeposits: FobDownPayment[] = [];
 
 export const initialAuditLogs: AuditLogEntry[] = [];
 

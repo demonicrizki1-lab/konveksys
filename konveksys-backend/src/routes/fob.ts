@@ -909,6 +909,7 @@ fobRoutes.post('/deposits', async (c) => {
         keterangan: body.keterangan || null,
         statusBahan: body.statusBahan || 'BELUM_DIBELANJAKAN',
         alokasiKain: body.alokasiKain || null,
+        rincianBahan: body.rincianBahan || null,
       },
     });
 
@@ -928,6 +929,7 @@ fobRoutes.put('/deposits/:id', async (c) => {
     const dataToUpdate: any = {};
     if (body.statusBahan !== undefined) dataToUpdate.statusBahan = body.statusBahan;
     if (body.alokasiKain !== undefined) dataToUpdate.alokasiKain = body.alokasiKain;
+    if (body.rincianBahan !== undefined) dataToUpdate.rincianBahan = body.rincianBahan;
     if (body.nominalDp !== undefined) dataToUpdate.nominalDp = body.nominalDp;
     if (body.totalNilaiPo !== undefined) dataToUpdate.totalNilaiPo = body.totalNilaiPo;
     if (body.nominalTotalOrder !== undefined && body.totalNilaiPo === undefined) dataToUpdate.totalNilaiPo = body.nominalTotalOrder;

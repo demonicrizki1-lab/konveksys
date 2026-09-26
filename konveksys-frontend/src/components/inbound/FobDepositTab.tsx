@@ -9,7 +9,6 @@ import {
   Layers,
   Sparkles,
   Trash2,
-  Banknote,
   PackageCheck,
   ChevronLeft,
   ChevronRight,
@@ -17,18 +16,23 @@ import {
   AlertCircle,
   Building2,
   CreditCard,
-  ArrowUpRight,
   ShoppingBag,
   Image as ImageIcon,
   Download,
   X,
   Eye,
   Calendar,
+  FileText,
+  Landmark,
+  ArrowRight,
+  Edit2,
+  Printer,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { FobDownPayment, FobDepositStatus } from '../../types';
 import { FobDepositModal } from './FobDepositModal';
 import { FobReceiveFabricModal } from './FobReceiveFabricModal';
+import { FobMaterialProcurementModal } from './FobMaterialProcurementModal';
 import { formatDateIndo } from '../../utils/formatters';
 
 interface FobDepositTabProps {
@@ -61,7 +65,7 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
   // Modal States
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [receiveModalDeposit, setReceiveModalDeposit] = useState<FobDownPayment | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [procurementModalDeposit, setProcurementModalDeposit] = useState<FobDownPayment | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<{ url: string; title: string } | null>(null);
 
   const formatRp = (num: number) => 'Rp ' + (num || 0).toLocaleString('id-ID');
@@ -91,37 +95,45 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
   const startIndex = (safeCurrentPage - 1) * itemsPerPage;
   const paginatedDeposits = filteredDeposits.slice(startIndex, startIndex + itemsPerPage);
 
-  // Quick Stats
-  const totalNominalDp = filteredDeposits.reduce((acc, d) => acc + d.nominalDp, 0);
-  const belumBelanjaNominal = filteredDeposits
-    .filter((d) => d.statusBahan === 'BELUM_DIBELANJAKAN')
-    .reduce((acc, d) => acc + d.nominalDp, 0);
-  const totalMeterKainFob = filteredDeposits.reduce((acc, d) => acc + (d.alokasiKain?.totalMeter || 0), 0);
+  // Agregasi Finansial Ringkasan Berbasis Real Cost Pengadaan Bahan & Direct Payment Toko
+  const totalNilaiKontrakPo = filteredDeposits.reduce((acc, d) => {
+    return acc + Number(d.totalNilaiPo || d.nominalTotalOrder || 0);
+  }, 0);
 
-  const getStatusBadge = (status: FobDepositStatus) => {
-    switch (status) {
-      case 'BELUM_DIBELANJAKAN':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 font-bold rounded-full text-[10px] border border-amber-200/80 whitespace-nowrap">
-            <Clock className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-            <span>Belum Belanja</span>
-          </span>
-        );
-      case 'SEBAGIAN_DIBELANJAKAN':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-full text-[10px] border border-blue-200/80 whitespace-nowrap">
-            <Layers className="w-3.5 h-3.5 shrink-0 text-blue-500" />
-            <span>Sebagian Kain</span>
-          </span>
-        );
-      case 'SUDAH_JADI_KAIN':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[10px] border border-emerald-200/80 whitespace-nowrap">
-            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
-            <span>Kain di Gudang</span>
-          </span>
-        );
+  const totalBelanjaBahanToko = filteredDeposits.reduce((acc, d) => {
+    if (d.rincianBahan && d.rincianBahan.length > 0) {
+      return acc + d.rincianBahan.reduce((sub, it) => sub + (it.subtotal || 0), 0);
     }
+    return acc + Number(d.nominalDp || 0);
+  }, 0);
+
+  const totalSisaHakJasaCmt = Math.max(0, totalNilaiKontrakPo - totalBelanjaBahanToko);
+
+  const getStatusBadge = (status: FobDepositStatus, itemsCount: number = 0, allTransferred: boolean = false) => {
+    if (status === 'SUDAH_JADI_KAIN') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[10px] border border-emerald-200 whitespace-nowrap">
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+          <span>Bahan Lengkap di Gudang</span>
+        </span>
+      );
+    }
+
+    if (allTransferred && itemsCount > 0) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 font-bold rounded-full text-[10px] border border-blue-200 whitespace-nowrap">
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-blue-600" />
+          <span>Lunas Ditransfer ke Toko</span>
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 font-bold rounded-full text-[10px] border border-amber-200 whitespace-nowrap">
+        <Clock className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+        <span>Menunggu Transfer Buyer</span>
+      </span>
+    );
   };
 
   const handleSaveDeposit = async (
@@ -135,45 +147,44 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
     <div className="space-y-4 animate-in fade-in duration-150">
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Card 1: Total DP Masuk */}
+        {/* Card 1: Nilai Total Kontrak PO */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total DP FOB Masuk</span>
+            <span className="text-xs font-semibold text-slate-500">Total Nilai Kontrak PO (FOB)</span>
             <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Coins className="w-4.5 h-4.5" />
+              <FileText className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 mt-0.5">{formatRp(totalNominalDp)}</div>
-          <p className="text-xs text-slate-400">Dari {filteredDeposits.length} transaksi penerimaan DP</p>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5 tabular-nums">{formatRp(totalNilaiKontrakPo)}</div>
+          <p className="text-xs text-slate-400">Dari {filteredDeposits.length} PO FOB aktif</p>
         </div>
 
-        {/* Card 2: DP Belum Dibelanjakan */}
+        {/* Card 2: Belanja Bahan Toko (Kain + Aksesoris) */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Dana Kas Mengendap (Belum Belanja)</span>
+            <span className="text-xs font-semibold text-slate-500">Belanja Bahan Toko (Kain & Trims)</span>
             <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Clock className="w-4.5 h-4.5" />
+              <ShoppingBag className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-amber-700 mt-0.5">{formatRp(belumBelanjaNominal)}</div>
+          <div className="text-2xl font-bold text-amber-700 mt-0.5 tabular-nums">{formatRp(totalBelanjaBahanToko)}</div>
           <p className="text-xs text-slate-400">
-            {filteredDeposits.filter((d) => d.statusBahan === 'BELUM_DIBELANJAKAN').length} PO siap dibelikan bahan
+            Ditransfer langsung oleh buyer ke rekening toko supplier
           </p>
         </div>
 
-        {/* Card 3: Kain Tiba dari DP */}
+        {/* Card 3: Estimasi Hak Jasa Konveksi (CMT) */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Kain Fisik Masuk Gudang (FOB)</span>
+            <span className="text-xs font-semibold text-slate-500">Estimasi Hak Jasa Konveksi (CMT)</span>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Scissors className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-700 mt-0.5">
-            {totalMeterKainFob.toLocaleString('id-ID')}{' '}
-            <span className="text-sm font-semibold text-slate-500">m</span>
+          <div className="text-2xl font-bold text-emerald-700 mt-0.5 tabular-nums">
+            {formatRp(totalSisaHakJasaCmt)}
           </div>
-          <p className="text-xs text-slate-400">Telah dikonversi & siap dipotong di SPK</p>
+          <p className="text-xs text-slate-400">Sisa hak jasa (ditagih saat kirim barang jadi)</p>
         </div>
       </div>
 
@@ -186,56 +197,54 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
           >
-            <option value="ALL">Semua Status Bahan</option>
-            <option value="BELUM_DIBELANJAKAN">Dana Belum Dibelanjakan</option>
-            <option value="SEBAGIAN_DIBELANJAKAN">Sebagian Jadi Kain</option>
-            <option value="SUDAH_JADI_KAIN">Kain Sudah di Gudang</option>
+            <option value="ALL">Semua Status Pengadaan</option>
+            <option value="BELUM_DIBELANJAKAN">Menunggu Transfer Buyer ke Toko</option>
+            <option value="SEBAGIAN_DIBELANJAKAN">Sebagian / Sudah Ditransfer ke Toko</option>
+            <option value="SUDAH_JADI_KAIN">Bahan Sudah Lengkap di Gudang</option>
           </select>
         </div>
 
         {userRole === 'ADMIN' && (
           <button
             onClick={() => setIsDepositModalOpen(true)}
-            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all shrink-0"
+            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            + Catat DP Uang Masuk (FOB)
+            + Catat Pengadaan Bahan PO (FOB)
           </button>
         )}
       </div>
 
-      {/* Tabel Daftar DP FOB */}
+      {/* Tabel Daftar Pengadaan Bahan FOB */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <colgroup>
-              <col className="w-[17%] min-w-[180px]" />
-              <col className="w-[23%] min-w-[210px]" />
+              <col className="w-[15%] min-w-[160px]" />
+              <col className="w-[20%] min-w-[190px]" />
+              <col className="w-[14%] min-w-[130px]" />
+              <col className="w-[18%] min-w-[180px]" />
               <col className="w-[13%] min-w-[130px]" />
-              <col className="w-[13%] min-w-[140px]" />
-              <col className="w-[12%] min-w-[130px]" />
-              <col className="w-[10%] min-w-[120px]" />
-              <col className="w-[6%] min-w-[95px]" />
-              <col className="w-[6%] min-w-[115px]" />
+              <col className="w-[10%] min-w-[110px]" />
+              <col className="w-[10%] min-w-[110px]" />
             </colgroup>
             <thead>
               <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                <th className="py-3 px-4">No. Bukti DP & Tgl</th>
+                <th className="py-3 px-4">No. Pengadaan & Tgl</th>
                 <th className="py-3 px-4">Buyer & PO Rujukan</th>
                 <th className="py-3 px-4 text-right">Nilai Total PO</th>
-                <th className="py-3 px-4 text-right">Nominal DP (% DP)</th>
-                <th className="py-3 px-4">Metode Bayar</th>
-                <th className="py-3 px-4">Status Pengadaan</th>
-                <th className="py-3 px-4">Kain di Gudang</th>
+                <th className="py-3 px-4">Rincian Belanja Bahan</th>
+                <th className="py-3 px-4">Transfer Buyer ke Toko</th>
+                <th className="py-3 px-4">Fisik di Gudang</th>
                 <th className="py-3 px-4 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {paginatedDeposits.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <Coins className="w-10 h-10 mx-auto text-slate-300 mb-2 stroke-1" />
-                    Belum ada data penerimaan DP Uang FOB yang sesuai dengan filter.
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <ShoppingBag className="w-10 h-10 mx-auto text-slate-300 mb-2 stroke-1" />
+                    Belum ada data pengadaan bahan PO FOB yang sesuai dengan filter.
                   </td>
                 </tr>
               ) : (
@@ -245,12 +254,15 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
                     ? dep.poNumbers
                     : (dep.poNumber ? dep.poNumber.split(',').map((s) => s.trim()).filter(Boolean) : []);
 
-                  // Fallback kalkulasi total order: nominalTotalOrder -> totalNilaiPo -> estimasi dari DP % -> 0
-                  const totalOrder = Number(
-                    dep.nominalTotalOrder ||
-                    dep.totalNilaiPo ||
-                    (dep.persentaseDp > 0 && dep.nominalDp > 0 ? Math.round(dep.nominalDp / (dep.persentaseDp / 100)) : 0)
-                  );
+                  const totalOrder = Number(dep.nominalTotalOrder || dep.totalNilaiPo || 0);
+
+                  const rincian = dep.rincianBahan || [];
+                  const subtotalKain = rincian.filter((i) => i.kategori === 'KAIN').reduce((a, b) => a + (b.subtotal || 0), 0);
+                  const subtotalTrims = rincian.filter((i) => i.kategori === 'AKSESORIS').reduce((a, b) => a + (b.subtotal || 0), 0);
+                  const totalBahan = rincian.length > 0 ? (subtotalKain + subtotalTrims) : Number(dep.nominalDp || 0);
+
+                  const allTransferred = rincian.length > 0 && rincian.every((i) => i.statusBayarBuyer === 'SUDAH_DITRANSFER');
+                  const pendingTfCount = rincian.filter((i) => i.statusBayarBuyer === 'BELUM_DITRANSFER').length;
 
                   return (
                     <tr key={dep.id} className="hover:bg-indigo-50/20 transition-colors">
@@ -264,7 +276,7 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
                             <button
                               type="button"
                               onClick={() => setReceiptPreview({ url: dep.buktiBayarUrl!, title: dep.depositNumber })}
-                              title="Lihat Bukti Transfer"
+                              title="Lihat Struk Bukti Transfer"
                               className="p-1 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition cursor-pointer shrink-0"
                             >
                               <ImageIcon className="w-3.5 h-3.5" />
@@ -308,58 +320,71 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
                         </div>
                       </td>
 
-                      {/* Nilai Total PO */}
+                      {/* Nilai Total PO (Master Kontrak) */}
                       <td className="py-3 px-4 text-right align-top whitespace-nowrap">
-                        <div className="font-bold text-slate-800 text-xs tabular-nums">
+                        <div className="font-bold text-slate-900 text-xs tabular-nums">
                           {totalOrder > 0 ? formatRp(totalOrder) : '-'}
                         </div>
-                        {poList.length > 1 && (
-                          <div className="text-[10px] text-slate-400 font-medium mt-0.5">
-                            Akumulasi {poList.length} PO
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Nominal DP & % */}
-                      <td className="py-3 px-4 text-right align-top whitespace-nowrap">
-                        <div className="font-bold text-emerald-700 text-xs tabular-nums">{formatRp(dep.nominalDp)}</div>
-                        <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200/80">
-                          <span>{dep.persentaseDp}% DP</span>
+                        <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+                          Hak CMT: {formatRp(Math.max(0, totalOrder - totalBahan))}
                         </div>
                       </td>
 
-                      {/* Metode Bayar */}
+                      {/* Rincian Belanja Bahan */}
                       <td className="py-3 px-4 align-top">
-                        <div className="font-semibold text-slate-700 flex items-center gap-1.5 text-xs whitespace-nowrap">
-                          <CreditCard className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{dep.metodePembayaran}</span>
+                        <div className="font-bold text-indigo-700 text-xs tabular-nums">
+                          {formatRp(totalBahan)}
                         </div>
-                        <div className="text-[11px] text-slate-500 truncate max-w-[140px] mt-0.5">
-                          {dep.bankTujuan || 'Kas Operasional'}
+                        <div className="flex flex-wrap items-center gap-1 mt-1 text-[10px]">
+                          {rincian.length > 0 ? (
+                            <>
+                              <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                Kain {formatRp(subtotalKain)}
+                              </span>
+                              <span className="px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 font-semibold border border-purple-100">
+                                Trims {formatRp(subtotalTrims)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 italic">Belum ada rincian item</span>
+                          )}
                         </div>
-                        {dep.nomorReferensi && (
-                          <div className="text-[10px] font-mono text-slate-400 truncate max-w-[140px]">
-                            Ref: {dep.nomorReferensi}
-                          </div>
-                        )}
-                        {dep.buktiBayarUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setReceiptPreview({ url: dep.buktiBayarUrl!, title: dep.depositNumber })}
-                            className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-[10px] font-bold border border-indigo-200/60 transition cursor-pointer"
-                          >
-                            <ImageIcon className="w-3 h-3 text-indigo-500 shrink-0" />
-                            <span>Lihat Struk</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setProcurementModalDeposit(dep)}
+                          className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline cursor-pointer"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          <span>{rincian.length > 0 ? `Kelola (${rincian.length} Item)` : '+ Input Belanja Bahan'}</span>
+                        </button>
                       </td>
 
-                      {/* Status Bahan */}
+                      {/* Status Transfer Buyer ke Toko */}
                       <td className="py-3 px-4 align-top whitespace-nowrap">
-                        {getStatusBadge(dep.statusBahan)}
+                        {rincian.length > 0 ? (
+                          allTransferred ? (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[10px] border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Lunas ke Toko</span>
+                              </span>
+                              <div className="text-[10px] text-slate-400">Seluruh toko lunas</div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded-full text-[10px] border border-amber-200">
+                                <Clock className="w-3 h-3 text-amber-600" />
+                                <span>{pendingTfCount} Belum Transfer</span>
+                              </span>
+                              <div className="text-[10px] text-slate-400">Menunggu transfer toko</div>
+                            </div>
+                          )
+                        ) : (
+                          getStatusBadge(dep.statusBahan)
+                        )}
                       </td>
 
-                      {/* Kain Tiba */}
+                      {/* Kain / Bahan di Gudang */}
                       <td className="py-3 px-4 align-top whitespace-nowrap">
                         {hasRol ? (
                           <div>
@@ -368,7 +393,7 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
                               <span className="text-[10px] text-slate-500 font-normal">m</span>
                             </div>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {dep.alokasiKain?.rolCodes.map((code) => (
+                              {dep.alokasiKain?.rolCodes.slice(0, 2).map((code) => (
                                 <span
                                   key={code}
                                   className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 font-mono text-[9px] font-semibold rounded border border-indigo-200/60"
@@ -376,6 +401,11 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
                                   {code}
                                 </span>
                               ))}
+                              {dep.alokasiKain && dep.alokasiKain.rolCodes.length > 2 && (
+                                <span className="text-[9px] text-slate-400 font-mono">
+                                  +{dep.alokasiKain.rolCodes.length - 2}
+                                </span>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -391,21 +421,29 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
                           {userRole === 'ADMIN' && (
                             <>
                               <button
+                                onClick={() => setProcurementModalDeposit(dep)}
+                                title="Buka Rincian Belanja Bahan & Tagihan Toko"
+                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-bold text-[11px] border border-indigo-200/80 flex items-center gap-1 transition-all cursor-pointer shadow-2xs hover:shadow-xs"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+                                <span>Kelola Belanja</span>
+                              </button>
+
+                              <button
                                 onClick={() => setReceiveModalDeposit(dep)}
                                 title="Terima Kain dari DP ini ke Gudang"
-                                className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-bold text-[11px] border border-emerald-200/80 flex items-center gap-1 transition-all cursor-pointer shadow-2xs hover:shadow-xs"
+                                className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                               >
                                 <PackageCheck className="w-3.5 h-3.5 shrink-0" />
-                                <span>Terima Kain</span>
                               </button>
 
                               <button
                                 onClick={() => {
-                                  if (confirm(`Hapus pencatatan DP ${dep.depositNumber}?`)) {
+                                  if (confirm(`Hapus pencatatan pengadaan ${dep.depositNumber}?`)) {
                                     deleteFobDeposit(dep.id);
                                   }
                                 }}
-                                title="Hapus DP"
+                                title="Hapus Pengadaan"
                                 className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5 shrink-0" />
@@ -426,7 +464,7 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
         {totalPages > 1 && (
           <div className="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>
-              Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredDeposits.length)} dari {filteredDeposits.length} data DP
+              Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredDeposits.length)} dari {filteredDeposits.length} data
             </span>
             <div className="flex items-center gap-1">
               <button
@@ -464,6 +502,19 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
         />
       )}
 
+      {/* Modal Kelola Pengadaan Belanja Bahan (Kain & Aksesoris) */}
+      {procurementModalDeposit && (
+        <FobMaterialProcurementModal
+          isOpen={!!procurementModalDeposit}
+          deposit={procurementModalDeposit}
+          onClose={() => setProcurementModalDeposit(null)}
+          onUpdateDeposit={async (id, updates) => {
+            await updateFobDeposit(id, updates);
+            setProcurementModalDeposit((prev) => (prev ? { ...prev, ...updates } : null));
+          }}
+        />
+      )}
+
       {receiveModalDeposit && (
         <FobReceiveFabricModal
           isOpen={!!receiveModalDeposit}
@@ -488,10 +539,10 @@ export const FobDepositTab: React.FC<FobDepositTabProps> = ({
                 <ImageIcon className="w-4.5 h-4.5 text-indigo-600" />
                 <div>
                   <h3 className="text-xs font-bold text-slate-800">
-                    Bukti Transfer / Struk: {receiptPreview.title}
+                    Bukti Transfer: {receiptPreview.title}
                   </h3>
                   <p className="text-[10px] text-slate-400">
-                    Bukti pembayaran down payment dari buyer
+                    Struk pembayaran pengadaan dari buyer ke toko
                   </p>
                 </div>
               </div>

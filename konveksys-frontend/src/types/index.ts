@@ -916,9 +916,31 @@ export interface ProductionTimeline {
 }
 
 // ----------------------------------------------------
-// FOB DOWN PAYMENT / DEPOSIT BUYER (INBOUND DP UANG)
+// FOB MATERIAL PROCUREMENT & DOWN PAYMENT
+// Pendataan Belanja Bahan (Kain & Aksesoris) untuk PO FOB
+// Mendukung skema Direct Transfer dari Buyer langsung ke Toko Supplier
 // ----------------------------------------------------
 export type FobDepositStatus = 'BELUM_DIBELANJAKAN' | 'SEBAGIAN_DIBELANJAKAN' | 'SUDAH_JADI_KAIN';
+export type FobMaterialCategory = 'KAIN' | 'AKSESORIS';
+
+export interface FobMaterialItem {
+  id: string;
+  kategori: FobMaterialCategory;
+  namaItem: string;             // e.g. "Cotton Combed 30s Reaktif Jet Black", "Resleting YKK Metal 5 inch", "Kancing Grafir 18L"
+  tokoSupplier: string;         // e.g. "Toko Bahan Dunia Mas", "Sentosa Trims & Button"
+  noRekeningToko?: string;      // No rek tujuan transfer buyer, e.g. "BCA 82910291 a/n PT Dunia Mas"
+  jumlah: number;
+  satuan: string;               // kg, yard, meter, pcs, roll, gross, lusin, pack, set
+  hargaSatuan: number;
+  subtotal: number;
+  statusBayarBuyer: 'BELUM_DITRANSFER' | 'SUDAH_DITRANSFER';
+  buktiTransferTokoUrl?: string; // Struk transfer dari buyer langsung ke rekening toko
+  notaTokoUrl?: string;          // Foto nota/bon pembelian dari toko
+  statusFisik?: 'BELUM_DITERIMA' | 'DITERIMA_GUDANG';
+  tanggalTerima?: string;
+  catatan?: string;
+  createdAt?: string;
+}
 
 export interface FobFabricAllocation {
   totalMeter: number;
@@ -945,15 +967,20 @@ export interface FobDownPayment {
   tanggalBayar: string;          // YYYY-MM-DD
   nominalTotalOrder: number;     // Nilai total pesanan PO FOB (akumulasi jika multi-PO)
   totalNilaiPo?: number;         // Alias dari backend DB totalNilaiPo
-  persentaseDp: number;          // e.g. 50 (%)
-  nominalDp: number;             // Nilai rupiah DP yang disetor buyer
-  metodePembayaran: MetodePembayaran;
-  bankTujuan?: string;           // BCA, MANDIRI, BRI, KAS_TUNAI
+  persentaseDp: number;          // e.g. 50 (%) atau estimasi % bahan
+  nominalDp: number;             // Nilai rupiah belanja bahan yang disetor/ditransfer buyer ke toko
+  metodePembayaran: MetodePembayaran | 'TRANSFER_TOKO' | 'DIRECT_BUYER_TO_STORE';
+  bankTujuan?: string;           // BCA, MANDIRI, BRI, atau nama toko tujuan
   nomorReferensi?: string;       // No bukti transfer bank
   buktiBayarUrl?: string;        // Foto/struk transfer opsional
   keterangan?: string;
   statusBahan: FobDepositStatus;
   alokasiKain?: FobFabricAllocation;
+  rincianBahan?: FobMaterialItem[]; // Pendataan item belanja kain & aksesoris PO FOB
+  totalBelanjaKain?: number;
+  totalBelanjaAksesoris?: number;
+  totalBelanjaBahan?: number;
+  sisaNilaiJasaPo?: number;
   createdAt: string;
   updatedAt?: string;
 }

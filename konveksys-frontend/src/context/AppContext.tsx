@@ -143,6 +143,7 @@ import {
   FobDownPayment,
   FobDepositStatus,
   FobFabricAllocation,
+  MetodePembayaran,
   AuditLogEntry,
   AuditModule,
   AuditActionType,
@@ -1359,6 +1360,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           persentaseDp: Number(d.persentaseDp || 0),
           tanggalBayar: typeof d.tanggalBayar === 'string' ? d.tanggalBayar.split('T')[0] : d.tanggalBayar,
           alokasiKain: d.alokasiKain ? (typeof d.alokasiKain === 'string' ? JSON.parse(d.alokasiKain) : d.alokasiKain) : undefined,
+          rincianBahan: d.rincianBahan ? (typeof d.rincianBahan === 'string' ? JSON.parse(d.rincianBahan) : d.rincianBahan) : undefined,
           buktiBayarUrl: d.buktiBayarUrl || undefined,
         }));
         setFobDeposits(rawDep);
@@ -2893,6 +2895,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           persentaseDp: Number(res.data.persentaseDp || depositData.persentaseDp || 0),
           tanggalBayar: typeof res.data.tanggalBayar === 'string' ? res.data.tanggalBayar.split('T')[0] : res.data.tanggalBayar,
           alokasiKain: res.data.alokasiKain ? (typeof res.data.alokasiKain === 'string' ? JSON.parse(res.data.alokasiKain) : res.data.alokasiKain) : undefined,
+          rincianBahan: res.data.rincianBahan ? (typeof res.data.rincianBahan === 'string' ? JSON.parse(res.data.rincianBahan) : res.data.rincianBahan) : depositData.rincianBahan,
           buktiBayarUrl: res.data.buktiBayarUrl || depositData.buktiBayarUrl,
         };
       }
@@ -2911,7 +2914,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         brand: newDeposit.brand,
         tanggal: newDeposit.tanggalBayar,
         jumlah: newDeposit.nominalDp,
-        metode: newDeposit.metodePembayaran,
+        metode: (['TRANSFER', 'TUNAI', 'GIRO'].includes(newDeposit.metodePembayaran as string)
+          ? newDeposit.metodePembayaran
+          : 'TRANSFER') as MetodePembayaran,
         keterangan: newDeposit.keterangan || `DP FOB (${newDeposit.poNumber}) - ${newDeposit.depositNumber}`,
         referensiNomor: newDeposit.nomorReferensi,
       });

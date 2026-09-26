@@ -21,6 +21,7 @@ import {
   Coins,
   Printer,
   Download,
+  ShoppingBag,
 } from 'lucide-react';
 import { FobDepositTab } from './FobDepositTab';
 import { FabricStockPrintModal } from './FabricStockPrintModal';
@@ -337,14 +338,14 @@ export const InboundView: React.FC = () => {
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
           }`}
         >
-          <Coins className="w-4 h-4 text-amber-500" />
-          <span>Inbound DP Uang (FOB Cash Deposit)</span>
+          <ShoppingBag className="w-4 h-4 text-amber-500" />
+          <span>Pengadaan Bahan FOB (Kain & Aksesoris)</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
               activeSubTab === 'dp-uang-fob' ? 'bg-amber-50 text-amber-800' : 'bg-slate-200 text-slate-600'
             }`}
           >
-            {fobDeposits.length} DP
+            {fobDeposits.length} PO FOB
           </span>
         </button>
       </div>
