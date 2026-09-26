@@ -1566,7 +1566,7 @@ export const FinanceView: React.FC = () => {
                     <th className="p-3 whitespace-nowrap">No. Invoice & Tgl</th>
                     <th className="p-3 whitespace-nowrap">Mitra Penjahit</th>
                     <th className="p-3 whitespace-nowrap">Ref PO / SPK</th>
-                    <th className="p-3">Kategori & Keterangan</th>
+                    <th className="p-3">Keterangan</th>
                     <th className="p-3 text-center whitespace-nowrap">Status Bayar</th>
                     <th className="p-3 text-center whitespace-nowrap">Potong Gaji Kelak</th>
                     <th className="p-3 text-right whitespace-nowrap min-w-[140px]">Nominal (Rp)</th>
@@ -1629,16 +1629,7 @@ export const FinanceView: React.FC = () => {
                           )}
                         </td>
                         <td className="p-3 max-w-xs">
-                          <span className="inline-block px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-slate-100 text-slate-700 border border-slate-200 mb-1">
-                            {inv.kategori === 'DP_ONGKOS_JAHIT'
-                              ? 'DP Ongkos Jahit'
-                              : inv.kategori === 'PELUNASAN_DIMUKA'
-                              ? 'Pelunasan Dimuka'
-                              : inv.kategori === 'TALANGAN_OPERASIONAL'
-                              ? 'Talangan Operasional'
-                              : 'Borongan Khusus'}
-                          </span>
-                          <div className="text-[11px] text-slate-600 line-clamp-2 leading-tight">
+                          <div className="text-[11px] text-slate-700 leading-normal">
                             {inv.keterangan || '-'}
                           </div>
                         </td>
