@@ -1526,14 +1526,14 @@ export const FinanceView: React.FC = () => {
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
-                    <th className="p-3">No. Invoice & Tgl</th>
-                    <th className="p-3">Mitra Penjahit</th>
-                    <th className="p-3">Ref PO / SPK</th>
+                    <th className="p-3 whitespace-nowrap">No. Invoice & Tgl</th>
+                    <th className="p-3 whitespace-nowrap">Mitra Penjahit</th>
+                    <th className="p-3 whitespace-nowrap">Ref PO / SPK</th>
                     <th className="p-3">Kategori & Keterangan</th>
-                    <th className="p-3 text-center">Status Bayar</th>
-                    <th className="p-3 text-center">Potong Gaji Kelak</th>
-                    <th className="p-3 text-right">Nominal (Rp)</th>
-                    <th className="p-3 text-center w-36">Aksi</th>
+                    <th className="p-3 text-center whitespace-nowrap">Status Bayar</th>
+                    <th className="p-3 text-center whitespace-nowrap">Potong Gaji Kelak</th>
+                    <th className="p-3 text-right whitespace-nowrap min-w-[140px]">Nominal (Rp)</th>
+                    <th className="p-3 text-center w-36 whitespace-nowrap">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
@@ -1563,26 +1563,26 @@ export const FinanceView: React.FC = () => {
                   ) : (
                     filteredManualInvoices.map((inv) => (
                       <tr key={inv.id} className="hover:bg-slate-50 transition">
-                        <td className="p-3">
-                          <div className="font-mono font-bold text-indigo-700">{inv.invoiceNo}</div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">{formatDateIndo(inv.tanggal)}</div>
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-mono font-bold text-indigo-700 whitespace-nowrap">{inv.invoiceNo}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">{formatDateIndo(inv.tanggal)}</div>
                         </td>
-                        <td className="p-3">
-                          <div className="font-bold text-slate-900">{inv.vendor}</div>
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="font-bold text-slate-900 whitespace-nowrap">{inv.vendor}</div>
                           {inv.bankTujuan && (
-                            <div className="text-[10px] text-slate-500">
+                            <div className="text-[10px] text-slate-500 whitespace-nowrap">
                               {inv.bankTujuan} {inv.nomorRekening}
                             </div>
                           )}
                         </td>
-                        <td className="p-3">
+                        <td className="p-3 whitespace-nowrap">
                           {inv.poNumber ? (
                             <div>
-                              <span className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded text-[10px]">
+                              <span className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded text-[10px] whitespace-nowrap inline-block">
                                 {inv.poNumber}
                               </span>
                               {inv.brand && (
-                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                <div className="text-[10px] text-slate-500 mt-0.5 whitespace-nowrap">
                                   {inv.brand} {inv.produk ? `• ${inv.produk}` : ''}
                                 </div>
                               )}
@@ -1605,38 +1605,40 @@ export const FinanceView: React.FC = () => {
                             {inv.keterangan || '-'}
                           </div>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-center whitespace-nowrap">
                           {inv.status === 'DIBAYAR' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               LUNAS
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
                               <Clock className="w-3 h-3 text-amber-600" />
                               PENDING
                             </span>
                           )}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-center whitespace-nowrap">
                           {inv.isDeducted ? (
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
                               Sudah Terpotong
                             </span>
                           ) : inv.potongDiSlipGaji ? (
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap">
                               ✓ Auto-Potong Gaji
                             </span>
                           ) : (
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-slate-100 text-slate-500">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-slate-100 text-slate-500 whitespace-nowrap">
                               Non-Potong
                             </span>
                           )}
                         </td>
-                        <td className="p-3 text-right font-black text-slate-900 text-sm">
-                          {formatRp(inv.totalNominal)}
+                        <td className="p-3 text-right font-black text-slate-900 text-sm whitespace-nowrap">
+                          <span className="inline-block whitespace-nowrap">
+                            Rp {(inv.totalNominal || 0).toLocaleString('id-ID')}
+                          </span>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
