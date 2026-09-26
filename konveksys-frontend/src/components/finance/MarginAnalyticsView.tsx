@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { MonthlyStatementModal, MarginReportItem } from './MonthlyStatementModal';
 import { formatRp, formatDateIndo } from '../../utils/formatters';
+import { matchBrand } from '../../utils/spkHelper';
 import {
   TrendingUp,
   DollarSign,
@@ -20,6 +21,11 @@ import {
   Layers,
   ChevronRight,
   ChevronLeft,
+  Scissors,
+  ShoppingBag,
+  Info,
+  Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const MarginAnalyticsView: React.FC = () => {
@@ -32,7 +38,12 @@ export const MarginAnalyticsView: React.FC = () => {
     getBuyerRates,
     getVendorRate,
     getSuratJalanItems,
+    fobDeposits,
+    fobOrders,
   } = useApp();
+
+  // Mode Skema: 'ALL' (Konsolidasi), 'CMT' (Makloon Jasa), 'FOB' (Order Bahan)
+  const [orderSchemeFilter, setOrderSchemeFilter] = useState<'ALL' | 'CMT' | 'FOB'>('ALL');
 
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL'); // 'ALL' or 'YYYY-MM'
   const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
@@ -65,7 +76,7 @@ export const MarginAnalyticsView: React.FC = () => {
     });
   }, [suratJalanList]);
 
-  // Transform each Surat Jalan into full Margin Analytical Item
+  // Transform each Surat Jalan into full Margin Analytical Item with CMT vs FOB detection
   const allMarginItems: MarginReportItem[] = useMemo(() => {
     const list: MarginReportItem[] = [];
     suratJalanList.forEach((sj) => {
@@ -74,12 +85,35 @@ export const MarginAnalyticsView: React.FC = () => {
         const matchedSpk = spkList.find((s) => s.id === it.spkId || s.spkNumber === it.spkId);
         
         let jenisKain = it.jenisKain || 'Kain Standar';
-        if ((!jenisKain || jenisKain === 'Kain Standar') && matchedSpk && matchedSpk.rollIds && matchedSpk.rollIds.length > 0) {
-          const matchedRolls = inboundRolls.filter((r) => matchedSpk.rollIds.includes(r.id));
-          if (matchedRolls.length > 0) {
-            const names = Array.from(new Set(matchedRolls.map((r) => r.jenisKain).filter(Boolean)));
-            jenisKain = names.join(', ');
-          }
+        const matchedRolls = matchedSpk && matchedSpk.rollIds && matchedSpk.rollIds.length > 0
+          ? inboundRolls.filter((r) => matchedSpk.rollIds.includes(r.id))
+          : [];
+
+        if ((!jenisKain || jenisKain === 'Kain Standar') && matchedRolls.length > 0) {
+          const names = Array.from(new Set(matchedRolls.map((r) => r.jenisKain).filter(Boolean)));
+          jenisKain = names.join(', ');
+        }
+
+        // Deteksi Skema Order: CMT vs FOB
+        // Aturan: Saat ini hanya brand Monture Outdoor yang merupakan skema FOB, seluruh brand lainnya adalah CMT.
+        const isFob = it.brand ? matchBrand(it.brand, 'MONTURE') : false;
+        const orderType: 'CMT' | 'FOB' = isFob ? 'FOB' : 'CMT';
+
+        // Nomor PO rujukan untuk pesanan FOB
+        let fobPoNumber: string | undefined = undefined;
+        if (isFob) {
+          const matchedFobDeposit = fobDeposits.find(
+            (d) => (matchedSpk?.depositId && d.id === matchedSpk.depositId) ||
+                   (it.sourcePONumber && d.poNumber?.toLowerCase() === it.sourcePONumber.toLowerCase()) ||
+                   (matchedSpk?.sourcePONumber && d.poNumber?.toLowerCase() === matchedSpk.sourcePONumber.toLowerCase()) ||
+                   (it.brand && matchBrand(d.brand, it.brand))
+          );
+          const matchedFobOrder = fobOrders.find(
+            (o) => (it.sourcePONumber && o.poNumber?.toLowerCase() === it.sourcePONumber.toLowerCase()) ||
+                   (matchedSpk?.sourcePONumber && o.poNumber?.toLowerCase() === matchedSpk.sourcePONumber.toLowerCase()) ||
+                   (it.brand && matchBrand(o.brand, it.brand))
+          );
+          fobPoNumber = matchedFobDeposit?.poNumber || matchedFobOrder?.poNumber || it.sourcePONumber || matchedSpk?.sourcePONumber || undefined;
         }
 
         // 1. Calculate Buyer Revenue
@@ -131,22 +165,72 @@ export const MarginAnalyticsView: React.FC = () => {
           labaBersih,
           marginPersen,
           statusMargin,
+          orderType,
+          fobPoNumber,
         });
       });
     });
     return list;
-  }, [suratJalanList, spkList, inboundRolls, getBuyerRates, getVendorRate, getSuratJalanItems]);
+  }, [suratJalanList, spkList, inboundRolls, fobDeposits, fobOrders, getBuyerRates, getVendorRate, getSuratJalanItems]);
+
+  // Rekapitulasi Kontrak PO FOB & Pengadaan Bahan Toko
+  const fobContractSummaries = useMemo(() => {
+    return fobDeposits.map((dep) => {
+      const items = dep.rincianBahan || [];
+      const totalNilaiPo = Number(dep.totalNilaiPo || dep.nominalTotalOrder || 0);
+      const totalBelanjaKain = items
+        .filter((it) => it.kategori === 'KAIN')
+        .reduce((acc, it) => acc + (it.subtotal || 0), 0);
+      const totalBelanjaTrims = items
+        .filter((it) => it.kategori === 'AKSESORIS')
+        .reduce((acc, it) => acc + (it.subtotal || 0), 0);
+      const totalBelanjaBahan = totalBelanjaKain + totalBelanjaTrims;
+      const hakJasaCmt = Math.max(0, totalNilaiPo - totalBelanjaBahan);
+
+      const relatedSJItems = allMarginItems.filter(
+        (m) => (m.fobPoNumber && m.fobPoNumber.toLowerCase() === dep.poNumber.toLowerCase()) ||
+               (m.brand.toLowerCase() === dep.brand.toLowerCase() && m.orderType === 'FOB')
+      );
+      const totalBiayaJahit = relatedSJItems.reduce((acc, it) => acc + it.biayaCmt, 0);
+      const deliveredPcs = relatedSJItems.reduce((acc, it) => acc + it.totalPcs, 0);
+      const estimasiLabaBersih = hakJasaCmt - (totalBiayaJahit > 0 ? totalBiayaJahit : 0);
+      const marginPersen = totalNilaiPo > 0 ? (estimasiLabaBersih / totalNilaiPo) * 100 : 0;
+
+      return {
+        id: dep.id,
+        depositNumber: dep.depositNumber,
+        poNumber: dep.poNumber,
+        brand: dep.brand,
+        tanggal: dep.tanggalBayar,
+        totalNilaiPo,
+        totalBelanjaKain,
+        totalBelanjaTrims,
+        totalBelanjaBahan,
+        hakJasaCmt,
+        totalBiayaJahit,
+        deliveredPcs,
+        estimasiLabaBersih,
+        marginPersen,
+        itemCount: items.length,
+        statusBahan: dep.statusBahan,
+      };
+    });
+  }, [fobDeposits, allMarginItems]);
 
   // Filtered margin items based on controls
   const filteredItems = useMemo(() => {
     return allMarginItems.filter((item) => {
+      // Skema Filter (ALL, CMT, FOB)
+      if (orderSchemeFilter !== 'ALL' && item.orderType !== orderSchemeFilter) {
+        return false;
+      }
       // Month filter
       if (selectedMonth !== 'ALL') {
         const itemMonth = item.tanggal.substring(0, 7);
         if (itemMonth !== selectedMonth) return false;
       }
       // Brand filter
-      if (selectedBrand !== 'ALL' && item.brand !== selectedBrand) return false;
+      if (selectedBrand !== 'ALL' && !matchBrand(item.brand, selectedBrand)) return false;
       // Vendor filter
       if (selectedVendor !== 'ALL' && item.vendor !== selectedVendor) return false;
       // Status filter
@@ -160,13 +244,14 @@ export const MarginAnalyticsView: React.FC = () => {
         const matchBrand = item.brand.toLowerCase().includes(q);
         const matchVendor = item.vendor.toLowerCase().includes(q);
         const matchKain = item.jenisKain.toLowerCase().includes(q);
-        if (!matchNo && !matchSpk && !matchProd && !matchBrand && !matchVendor && !matchKain) {
+        const matchFobPo = item.fobPoNumber ? item.fobPoNumber.toLowerCase().includes(q) : false;
+        if (!matchNo && !matchSpk && !matchProd && !matchBrand && !matchVendor && !matchKain && !matchFobPo) {
           return false;
         }
       }
       return true;
     });
-  }, [allMarginItems, selectedMonth, selectedBrand, selectedVendor, statusFilter, searchTerm]);
+  }, [allMarginItems, orderSchemeFilter, selectedMonth, selectedBrand, selectedVendor, statusFilter, searchTerm]);
 
   // Pagination State (Default 10)
   const [currentPage, setCurrentPage] = useState(1);
@@ -207,15 +292,34 @@ export const MarginAnalyticsView: React.FC = () => {
     let totalPcs = 0;
     let totalRevenue = 0;
     let totalCost = 0;
+    let cmtProfit = 0;
+    let fobProfit = 0;
 
     filteredItems.forEach((item) => {
       totalPcs += item.totalPcs;
       totalRevenue += item.omzetBuyer;
       totalCost += item.biayaCmt;
+      if (item.orderType === 'FOB') {
+        fobProfit += item.labaBersih;
+      } else {
+        cmtProfit += item.labaBersih;
+      }
     });
 
     const grossProfit = Math.max(0, totalRevenue - totalCost);
     const avgMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+    // FOB Contract Aggregates (filtered by brand if selected)
+    const relevantFobContracts = fobContractSummaries.filter((c) => {
+      if (selectedBrand !== 'ALL' && c.brand !== selectedBrand) return false;
+      return true;
+    });
+
+    const totalFobPoContract = relevantFobContracts.reduce((acc, c) => acc + c.totalNilaiPo, 0);
+    const totalFobBelanjaBahan = relevantFobContracts.reduce((acc, c) => acc + c.totalBelanjaBahan, 0);
+    const totalFobBelanjaKain = relevantFobContracts.reduce((acc, c) => acc + c.totalBelanjaKain, 0);
+    const totalFobBelanjaTrims = relevantFobContracts.reduce((acc, c) => acc + c.totalBelanjaTrims, 0);
+    const totalFobHakJasa = relevantFobContracts.reduce((acc, c) => acc + c.hakJasaCmt, 0);
 
     return {
       totalPcs,
@@ -223,8 +327,15 @@ export const MarginAnalyticsView: React.FC = () => {
       totalCost,
       grossProfit,
       avgMargin,
+      cmtProfit,
+      fobProfit,
+      totalFobPoContract,
+      totalFobBelanjaBahan,
+      totalFobBelanjaKain,
+      totalFobBelanjaTrims,
+      totalFobHakJasa,
     };
-  }, [filteredItems]);
+  }, [filteredItems, fobContractSummaries, selectedBrand]);
 
   // Top 3 Most Profitable Articles
   const topArticles = useMemo(() => {
@@ -294,6 +405,8 @@ export const MarginAnalyticsView: React.FC = () => {
       'No Surat Jalan',
       'No SPK',
       'Tanggal',
+      'Skema Order',
+      'PO Rujukan',
       'Artikel Produk',
       'Material Kain',
       'Brand Buyer',
@@ -310,6 +423,8 @@ export const MarginAnalyticsView: React.FC = () => {
       `"${item.noSuratJalan}"`,
       `"${item.spkNumber}"`,
       `"${item.tanggal}"`,
+      `"${item.orderType || 'CMT'}"`,
+      `"${item.fobPoNumber || '-'}"`,
       `"${item.produk}"`,
       `"${item.jenisKain}"`,
       `"${item.brand}"`,
@@ -339,7 +454,7 @@ export const MarginAnalyticsView: React.FC = () => {
     <div className="space-y-6">
       
       {/* 1. Header Banner & Executive Actions */}
-      <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-white rounded-xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg mb-2 border border-emerald-200">
@@ -348,14 +463,14 @@ export const MarginAnalyticsView: React.FC = () => {
             </div>
             <h1 className="text-xl font-bold text-slate-900">Analisis Margin & Rekap Bulanan</h1>
             <p className="text-slate-500 text-xs mt-1">
-              Monitoring selisih riil antara Omzet Tagihan Brand dengan Beban Ongkos Jahit CMT Penjahit untuk mengukur laba bersih workshop.
+              Monitoring selisih riil omzet terhadap beban jahit & belanja bahan dengan pemisahan skema CMT vs FOB secara akurat.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5">
             <button
               onClick={handleExportCSV}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 border border-slate-300 shadow-xs transition btn-press"
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 border border-slate-300 shadow-xs transition btn-press cursor-pointer"
               title="Download Data sebagai File Excel (.csv)"
             >
               <Download className="w-4 h-4 text-emerald-600" />
@@ -363,7 +478,7 @@ export const MarginAnalyticsView: React.FC = () => {
             </button>
             <button
               onClick={() => setIsStatementModalOpen(true)}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition btn-press"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition btn-press cursor-pointer"
               title="Preview & Cetak Laporan Keuangan Bulanan Resmi"
             >
               <Printer className="w-4 h-4" />
@@ -372,8 +487,80 @@ export const MarginAnalyticsView: React.FC = () => {
           </div>
         </div>
 
+        {/* Dual Mode Switcher (Segmented Control Tabs) */}
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80">
+          <button
+            onClick={() => setOrderSchemeFilter('ALL')}
+            className={`flex-1 min-w-[160px] py-2.5 px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+              orderSchemeFilter === 'ALL'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+            }`}
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${orderSchemeFilter === 'ALL' ? 'text-emerald-600' : 'text-slate-400'}`} />
+            <span>Semua Model (Konsolidasi)</span>
+          </button>
+
+          <button
+            onClick={() => setOrderSchemeFilter('CMT')}
+            className={`flex-1 min-w-[160px] py-2.5 px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+              orderSchemeFilter === 'CMT'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+            }`}
+          >
+            <Scissors className={`w-3.5 h-3.5 ${orderSchemeFilter === 'CMT' ? 'text-indigo-600' : 'text-slate-400'}`} />
+            <span>Khusus CMT (Makloon Jasa)</span>
+          </button>
+
+          <button
+            onClick={() => setOrderSchemeFilter('FOB')}
+            className={`flex-1 min-w-[160px] py-2.5 px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+              orderSchemeFilter === 'FOB'
+                ? 'bg-white text-purple-700 shadow-sm border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+            }`}
+          >
+            <ShoppingBag className={`w-3.5 h-3.5 ${orderSchemeFilter === 'FOB' ? 'text-purple-600' : 'text-slate-400'}`} />
+            <span>Khusus FOB (Order Bahan)</span>
+            {fobContractSummaries.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-800 font-bold ml-1">
+                {fobContractSummaries.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Dynamic Contextual Helper Banner explaining the business formula */}
+        <div className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+          orderSchemeFilter === 'CMT'
+            ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900'
+            : orderSchemeFilter === 'FOB'
+            ? 'bg-purple-50/70 border-purple-200 text-purple-900'
+            : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+        }`}>
+          <Info className={`w-4 h-4 shrink-0 mt-0.5 ${
+            orderSchemeFilter === 'CMT' ? 'text-indigo-600' : orderSchemeFilter === 'FOB' ? 'text-purple-600' : 'text-emerald-600'
+          }`} />
+          <div className="leading-relaxed">
+            {orderSchemeFilter === 'CMT' ? (
+              <span>
+                <strong>Prinsip Akuntansi Makloon CMT:</strong> Kain & aksesoris adalah 100% aset milik buyer (dititipkan), sehingga <strong className="underline decoration-indigo-400">nilai kain TIDAK dipotong</strong> dari omzet workshop. Laba Bersih murni dihitung dari: <code>Omzet Jasa Jahit Buyer - Beban Jahit Penjahit Mitra</code>.
+              </span>
+            ) : orderSchemeFilter === 'FOB' ? (
+              <span>
+                <strong>Prinsip Akuntansi FOB (Full Order Bahan):</strong> Workshop membelanjakan modal bahan baku (kain & trims). Laba Bersih dihitung: <code>(Nilai Kontrak PO - Total Belanja Bahan Toko) = Hak Jasa CMT</code>, lalu dikurangi <code>Beban Jahit Penjahit = Laba Bersih Akhir</code>.
+              </span>
+            ) : (
+              <span>
+                <strong>Mode Konsolidasi Keuangan:</strong> Menggabungkan akumulasi laba dari seluruh pengiriman Surat Jalan skema makloon murni (CMT) dan skema pesanan penuh (FOB). Total Laba Bersih workshop mencerminkan kontribusi gabungan kedua lini usaha.
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Filter Controls Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-slate-100 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
           <div>
             <label className="block font-bold text-slate-600 mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-indigo-600" />
@@ -450,83 +637,226 @@ export const MarginAnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Four Main KPI Metric Cards */}
+      {/* 2. Four Main KPI Metric Cards (Dynamic according to CMT/FOB/ALL) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Card 1: Total Revenue */}
+        {/* Card 1: Revenue / Contract */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total Omzet Buyer</span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <DollarSign className="w-4.5 h-4.5" />
+            <span className="text-xs font-semibold text-slate-500">
+              {orderSchemeFilter === 'CMT'
+                ? 'Omzet Jasa Makloon'
+                : orderSchemeFilter === 'FOB'
+                ? 'Kontrak PO FOB'
+                : 'Total Omzet Terkirim'}
+            </span>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+              orderSchemeFilter === 'FOB' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
+            }`}>
+              {orderSchemeFilter === 'FOB' ? <ShoppingBag className="w-4.5 h-4.5" /> : <DollarSign className="w-4.5 h-4.5" />}
             </div>
           </div>
-          <div className="text-2xl font-bold text-slate-900 mt-0.5">{formatRp(kpi.totalRevenue)}</div>
-          <p className="text-xs text-slate-400">Volume: {kpi.totalPcs.toLocaleString('id-ID')} Pcs barang kirim</p>
+          <div className="text-2xl font-bold text-slate-900 mt-0.5">
+            {formatRp(orderSchemeFilter === 'FOB' ? (kpi.totalFobPoContract || kpi.totalRevenue) : kpi.totalRevenue)}
+          </div>
+          <p className="text-xs text-slate-400">
+            {orderSchemeFilter === 'FOB'
+              ? `Dari ${fobContractSummaries.length} kontrak PO aktif`
+              : `Volume: ${kpi.totalPcs.toLocaleString('id-ID')} Pcs barang kirim`}
+          </p>
         </div>
 
-        {/* Card 2: Total Cost */}
+        {/* Card 2: Cost / Materials */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Beban Jahit (CMT)</span>
+            <span className="text-xs font-semibold text-slate-500">
+              {orderSchemeFilter === 'FOB' ? 'Modal Belanja Bahan' : 'Beban Jahit (CMT)'}
+            </span>
             <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
               <Coins className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-rose-700 mt-0.5">{formatRp(kpi.totalCost)}</div>
-          <p className="text-xs text-slate-400">Upah langsung ke mitra penjahit</p>
+          <div className="text-2xl font-bold text-rose-700 mt-0.5">
+            {formatRp(orderSchemeFilter === 'FOB' ? kpi.totalFobBelanjaBahan : kpi.totalCost)}
+          </div>
+          <p className="text-xs text-slate-400">
+            {orderSchemeFilter === 'FOB'
+              ? `Kain ${formatRp(kpi.totalFobBelanjaKain)} + Trims ${formatRp(kpi.totalFobBelanjaTrims)}`
+              : 'Upah langsung ke mitra penjahit'}
+          </p>
         </div>
 
-        {/* Card 3: Gross Profit */}
+        {/* Card 3: Net Profit / Hak Jasa */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Laba Bersih Workshop</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500">
+              {orderSchemeFilter === 'FOB' ? 'Hak Jasa CMT Workshop' : 'Laba Bersih Workshop'}
+            </span>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+              orderSchemeFilter === 'FOB' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'
+            }`}>
               <TrendingUp className="w-4.5 h-4.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-700 mt-0.5">{formatRp(kpi.grossProfit)}</div>
-          <p className="text-xs text-slate-400">Omzet dikurangi ongkos jahit</p>
+          <div className={`text-2xl font-bold mt-0.5 ${
+            orderSchemeFilter === 'FOB' ? 'text-indigo-700' : 'text-emerald-700'
+          }`}>
+            {formatRp(orderSchemeFilter === 'FOB' ? kpi.totalFobHakJasa : kpi.grossProfit)}
+          </div>
+          <p className="text-xs text-slate-400">
+            {orderSchemeFilter === 'ALL'
+              ? `CMT: ${formatRp(kpi.cmtProfit)} • FOB: ${formatRp(kpi.fobProfit)}`
+              : orderSchemeFilter === 'CMT'
+              ? 'Omzet dikurangi upah jahit (Kain Rp 0)'
+              : 'Kontrak PO dikurangi belanja bahan toko'}
+          </p>
         </div>
 
-        {/* Card 4: Profit Margin % */}
+        {/* Card 4: Profit Margin % / Realisasi Kirim */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Rata-rata Margin</span>
+            <span className="text-xs font-semibold text-slate-500">
+              {orderSchemeFilter === 'FOB' ? 'Realisasi Laba Kirim' : 'Rata-rata Margin'}
+            </span>
             <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Percent className="w-4.5 h-4.5" />
             </div>
           </div>
           <div className="flex items-baseline gap-2 mt-0.5">
-            <div className="text-2xl font-bold text-indigo-700">{kpi.avgMargin.toFixed(1)}%</div>
-            <span
-              className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                kpi.avgMargin >= 30
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : kpi.avgMargin >= 15
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-rose-100 text-rose-800'
-              }`}
-            >
-              {kpi.avgMargin >= 30 ? 'Sehat' : kpi.avgMargin >= 15 ? 'Moderat' : 'Tipis'}
-            </span>
+            <div className="text-2xl font-bold text-indigo-700">
+              {orderSchemeFilter === 'FOB'
+                ? formatRp(kpi.fobProfit || kpi.grossProfit)
+                : `${kpi.avgMargin.toFixed(1)}%`}
+            </div>
+            {orderSchemeFilter !== 'FOB' && (
+              <span
+                className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                  kpi.avgMargin >= 30
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : kpi.avgMargin >= 15
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-rose-100 text-rose-800'
+                }`}
+              >
+                {kpi.avgMargin >= 30 ? 'Sehat' : kpi.avgMargin >= 15 ? 'Moderat' : 'Tipis'}
+              </span>
+            )}
           </div>
 
-          {/* Progress Bar */}
-          <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                kpi.avgMargin >= 30
-                  ? 'bg-emerald-500'
-                  : kpi.avgMargin >= 15
-                  ? 'bg-amber-500'
-                  : 'bg-rose-500'
-              }`}
-              style={{ width: `${Math.min(100, Math.max(0, kpi.avgMargin))}%` }}
-            />
-          </div>
+          {/* Subtitle / Progress */}
+          {orderSchemeFilter === 'FOB' ? (
+            <p className="text-xs text-slate-400">
+              Dari {kpi.totalPcs.toLocaleString('id-ID')} Pcs terkirim di surat jalan
+            </p>
+          ) : (
+            <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  kpi.avgMargin >= 30
+                    ? 'bg-emerald-500'
+                    : kpi.avgMargin >= 15
+                    ? 'bg-amber-500'
+                    : 'bg-rose-500'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(0, kpi.avgMargin))}%` }}
+              />
+            </div>
+          )}
         </div>
       </div>
+
+      {/* 2b. FOB Contract & Material Procurement Overview (Shown in FOB or ALL mode when FOB contracts exist) */}
+      {(orderSchemeFilter === 'FOB' || (orderSchemeFilter === 'ALL' && fobContractSummaries.length > 0)) && (
+        <div className="bg-white rounded-xl border border-purple-200 shadow-xs overflow-hidden space-y-4 p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-100 pb-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-lg mb-1 border border-purple-200">
+                <ShoppingBag className="w-3.5 h-3.5" />
+                Rekapitulasi Pengadaan Bahan Toko (FOB)
+              </div>
+              <h3 className="font-bold text-slate-900 text-sm">
+                Rincian Kontrak PO, Belanja Bahan & Hak Jasa CMT
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Nilai bahan (kain & aksesoris) yang dibelanjakan langsung oleh workshop ke toko supplier untuk pesanan FOB.
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-semibold text-slate-500">Total Modal Bahan:</span>
+              <div className="text-base font-bold text-rose-700">{formatRp(kpi.totalFobBelanjaBahan)}</div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full text-left text-[11px] text-slate-700">
+              <thead className="bg-purple-50/70 border-b border-purple-200 text-purple-900 font-bold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="px-2.5 py-2.5 whitespace-nowrap">No Kontrak / PO</th>
+                  <th className="px-2 py-2.5 whitespace-nowrap">Brand Buyer</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">Nilai Kontrak PO</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">Belanja Kain</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">Belanja Trims</th>
+                  <th className="px-2 py-2.5 text-right font-bold text-rose-700 whitespace-nowrap">Modal Bahan</th>
+                  <th className="px-2 py-2.5 text-right font-bold text-purple-700 whitespace-nowrap">Hak Jasa CMT</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">Realisasi Jahit</th>
+                  <th className="px-2 py-2.5 text-right font-bold text-emerald-700 whitespace-nowrap">Est. Laba</th>
+                  <th className="px-2 py-2.5 text-center whitespace-nowrap">Status Bahan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {fobContractSummaries.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="p-6 text-center text-slate-400">
+                      Belum ada data kontrak PO FOB yang tercatat di sistem.
+                    </td>
+                  </tr>
+                ) : (
+                  fobContractSummaries.map((fob) => (
+                    <tr key={fob.id} className="hover:bg-purple-50/30 transition">
+                      <td className="px-2.5 py-2 font-mono font-bold text-purple-700 whitespace-nowrap">
+                        <div className="text-[11px]">{fob.depositNumber}</div>
+                        <span className="text-[9px] text-slate-400 font-normal block leading-tight">PO: {fob.poNumber}</span>
+                      </td>
+                      <td className="px-2 py-2 font-semibold text-slate-800 whitespace-nowrap text-[11px]">
+                        {fob.brand}
+                      </td>
+                      <td className="px-2 py-2 text-right font-bold text-slate-900 whitespace-nowrap tabular-nums text-[11px]">
+                        {formatRp(fob.totalNilaiPo)}
+                      </td>
+                      <td className="px-2 py-2 text-right text-slate-600 whitespace-nowrap tabular-nums text-[11px]">
+                        {formatRp(fob.totalBelanjaKain)}
+                      </td>
+                      <td className="px-2 py-2 text-right text-slate-600 whitespace-nowrap tabular-nums text-[11px]">
+                        {formatRp(fob.totalBelanjaTrims)}
+                      </td>
+                      <td className="px-2 py-2 text-right font-bold text-rose-700 whitespace-nowrap tabular-nums bg-rose-50/30 text-[11px]">
+                        {formatRp(fob.totalBelanjaBahan)}
+                      </td>
+                      <td className="px-2 py-2 text-right font-bold text-purple-700 whitespace-nowrap tabular-nums bg-purple-50/30 text-[11px]">
+                        {formatRp(fob.hakJasaCmt)}
+                      </td>
+                      <td className="px-2 py-2 text-right text-slate-700 whitespace-nowrap tabular-nums text-[11px]">
+                        {formatRp(fob.totalBiayaJahit)}
+                        {fob.deliveredPcs > 0 && (
+                          <span className="block text-[8px] text-slate-400 font-normal">({fob.deliveredPcs} pcs)</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-right font-bold text-emerald-700 whitespace-nowrap tabular-nums text-[11px]">
+                        {formatRp(fob.estimasiLabaBersih)}
+                      </td>
+                      <td className="px-2 py-2 text-center whitespace-nowrap">
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                          {fob.statusBahan}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* 3. Top Insights: Top Products & Brand Contribution (2 Column Cards) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -623,8 +953,8 @@ export const MarginAnalyticsView: React.FC = () => {
       </div>
 
       {/* 4. Comprehensive Margin Analytics Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
             <h3 className="font-bold text-slate-900 text-sm">
               Rincian Analisis Margin per Pengiriman Surat Jalan
@@ -642,60 +972,97 @@ export const MarginAnalyticsView: React.FC = () => {
               placeholder="Cari SJ, SPK, Produk, Brand..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full text-left text-xs text-slate-700">
+          <table className="w-full text-left text-[11px] text-slate-700">
             <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
               <tr>
-                <th className="p-3 whitespace-nowrap">No SJ & SPK</th>
-                <th className="p-3">Artikel & Material Kain</th>
-                <th className="p-3">Brand & Penjahit</th>
-                <th className="p-3 text-center whitespace-nowrap">Volume (Pcs)</th>
-                <th className="p-3 text-right whitespace-nowrap">Omzet Buyer</th>
-                <th className="p-3 text-right whitespace-nowrap">Beban CMT</th>
-                <th className="p-3 text-right whitespace-nowrap">Laba Bersih</th>
-                <th className="p-3 text-center whitespace-nowrap">Margin (%)</th>
-                <th className="p-3 text-center whitespace-nowrap">Status</th>
+                <th className="px-2.5 py-2.5 whitespace-nowrap">No SJ & SPK</th>
+                <th className="px-1.5 py-2.5 text-center whitespace-nowrap">Skema & PO</th>
+                <th className="px-2 py-2.5">Artikel & Material Kain</th>
+                <th className="px-2 py-2.5">Brand & Penjahit</th>
+                <th className="px-1.5 py-2.5 text-center whitespace-nowrap">Volume</th>
+                <th className="px-2 py-2.5 text-right whitespace-nowrap">Omzet Buyer</th>
+                <th className="px-2 py-2.5 text-right whitespace-nowrap">Beban CMT</th>
+                <th className="px-2 py-2.5 text-right whitespace-nowrap">Laba Bersih</th>
+                <th className="px-1.5 py-2.5 text-center whitespace-nowrap">Margin</th>
+                <th className="px-1.5 py-2.5 text-center whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-400">
+                  <td colSpan={10} className="p-8 text-center text-slate-400">
                     Tidak ada transaksi pengiriman yang sesuai dengan filter.
                   </td>
                 </tr>
               ) : (
                 paginatedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition">
-                    <td className="p-3 font-mono font-bold text-indigo-700 whitespace-nowrap">
-                      <div>{item.noSuratJalan}</div>
-                      <span className="text-[10px] text-slate-400 font-normal block mt-0.5">
-                        SPK: {item.spkNumber} • {formatDateIndo(item.tanggal)}
+                    <td className="px-2.5 py-2 font-mono font-bold text-indigo-700 whitespace-nowrap">
+                      <div className="text-[11px]">{item.noSuratJalan}</div>
+                      <span className="text-[9px] text-slate-400 font-normal block leading-tight">
+                        SPK: {item.spkNumber}
                       </span>
                     </td>
-                    <td className="p-3">
-                      <div className="font-bold text-slate-900">{item.produk}</div>
-                      <span className="text-[10px] text-slate-500 block truncate max-w-[200px]" title={item.jenisKain}>
+                    <td className="px-1.5 py-2 text-center whitespace-nowrap">
+                      {item.orderType === 'FOB' ? (
+                        <div className="inline-flex flex-col items-center">
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                            <ShoppingBag className="w-2.5 h-2.5 text-purple-600" />
+                            FOB
+                          </span>
+                          {item.fobPoNumber && (
+                            <span className="text-[8px] font-mono text-purple-700 mt-0.5 max-w-[65px] truncate" title={item.fobPoNumber}>
+                              {item.fobPoNumber}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                          <Scissors className="w-2.5 h-2.5 text-indigo-500" />
+                          CMT
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2">
+                      <div className="font-bold text-slate-900 text-[11px] truncate max-w-[140px]" title={item.produk}>
+                        {item.produk}
+                      </div>
+                      <span className="text-[9px] text-slate-500 block truncate max-w-[140px]" title={item.jenisKain}>
                         🧵 {item.jenisKain}
                       </span>
                     </td>
-                    <td className="p-3">
-                      <div className="font-semibold text-slate-800">{item.brand}</div>
-                      <span className="text-[10px] text-slate-500 block">Vendor: {item.vendor}</span>
+                    <td className="px-2 py-2">
+                      <div className="font-semibold text-slate-800 text-[11px] truncate max-w-[110px]" title={item.brand}>
+                        {item.brand}
+                      </div>
+                      <span className="text-[9px] text-slate-500 block truncate max-w-[110px]" title={item.vendor}>
+                        Vdr: {item.vendor}
+                      </span>
                     </td>
-                    <td className="p-3 text-center font-bold text-slate-900 whitespace-nowrap">{item.totalPcs} Pcs</td>
-                    <td className="p-3 text-right font-medium text-slate-800 whitespace-nowrap tabular-nums">{formatRp(item.omzetBuyer)}</td>
-                    <td className="p-3 text-right font-medium text-rose-600 whitespace-nowrap tabular-nums">{formatRp(item.biayaCmt)}</td>
-                    <td className="p-3 text-right font-bold text-emerald-700 whitespace-nowrap tabular-nums">{formatRp(item.labaBersih)}</td>
-                    <td className="p-3 text-center font-bold text-indigo-700 whitespace-nowrap">{item.marginPersen.toFixed(1)}%</td>
-                    <td className="p-3 text-center whitespace-nowrap">
+                    <td className="px-1.5 py-2 text-center font-bold text-slate-900 whitespace-nowrap text-[11px]">
+                      {item.totalPcs} <span className="text-[9px] font-normal text-slate-400">Pcs</span>
+                    </td>
+                    <td className="px-2 py-2 text-right font-medium text-slate-800 whitespace-nowrap tabular-nums text-[11px]">
+                      {formatRp(item.omzetBuyer)}
+                    </td>
+                    <td className="px-2 py-2 text-right font-medium text-rose-600 whitespace-nowrap tabular-nums text-[11px]">
+                      {formatRp(item.biayaCmt)}
+                    </td>
+                    <td className="px-2 py-2 text-right font-bold text-emerald-700 whitespace-nowrap tabular-nums text-[11px]">
+                      {formatRp(item.labaBersih)}
+                    </td>
+                    <td className="px-1.5 py-2 text-center font-bold text-indigo-700 whitespace-nowrap text-[11px]">
+                      {item.marginPersen.toFixed(1)}%
+                    </td>
+                    <td className="px-1.5 py-2 text-center whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 rounded-full text-[10px] font-bold inline-block ${
+                        className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold inline-block ${
                           item.statusMargin === 'SEHAT'
                             ? 'bg-emerald-100 text-emerald-800'
                             : item.statusMargin === 'MODERAT'
@@ -711,19 +1078,19 @@ export const MarginAnalyticsView: React.FC = () => {
               )}
             </tbody>
             {filteredItems.length > 0 && (
-              <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900">
+              <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-900 text-[11px]">
                 <tr>
-                  <td colSpan={3} className="p-3 text-right uppercase text-[10px] whitespace-nowrap">
-                    Total Akumulasi:
+                  <td colSpan={4} className="px-2.5 py-2 text-right uppercase text-[10px] whitespace-nowrap">
+                    Total:
                   </td>
-                  <td className="p-3 text-center whitespace-nowrap">{kpi.totalPcs} Pcs</td>
-                  <td className="p-3 text-right whitespace-nowrap tabular-nums">{formatRp(kpi.totalRevenue)}</td>
-                  <td className="p-3 text-right text-rose-600 whitespace-nowrap tabular-nums">{formatRp(kpi.totalCost)}</td>
-                  <td className="p-3 text-right text-emerald-700 whitespace-nowrap tabular-nums">{formatRp(kpi.grossProfit)}</td>
-                  <td className="p-3 text-center text-indigo-700 whitespace-nowrap">{kpi.avgMargin.toFixed(1)}%</td>
-                  <td className="p-3 text-center whitespace-nowrap">
+                  <td className="px-1.5 py-2 text-center whitespace-nowrap">{kpi.totalPcs} Pcs</td>
+                  <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums">{formatRp(kpi.totalRevenue)}</td>
+                  <td className="px-2 py-2 text-right text-rose-600 whitespace-nowrap tabular-nums">{formatRp(kpi.totalCost)}</td>
+                  <td className="px-2 py-2 text-right text-emerald-700 whitespace-nowrap tabular-nums">{formatRp(kpi.grossProfit)}</td>
+                  <td className="px-1.5 py-2 text-center text-indigo-700 whitespace-nowrap">{kpi.avgMargin.toFixed(1)}%</td>
+                  <td className="px-1.5 py-2 text-center whitespace-nowrap">
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                         kpi.avgMargin >= 30
                           ? 'bg-emerald-100 text-emerald-800'
                           : kpi.avgMargin >= 15
@@ -810,6 +1177,7 @@ export const MarginAnalyticsView: React.FC = () => {
         <MonthlyStatementModal
           monthLabel={activeMonthLabel}
           brandFilter={selectedBrand}
+          orderScheme={orderSchemeFilter}
           kpi={kpi}
           items={filteredItems}
           onClose={() => setIsStatementModalOpen(false)}

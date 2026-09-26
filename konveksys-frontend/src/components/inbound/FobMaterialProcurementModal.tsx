@@ -423,8 +423,7 @@ export const FobMaterialProcurementModal: React.FC<FobMaterialProcurementModalPr
     text += `• Nilai Total Kontrak PO: ${formatRp(totalNilaiPo)}\n`;
     text += `• Total Belanja Kain: ${formatRp(totalBelanjaKain)}\n`;
     text += `• Total Belanja Aksesoris: ${formatRp(totalBelanjaAksesoris)}\n`;
-    text += `• *Total Wajib Ditransfer Buyer ke Toko:* ${formatRp(totalBelanjaBahan)}\n`;
-    text += `• *Estimasi Sisa Hak Jasa CMT:* ${formatRp(sisaHakJasaPo)}\n\n`;
+    text += `• *Subtotal:* ${formatRp(totalBelanjaBahan)}\n\n`;
     text += `_Rincian item belanja bahan dapat dilihat pada lembar dokumen pengadaan FOB. Terima kasih!_`;
 
     navigator.clipboard.writeText(text);
@@ -542,35 +541,50 @@ export const FobMaterialProcurementModal: React.FC<FobMaterialProcurementModalPr
               </span>
               <p className="text-xs font-bold text-indigo-700">Direct Transfer Buyer ke Toko</p>
               <p className="text-[11px] text-slate-500">
-                Status: <span className="font-bold text-amber-700">Menunggu Transfer Buyer</span>
+                Status:{' '}
+                {materialItems.length > 0 && totalItemSudahTf === materialItems.length ? (
+                  <span className="font-bold text-emerald-700">Lunas ke Toko</span>
+                ) : totalItemSudahTf > 0 ? (
+                  <span className="font-bold text-amber-700">
+                    Sebagian Ditransfer ({totalItemSudahTf}/{materialItems.length} Lunas)
+                  </span>
+                ) : (
+                  <span className="font-bold text-amber-700">Menunggu Transfer Buyer</span>
+                )}
               </p>
             </div>
           </div>
 
           {/* PENGANTAR */}
-          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
-            <p className="font-semibold mb-0.5">Instruksi Pembayaran Buyer:</p>
-            Bahan baku di bawah ini telah disurvei dan disiapkan oleh pihak konveksi sesuai spesifikasi pesanan PO FOB. Mohon melakukan transfer <strong>langsung ke nomor rekening toko/supplier</strong> yang tercantum di bawah ini agar bahan dapat segera diproses dan dikirim ke gudang konveksi.
-          </div>
+          {materialItems.length > 0 && totalItemSudahTf === materialItems.length ? (
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-900 leading-relaxed">
+              <p className="font-semibold mb-0.5">Konfirmasi Pembayaran Pengadaan Bahan:</p>
+              Seluruh bahan baku di bawah ini telah diverifikasi <strong>Lunas ke Toko</strong> (telah ditransfer langsung oleh buyer ke rekening toko/supplier terkait).
+            </div>
+          ) : (
+            <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+              <p className="font-semibold mb-0.5">Instruksi Pembayaran Buyer:</p>
+              Bahan baku di bawah ini telah disurvei dan disiapkan oleh pihak konveksi sesuai spesifikasi pesanan PO FOB. Mohon melakukan transfer <strong>langsung ke nomor rekening toko/supplier</strong> yang tercantum di bawah ini agar bahan dapat segera diproses dan dikirim ke gudang konveksi.
+            </div>
+          )}
 
           {/* TABEL RINCIAN BELANJA */}
           <div className="border border-slate-200 rounded-xl">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200">
-                  <th className="py-2 px-3">No</th>
-                  <th className="py-2 px-3">Kategori</th>
-                  <th className="py-2 px-3">Nama Bahan / Item</th>
-                  <th className="py-2 px-3">Toko & No. Rekening Transfer</th>
-                  <th className="py-2 px-3 text-right">Volume</th>
-                  <th className="py-2 px-3 text-right">Harga Satuan</th>
-                  <th className="py-2 px-3 text-right">Subtotal</th>
+                  <th className="py-2.5 px-3 text-center w-12">No</th>
+                  <th className="py-2.5 px-3 text-left w-28">Kategori</th>
+                  <th className="py-2.5 px-3 text-left">Nama Bahan / Item</th>
+                  <th className="py-2.5 px-3 text-right w-28">Qty</th>
+                  <th className="py-2.5 px-3 text-right w-32">Harga Satuan</th>
+                  <th className="py-2.5 px-3 text-right w-36">Subtotal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {materialItems.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-slate-400 italic">
+                    <td colSpan={6} className="py-6 text-center text-slate-400 italic">
                       Belum ada rincian item belanja yang dimasukkan.
                     </td>
                   </tr>
@@ -581,22 +595,16 @@ export const FobMaterialProcurementModal: React.FC<FobMaterialProcurementModalPr
                       className="hover:bg-slate-50/50"
                       style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
                     >
-                      <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
-                      <td className="py-2 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${it.kategori === 'KAIN' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-purple-50 text-purple-700 border border-purple-200'}`}>
-                          {it.kategori}
-                        </span>
+                      <td className="py-2.5 px-3 font-mono text-slate-500 text-center">{idx + 1}</td>
+                      <td className="py-2.5 px-3 text-left font-medium text-slate-900">
+                        {it.kategori === 'KAIN' ? 'Kain' : 'Aksesoris'}
                       </td>
-                      <td className="py-2 px-3 font-semibold text-slate-800">{it.namaItem}</td>
-                      <td className="py-2 px-3">
-                        <div className="font-bold text-slate-900">{it.tokoSupplier}</div>
-                        <div className="font-mono text-[11px] text-indigo-600 font-semibold">{it.noRekeningToko || 'Rekening toko via konfirmasi'}</div>
-                      </td>
-                      <td className="py-2 px-3 text-right font-medium text-slate-700">
+                      <td className="py-2.5 px-3 font-semibold text-slate-900">{it.namaItem}</td>
+                      <td className="py-2.5 px-3 text-right font-medium text-slate-800 whitespace-nowrap tabular-nums">
                         {it.jumlah} {it.satuan}
                       </td>
-                      <td className="py-2 px-3 text-right text-slate-600">{formatRp(it.hargaSatuan)}</td>
-                      <td className="py-2 px-3 text-right font-bold text-slate-900">{formatRp(it.subtotal)}</td>
+                      <td className="py-2.5 px-3 text-right text-slate-600 tabular-nums">{formatRp(it.hargaSatuan)}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900 tabular-nums">{formatRp(it.subtotal)}</td>
                     </tr>
                   ))
                 )}
@@ -626,16 +634,9 @@ export const FobMaterialProcurementModal: React.FC<FobMaterialProcurementModalPr
                 <span className="font-medium text-slate-800">{formatRp(totalBelanjaAksesoris)}</span>
               </div>
               <div className="flex justify-between text-indigo-900 font-bold border-t border-indigo-200 pt-2 pb-1">
-                <span>Total yang Wajib Ditransfer Buyer ke Toko:</span>
+                <span>Subtotal:</span>
                 <span className="text-sm text-indigo-700">{formatRp(totalBelanjaBahan)}</span>
               </div>
-              <div className="flex justify-between text-emerald-800 font-bold border-t border-dashed border-indigo-200 pt-1.5">
-                <span>Estimasi Sisa Hak Jasa Konveksi (CMT):</span>
-                <span>{formatRp(sisaHakJasaPo)}</span>
-              </div>
-              <p className="text-[10px] text-slate-400 italic pt-1">
-                *Sisa hak jasa konveksi ditagihkan saat seluruh baju jadi selesai diproduksi dan siap dikirim via Surat Jalan.
-              </p>
             </div>
           </div>
 

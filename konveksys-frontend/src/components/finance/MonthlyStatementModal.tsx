@@ -18,17 +18,22 @@ export interface MarginReportItem {
   labaBersih: number;
   marginPersen: number;
   statusMargin: 'SEHAT' | 'MODERAT' | 'TIPIS';
+  orderType?: 'CMT' | 'FOB';
+  fobPoNumber?: string;
 }
 
 interface MonthlyStatementModalProps {
   monthLabel: string;
   brandFilter: string;
+  orderScheme?: 'ALL' | 'CMT' | 'FOB';
   kpi: {
     totalPcs: number;
     totalRevenue: number;
     totalCost: number;
     grossProfit: number;
     avgMargin: number;
+    cmtProfit?: number;
+    fobProfit?: number;
   };
   items: MarginReportItem[];
   onClose: () => void;
@@ -37,6 +42,7 @@ interface MonthlyStatementModalProps {
 export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
   monthLabel,
   brandFilter,
+  orderScheme = 'ALL',
   kpi,
   items,
   onClose,
@@ -50,6 +56,13 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
     printIsolatedDocument(paperRef.current, docTitle);
   };
 
+  const schemeTitle =
+    orderScheme === 'FOB'
+      ? 'Khusus Pesanan FOB (Order Bahan)'
+      : orderScheme === 'CMT'
+      ? 'Khusus Pesanan CMT (Makloon Jasa)'
+      : 'Konsolidasi (CMT & FOB)';
+
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden">
       <div className="bg-slate-100 rounded-2xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-300 overflow-hidden animate-slideUp">
@@ -61,10 +74,14 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
               <FileSpreadsheet className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                 <span>Laporan Laba Rugi Operasional & Margin</span>
                 <span className="text-slate-400">•</span>
                 <span className="text-emerald-700">{monthLabel}</span>
+                <span className="text-slate-400">•</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  {schemeTitle}
+                </span>
               </div>
               <div className="text-[11px] text-slate-500 font-mono">
                 {brandFilter === 'ALL' ? 'Semua Brand' : `Filter: ${brandFilter}`}
@@ -134,7 +151,7 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
             {/* Executive KPI Summary Box */}
             <div className="grid grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
               <div className="border-r border-slate-200 pr-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block whitespace-nowrap">Total Omzet Buyer:</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block whitespace-nowrap">Total Omzet Tagihan:</span>
                 <strong className="text-slate-900 text-xs font-bold block mt-0.5 whitespace-nowrap tabular-nums">{formatRp(kpi.totalRevenue)}</strong>
                 <span className="text-[9px] text-slate-500 whitespace-nowrap">{kpi.totalPcs} pcs terkirim</span>
               </div>
@@ -146,7 +163,11 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
               <div className="border-r border-slate-200 pr-2">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block whitespace-nowrap">Laba Bersih Workshop:</span>
                 <strong className="text-emerald-700 text-xs font-bold block mt-0.5 whitespace-nowrap tabular-nums">{formatRp(kpi.grossProfit)}</strong>
-                <span className="text-[9px] text-emerald-600 font-semibold whitespace-nowrap">Omzet - Beban CMT</span>
+                <span className="text-[9px] text-emerald-600 font-semibold whitespace-nowrap">
+                  {kpi.cmtProfit !== undefined && kpi.fobProfit !== undefined
+                    ? `CMT: ${formatRp(kpi.cmtProfit)} • FOB: ${formatRp(kpi.fobProfit)}`
+                    : 'Omzet - Beban Jahit'}
+                </span>
               </div>
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 block whitespace-nowrap">Rata-rata Margin:</span>
@@ -167,6 +188,7 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
                   <thead className="bg-slate-100 text-slate-700 font-bold text-[9px] uppercase border-b border-slate-300">
                     <tr>
                       <th className="p-2 whitespace-nowrap">No SJ / Tgl</th>
+                      <th className="p-2 whitespace-nowrap">Skema & PO</th>
                       <th className="p-2">Artikel & Bahan</th>
                       <th className="p-2">Brand / Vendor</th>
                       <th className="p-2 text-center whitespace-nowrap">Qty Pcs</th>
@@ -179,7 +201,7 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
                   <tbody className="divide-y divide-slate-200">
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-6 text-center text-slate-400">
+                        <td colSpan={9} className="p-6 text-center text-slate-400">
                           Tidak ada data transaksi pengiriman pada periode ini.
                         </td>
                       </tr>
@@ -189,6 +211,20 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
                           <td className="p-2 font-mono font-bold text-indigo-700 whitespace-nowrap">
                             <div>{item.noSuratJalan}</div>
                             <span className="text-[9px] text-slate-400 font-normal block">{formatDateIndo(item.tanggal)}</span>
+                          </td>
+                          <td className="p-2 whitespace-nowrap">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                item.orderType === 'FOB'
+                                  ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                  : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                              }`}
+                            >
+                              {item.orderType || 'CMT'}
+                            </span>
+                            {item.fobPoNumber && item.fobPoNumber !== '-' && (
+                              <div className="text-[9px] font-mono text-slate-500 mt-0.5">PO: {item.fobPoNumber}</div>
+                            )}
                           </td>
                           <td className="p-2">
                             <div className="font-bold text-slate-900">{item.produk}</div>
