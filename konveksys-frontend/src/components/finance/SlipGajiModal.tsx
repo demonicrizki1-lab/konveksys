@@ -216,9 +216,15 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                 <span className="font-bold text-slate-900">{formatRp(payroll.totalGrossPay)}</span>
               </div>
               <div className="flex justify-between text-rose-600 border-t border-slate-200 pt-1.5 font-medium">
-                <span>Potongan Kasbon / Uang Muka:</span>
+                <span>Potongan Kasbon:</span>
                 <span className="font-bold text-rose">- {formatRp(payroll.kasbonDeduction)}</span>
               </div>
+              {(payroll.manualInvoiceDeduction ?? 0) > 0 && (
+                <div className="flex justify-between text-amber-700 font-medium">
+                  <span>Potongan Pembayaran Dimuka (Invoice Manual):</span>
+                  <span className="font-bold text-amber-800">- {formatRp(payroll.manualInvoiceDeduction || 0)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-slate-900 border-t-2 border-slate-900 pt-1.5 text-sm font-bold">
                 <span>TOTAL GAJI BERSIH (NETTO):</span>
                 <span className="text-emerald text-emerald-700 text-base">{formatRp(payroll.netPay)}</span>

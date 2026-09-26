@@ -233,6 +233,51 @@ export interface VendorPayrollSettlement {
   createdAt: string;
 }
 
+export type VendorManualInvoiceCategory =
+  | 'DP_ONGKOS_JAHIT'
+  | 'PELUNASAN_DIMUKA'
+  | 'TALANGAN_OPERASIONAL'
+  | 'BORONGAN_KHUSUS'
+  | 'LAINNYA';
+
+export interface VendorManualInvoiceItem {
+  id: string;
+  deskripsi: string;
+  qty?: number;
+  satuan?: string;
+  hargaSatuan?: number;
+  subtotal: number;
+}
+
+export interface VendorManualInvoice {
+  id: string;
+  invoiceNo: string;
+  vendor: string;
+  tanggal: string;
+  jatuhTempo?: string;
+  spkId?: string;
+  spkNumber?: string;
+  poNumber?: string;
+  brand?: string;
+  produk?: string;
+  kategori: VendorManualInvoiceCategory;
+  keterangan: string;
+  items: VendorManualInvoiceItem[];
+  totalNominal: number;
+  metodePembayaran: 'TRANSFER' | 'TUNAI' | 'CEK' | 'GIRO';
+  bankTujuan?: string;
+  nomorRekening?: string;
+  namaRekening?: string;
+  referensiTransfer?: string;
+  status: 'DIBAYAR' | 'PENDING' | 'DIBATALKAN';
+  tanggalBayar?: string;
+  potongDiSlipGaji: boolean;
+  isDeducted?: boolean;
+  deductedAtPayrollId?: string;
+  catatan?: string;
+  createdAt: string;
+}
+
 export interface VendorPOPayrollPackage {
   poId?: string;
   poNumber: string;
@@ -261,6 +306,8 @@ export interface VendorPayrollSummary {
   totalPcs: number;
   totalGrossPay: number;
   kasbonDeduction: number;
+  manualInvoiceDeduction?: number;
+  manualInvoices?: VendorManualInvoice[];
   netPay: number;
   totalPendingPcs?: number;
   totalPendingPay?: number;

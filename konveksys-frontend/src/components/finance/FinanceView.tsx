@@ -2,7 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { SlipGajiModal } from './SlipGajiModal';
 import { InvoiceModal } from './InvoiceModal';
-import { BuyerInvoiceSummary } from '../../types';
+import { VendorManualInvoiceModal } from './VendorManualInvoiceModal';
+import { CreateManualInvoiceModal } from './CreateManualInvoiceModal';
+import { BuyerInvoiceSummary, VendorManualInvoice } from '../../types';
 import { formatRupiahInput, parseRupiahInput, formatDateIndo, getSabtuanPeriod } from '../../utils/formatters';
 import { resolveItemPONumber, matchPOItemColor } from '../../utils/spkHelper';
 import {
@@ -48,17 +50,87 @@ export const FinanceView: React.FC = () => {
     suratJalanList,
     getSuratJalanItems,
     getBuyerRates,
+    vendorManualInvoices,
+    createVendorManualInvoice,
+    updateVendorManualInvoice,
+    deleteVendorManualInvoice,
+    financeSubTab,
+    setFinanceSubTab,
   } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState<'payroll' | 'invoice' | 'kasbon'>(
-    userRole === 'BRAND' ? 'invoice' : 'payroll'
+  const [activeSubTab, setActiveSubTab] = useState<'payroll' | 'manual_invoice' | 'invoice' | 'kasbon'>(
+    userRole === 'BRAND' ? 'invoice' : (financeSubTab || 'payroll')
   );
 
   React.useEffect(() => {
     if (userRole === 'BRAND') {
       setActiveSubTab('invoice');
+    } else if (financeSubTab) {
+      setActiveSubTab(financeSubTab);
     }
-  }, [userRole]);
+  }, [userRole, financeSubTab]);
+
+  // Modal State untuk Invoice Manual Vendor
+  const [isCreateManualModalOpen, setIsCreateManualModalOpen] = useState(false);
+  const [editingManualInvoice, setEditingManualInvoice] = useState<VendorManualInvoice | null>(null);
+  const [previewManualInvoice, setPreviewManualInvoice] = useState<VendorManualInvoice | null>(null);
+
+  // Filter State untuk Tab Invoice Manual
+  const [manualSearchQuery, setManualSearchQuery] = useState('');
+  const [manualVendorFilter, setManualVendorFilter] = useState('ALL');
+  const [manualStatusFilter, setManualStatusFilter] = useState<'ALL' | 'DIBAYAR' | 'PENDING'>('ALL');
+  const [manualPotongFilter, setManualPotongFilter] = useState<'ALL' | 'POTONG_GAJI' | 'NON_POTONG'>('ALL');
+
+  const filteredManualInvoices = useMemo(() => {
+    return (vendorManualInvoices || []).filter((inv) => {
+      if (manualVendorFilter !== 'ALL' && inv.vendor !== manualVendorFilter) {
+        return false;
+      }
+      if (manualStatusFilter !== 'ALL' && inv.status !== manualStatusFilter) {
+        return false;
+      }
+      if (manualPotongFilter === 'POTONG_GAJI' && !inv.potongDiSlipGaji) {
+        return false;
+      }
+      if (manualPotongFilter === 'NON_POTONG' && inv.potongDiSlipGaji) {
+        return false;
+      }
+      if (manualSearchQuery.trim()) {
+        const q = manualSearchQuery.toLowerCase();
+        const matchNo = (inv.invoiceNo || '').toLowerCase().includes(q);
+        const matchVendor = (inv.vendor || '').toLowerCase().includes(q);
+        const matchPO = (inv.poNumber || '').toLowerCase().includes(q);
+        const matchBrand = (inv.brand || '').toLowerCase().includes(q);
+        const matchKet = (inv.keterangan || '').toLowerCase().includes(q);
+        if (!matchNo && !matchVendor && !matchPO && !matchBrand && !matchKet) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [vendorManualInvoices, manualVendorFilter, manualStatusFilter, manualPotongFilter, manualSearchQuery]);
+
+  const manualStats = useMemo(() => {
+    const all = vendorManualInvoices || [];
+    const totalAmount = all.reduce((sum, inv) => sum + (inv.totalNominal || 0), 0);
+    const paidAmount = all
+      .filter((inv) => inv.status === 'DIBAYAR')
+      .reduce((sum, inv) => sum + (inv.totalNominal || 0), 0);
+    const deductedAmount = all
+      .filter((inv) => inv.isDeducted)
+      .reduce((sum, inv) => sum + (inv.totalNominal || 0), 0);
+    const activeDeductionAmount = all
+      .filter((inv) => inv.status === 'DIBAYAR' && inv.potongDiSlipGaji && !inv.isDeducted)
+      .reduce((sum, inv) => sum + (inv.totalNominal || 0), 0);
+
+    return {
+      count: all.length,
+      totalAmount,
+      paidAmount,
+      deductedAmount,
+      activeDeductionAmount,
+    };
+  }, [vendorManualInvoices]);
 
   // Sabtuan Period State
   type PeriodMode = 'this_sabtuan' | 'custom' | 'all';
@@ -671,7 +743,10 @@ export const FinanceView: React.FC = () => {
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
           {userRole === 'ADMIN' && (
             <button
-              onClick={() => setActiveSubTab('payroll')}
+              onClick={() => {
+                setActiveSubTab('payroll');
+                setFinanceSubTab('payroll');
+              }}
               className={`px-4 py-2 rounded-lg text-xs font-semibold transition-base btn-press ${
                 activeSubTab === 'payroll'
                   ? 'bg-indigo-600 text-white shadow-sm'
@@ -682,8 +757,39 @@ export const FinanceView: React.FC = () => {
             </button>
           )}
 
+          {userRole === 'ADMIN' && (
+            <button
+              onClick={() => {
+                setActiveSubTab('manual_invoice');
+                setFinanceSubTab('manual_invoice');
+              }}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold transition-base btn-press flex items-center gap-1.5 ${
+                activeSubTab === 'manual_invoice'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <ReceiptText className="w-3.5 h-3.5" />
+              <span>Invoice Manual Vendor (Bayar Dimuka)</span>
+              {vendorManualInvoices && vendorManualInvoices.length > 0 && (
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-bold ${
+                    activeSubTab === 'manual_invoice'
+                      ? 'bg-white text-indigo-800'
+                      : 'bg-indigo-100 text-indigo-800'
+                  }`}
+                >
+                  {vendorManualInvoices.length}
+                </span>
+              )}
+            </button>
+          )}
+
           <button
-            onClick={() => setActiveSubTab('invoice')}
+            onClick={() => {
+              setActiveSubTab('invoice');
+              setFinanceSubTab('invoice');
+            }}
             className={`px-4 py-2 rounded-lg text-xs font-semibold transition-base btn-press ${
               activeSubTab === 'invoice'
                 ? 'bg-indigo-600 text-white shadow-sm'
@@ -695,7 +801,10 @@ export const FinanceView: React.FC = () => {
 
           {userRole === 'ADMIN' && (
             <button
-              onClick={() => setActiveSubTab('kasbon')}
+              onClick={() => {
+                setActiveSubTab('kasbon');
+                setFinanceSubTab('kasbon');
+              }}
               className={`px-4 py-2 rounded-lg text-xs font-semibold transition-base btn-press ${
                 activeSubTab === 'kasbon'
                   ? 'bg-indigo-600 text-white shadow-sm'
@@ -709,7 +818,7 @@ export const FinanceView: React.FC = () => {
       </div>
 
       {/* Sabtuan Period Toolbar (Filter Sabtuan Pekan Ini, Pekan Lalu, Kustom) */}
-      {activeSubTab !== 'kasbon' && (
+      {activeSubTab !== 'kasbon' && activeSubTab !== 'manual_invoice' && (
         <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
@@ -817,6 +926,33 @@ export const FinanceView: React.FC = () => {
               })}
             </div>
 
+            {/* Quick Action: Buat Invoice Manual / Bayar Dimuka */}
+            <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-indigo-950 flex items-center gap-1.5 text-[11px]">
+                  <ReceiptText className="w-3.5 h-3.5 text-indigo-600" />
+                  Barang Belum Terkirim?
+                </span>
+                <span className="text-[9.5px] font-bold text-indigo-700 bg-indigo-100 border border-indigo-200 px-1.5 py-0.2 rounded">
+                  DP Jahit
+                </span>
+              </div>
+              <p className="text-[10.5px] text-slate-600 leading-tight">
+                Jika mitra <strong>{selectedVendorName}</strong> minta dicairkan uang muka (DP) sebelum barang dikirim via Surat Jalan:
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingManualInvoice(null);
+                  setIsCreateManualModalOpen(true);
+                }}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition btn-press cursor-pointer shadow-2xs mt-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Buat Invoice Manual / Bayar Dimuka</span>
+              </button>
+            </div>
+
             {/* Emergency Override Toggle */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5 text-xs">
               <label className="flex items-center justify-between font-bold text-slate-800 cursor-pointer">
@@ -853,6 +989,12 @@ export const FinanceView: React.FC = () => {
                 <span>Potongan Kasbon:</span>
                 <span className="font-bold">- {formatRp(currentPayroll.kasbonDeduction)}</span>
               </div>
+              {(currentPayroll.manualInvoiceDeduction ?? 0) > 0 && (
+                <div className="flex justify-between text-amber-800 bg-amber-50 px-2 py-1.5 rounded-lg border border-amber-200">
+                  <span>Potongan Invoice Manual (DP):</span>
+                  <span className="font-bold">- {formatRp(currentPayroll.manualInvoiceDeduction || 0)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-slate-900 border-t border-slate-200 pt-2 font-bold text-sm">
                 <span>Gaji Bersih (Netto):</span>
                 <span className="text-emerald-600">{formatRp(currentPayroll.netPay)}</span>
@@ -1142,11 +1284,32 @@ export const FinanceView: React.FC = () => {
                   {displayedTableItems.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="p-8 text-center text-slate-400">
-                        {poSettlementFilter === 'UNPAID'
-                          ? 'Tidak ada item kiriman yang belum lunas.'
-                          : poSettlementFilter === 'SETTLED'
-                          ? 'Belum ada item kiriman pada riwayat lunas.'
-                          : 'Belum ada riwayat surat jalan untuk vendor ini.'}
+                        <div className="max-w-md mx-auto space-y-2.5">
+                          <Package className="w-8 h-8 text-slate-300 mx-auto" />
+                          <div className="font-bold text-slate-700 text-sm">
+                            {poSettlementFilter === 'UNPAID'
+                              ? 'Tidak ada kiriman Surat Jalan yang belum lunas.'
+                              : poSettlementFilter === 'SETTLED'
+                              ? 'Belum ada kiriman pada riwayat lunas.'
+                              : `Belum ada riwayat Surat Jalan untuk vendor ${selectedVendorName}.`}
+                          </div>
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            Barang belum terkirim? Jika vendor minta dibayarkan dahulu (DP / Uang Muka Ongkos Jahit), Anda dapat menerbitkan <strong>Invoice Manual Vendor</strong> sekarang.
+                          </p>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingManualInvoice(null);
+                                setIsCreateManualModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-xs transition btn-press cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Buat Invoice Manual / Bayar Dimuka</span>
+                            </button>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -1197,7 +1360,349 @@ export const FinanceView: React.FC = () => {
         </div>
       )}
 
-      {/* 2. BUYER INVOICE VIEW (PO-BASED & MANUAL SELECTION WITH FABRIC DEDUCTION) */}
+      {/* 2. VENDOR MANUAL INVOICE / PEMBAYARAN DIMUKA VIEW */}
+      {activeSubTab === 'manual_invoice' && userRole === 'ADMIN' && (
+        <div className="space-y-6 animate-fadeIn">
+          
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Dana Bayar Dimuka</span>
+                <div className="text-lg font-black text-slate-900 mt-1">
+                  {formatRp(manualStats.totalAmount)}
+                </div>
+                <span className="text-[10px] text-slate-500">{manualStats.count} transaksi invoice terbit</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <Coins className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Sudah Ditransfer / Lunas</span>
+                <div className="text-lg font-black text-emerald-700 mt-1">
+                  {formatRp(manualStats.paidAmount)}
+                </div>
+                <span className="text-[10px] text-emerald-600 font-semibold">Uang muka sudah cair ke vendor</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Terpotong di Slip Gaji</span>
+                <div className="text-lg font-black text-blue-700 mt-1">
+                  {formatRp(manualStats.deductedAmount)}
+                </div>
+                <span className="text-[10px] text-blue-600 font-semibold">Telah diperhitungkan di pelunasan</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Aktif Memotong Gaji (Belum Tuntas)</span>
+                <div className="text-lg font-black text-amber-700 mt-1">
+                  {formatRp(manualStats.activeDeductionAmount)}
+                </div>
+                <span className="text-[10px] text-amber-600 font-semibold">Menunggu kiriman SJ & payroll</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Search, Filter Toolbar & Action */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1">
+              <div className="relative min-w-[200px] flex-1 max-w-xs">
+                <input
+                  type="text"
+                  value={manualSearchQuery}
+                  onChange={(e) => setManualSearchQuery(e.target.value)}
+                  placeholder="Cari no invoice, vendor, PO..."
+                  className="w-full pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                />
+                {manualSearchQuery && (
+                  <button
+                    onClick={() => setManualSearchQuery('')}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={manualVendorFilter}
+                onChange={(e) => setManualVendorFilter(e.target.value)}
+                className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="ALL">Semua Mitra Penjahit</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.name}>{v.name}</option>
+                ))}
+              </select>
+
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setManualStatusFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                    manualStatusFilter === 'ALL'
+                      ? 'bg-white text-indigo-700 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Semua Status
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManualStatusFilter('DIBAYAR')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                    manualStatusFilter === 'DIBAYAR'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Sudah Dibayar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManualStatusFilter('PENDING')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                    manualStatusFilter === 'PENDING'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Pending
+                </button>
+              </div>
+
+              <select
+                value={manualPotongFilter}
+                onChange={(e) => setManualPotongFilter(e.target.value as any)}
+                className="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="ALL">Semua Tipe Potongan</option>
+                <option value="POTONG_GAJI">Otomatis Potong di Gaji</option>
+                <option value="NON_POTONG">Non-Potong Gaji</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEditingManualInvoice(null);
+                setIsCreateManualModalOpen(true);
+              }}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition btn-press cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Buat Invoice Manual / DP Vendor</span>
+            </button>
+          </div>
+
+          {/* Table Data Invoice Manual */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Daftar Tagihan & Invoice Manual Vendor</h3>
+                <p className="text-xs text-slate-400">
+                  Total {filteredManualInvoices.length} dokumen invoice manual tercatat
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                    <th className="p-3">No. Invoice & Tgl</th>
+                    <th className="p-3">Mitra Penjahit</th>
+                    <th className="p-3">Ref PO / SPK</th>
+                    <th className="p-3">Kategori & Keterangan</th>
+                    <th className="p-3 text-center">Status Bayar</th>
+                    <th className="p-3 text-center">Potong Gaji Kelak</th>
+                    <th className="p-3 text-right">Nominal (Rp)</th>
+                    <th className="p-3 text-center w-36">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {filteredManualInvoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-12 text-center text-slate-400">
+                        <div className="max-w-md mx-auto space-y-2">
+                          <ReceiptText className="w-10 h-10 text-slate-300 mx-auto" />
+                          <div className="font-bold text-slate-700 text-sm">Belum Ada Dokumen Invoice Manual</div>
+                          <p className="text-xs text-slate-400">
+                            Fitur ini digunakan saat vendor meminta dicairkan uang muka / ongkos jahit sebelum barang tuntas dikirimkan via Surat Jalan.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingManualInvoice(null);
+                              setIsCreateManualModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-xs cursor-pointer mt-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Terbitkan Invoice Manual Pertama</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredManualInvoices.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-slate-50 transition">
+                        <td className="p-3">
+                          <div className="font-mono font-bold text-indigo-700">{inv.invoiceNo}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">{formatDateIndo(inv.tanggal)}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-slate-900">{inv.vendor}</div>
+                          {inv.bankTujuan && (
+                            <div className="text-[10px] text-slate-500">
+                              {inv.bankTujuan} {inv.nomorRekening}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {inv.poNumber ? (
+                            <div>
+                              <span className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded text-[10px]">
+                                {inv.poNumber}
+                              </span>
+                              {inv.brand && (
+                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                  {inv.brand} {inv.produk ? `• ${inv.produk}` : ''}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">Non-PO / Umum</span>
+                          )}
+                        </td>
+                        <td className="p-3 max-w-xs">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-slate-100 text-slate-700 border border-slate-200 mb-1">
+                            {inv.kategori === 'DP_ONGKOS_JAHIT'
+                              ? 'DP Ongkos Jahit'
+                              : inv.kategori === 'PELUNASAN_DIMUKA'
+                              ? 'Pelunasan Dimuka'
+                              : inv.kategori === 'TALANGAN_OPERASIONAL'
+                              ? 'Talangan Operasional'
+                              : 'Borongan Khusus'}
+                          </span>
+                          <div className="text-[11px] text-slate-600 line-clamp-2 leading-tight">
+                            {inv.keterangan || '-'}
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          {inv.status === 'DIBAYAR' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              LUNAS
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                              <Clock className="w-3 h-3 text-amber-600" />
+                              PENDING
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          {inv.isDeducted ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                              Sudah Terpotong
+                            </span>
+                          ) : inv.potongDiSlipGaji ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              ✓ Auto-Potong Gaji
+                            </span>
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-slate-100 text-slate-500">
+                              Non-Potong
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right font-black text-slate-900 text-sm">
+                          {formatRp(inv.totalNominal)}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewManualInvoice(inv)}
+                              title="Cetak / Preview Voucher Invoice"
+                              className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition cursor-pointer"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+
+                            {inv.status === 'PENDING' && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (confirm(`Tandai invoice ${inv.invoiceNo} sebesar ${formatRp(inv.totalNominal)} sebagai SUDAH DIBAYAR?`)) {
+                                    await updateVendorManualInvoice(inv.id, {
+                                      status: 'DIBAYAR',
+                                      tanggalBayar: new Date().toISOString().split('T')[0],
+                                    });
+                                  }
+                                }}
+                                title="Tandai Sudah Dibayar (Lunas)"
+                                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition cursor-pointer"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingManualInvoice(inv);
+                                setIsCreateManualModalOpen(true);
+                              }}
+                              title="Edit Data Invoice"
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+                            >
+                              <Scissors className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (confirm(`Hapus invoice manual ${inv.invoiceNo} untuk vendor ${inv.vendor}?`)) {
+                                  await deleteVendorManualInvoice(inv.id);
+                                }
+                              }}
+                              title="Hapus Invoice"
+                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* 3. BUYER INVOICE VIEW (PO-BASED & MANUAL SELECTION WITH FABRIC DEDUCTION) */}
       {activeSubTab === 'invoice' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
@@ -2037,6 +2542,32 @@ export const FinanceView: React.FC = () => {
 
       {isInvoiceModalOpen && (
         <InvoiceModal invoice={compositeInvoice} onClose={() => setIsInvoiceModalOpen(false)} />
+      )}
+
+      {/* Modal Preview Cetak Invoice Manual Vendor */}
+      {previewManualInvoice && (
+        <VendorManualInvoiceModal
+          invoice={previewManualInvoice}
+          onClose={() => setPreviewManualInvoice(null)}
+        />
+      )}
+
+      {/* Modal Terbitkan / Edit Invoice Manual Vendor */}
+      {isCreateManualModalOpen && (
+        <CreateManualInvoiceModal
+          isOpen={isCreateManualModalOpen}
+          onClose={() => {
+            setIsCreateManualModalOpen(false);
+            setEditingManualInvoice(null);
+          }}
+          preselectedVendor={selectedVendorName}
+          editInvoice={editingManualInvoice}
+          onSaved={(savedInv, shouldPrint) => {
+            if (shouldPrint) {
+              setPreviewManualInvoice(savedInv);
+            }
+          }}
+        />
       )}
 
     </div>

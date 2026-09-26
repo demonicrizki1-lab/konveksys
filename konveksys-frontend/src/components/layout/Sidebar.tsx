@@ -23,6 +23,7 @@ import {
   ClipboardList,
   Calculator,
   ShieldAlert,
+  FileText,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -45,6 +46,9 @@ export const Sidebar: React.FC = () => {
     setIsMobileMenuOpen,
     getArusKasSummary,
     hppRecords,
+    financeSubTab,
+    setFinanceSubTab,
+    vendorManualInvoices,
   } = useApp();
 
   // Stats untuk badge
@@ -73,7 +77,7 @@ export const Sidebar: React.FC = () => {
   const hasOutstanding = totalOutstanding > 0;
 
   interface NavItem {
-    id: ActiveTab;
+    id: ActiveTab | string;
     label: string;
     description: string;
     icon: React.ElementType;
@@ -186,6 +190,14 @@ export const Sidebar: React.FC = () => {
           roles: ['ADMIN', 'BRAND'],
         },
         {
+          id: 'finance-manual-invoice',
+          label: 'Invoice Manual Vendor',
+          description: 'Bayar Dimuka & DP Jahit',
+          icon: FileText,
+          badge: vendorManualInvoices && vendorManualInvoices.length > 0 ? `${vendorManualInvoices.length}` : undefined,
+          roles: ['ADMIN'],
+        },
+        {
           id: 'arus-kas',
           label: 'Arus Kas',
           description: userRole === 'ADMIN' ? 'Pembayaran Masuk dari Brand' : 'Riwayat Pembayaran Saya',
@@ -241,8 +253,18 @@ export const Sidebar: React.FC = () => {
     },
   ];
 
-  const handleSelectNav = (tabId: ActiveTab) => {
-    setActiveTab(tabId);
+  const handleSelectNav = (tabId: ActiveTab | string) => {
+    if (tabId === 'finance-manual-invoice') {
+      setActiveTab('finance');
+      setFinanceSubTab('manual_invoice');
+    } else {
+      if (tabId === 'finance') {
+        if (financeSubTab === 'manual_invoice') {
+          setFinanceSubTab('payroll');
+        }
+      }
+      setActiveTab(tabId as ActiveTab);
+    }
     setIsMobileMenuOpen(false);
   };
 
@@ -286,7 +308,12 @@ export const Sidebar: React.FC = () => {
                   <div className="space-y-1">
                     {visibleItems.map((item) => {
                       const Icon = item.icon;
-                      const isActive = activeTab === item.id;
+                      const isActive =
+                        item.id === 'finance-manual-invoice'
+                          ? activeTab === 'finance' && financeSubTab === 'manual_invoice'
+                          : item.id === 'finance'
+                          ? activeTab === 'finance' && financeSubTab !== 'manual_invoice'
+                          : activeTab === item.id;
 
                       return (
                         <button

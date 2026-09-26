@@ -118,6 +118,9 @@ import {
   VendorPayrollSummary,
   VendorPOPayrollPackage,
   VendorPayrollSettlement,
+  VendorManualInvoice,
+  VendorManualInvoiceCategory,
+  VendorManualInvoiceItem,
   BuyerInvoiceSummary,
   PembayaranBrand,
   ArusKasSummary,
@@ -544,6 +547,12 @@ interface AppContextType {
   vendorSettlements: VendorPayrollSettlement[];
   settleVendorPO: (settlement: Omit<VendorPayrollSettlement, 'id' | 'createdAt'>) => Promise<void>;
   unsettleVendorPO: (settlementId: string) => Promise<void>;
+  vendorManualInvoices: VendorManualInvoice[];
+  createVendorManualInvoice: (invoice: Omit<VendorManualInvoice, 'id' | 'createdAt'>) => Promise<VendorManualInvoice>;
+  updateVendorManualInvoice: (id: string, updates: Partial<VendorManualInvoice>) => Promise<void>;
+  deleteVendorManualInvoice: (id: string) => Promise<void>;
+  financeSubTab: 'payroll' | 'manual_invoice' | 'invoice' | 'kasbon';
+  setFinanceSubTab: (tab: 'payroll' | 'manual_invoice' | 'invoice' | 'kasbon') => void;
   calculateVendorPayroll: (
     vendorName: string,
     startDate?: string,
@@ -792,6 +801,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('konvek_vendor_settlements', JSON.stringify(updated));
       return updated;
     });
+  };
+
+  // Vendor Manual Invoice / Pembayaran Dimuka State
+  const [financeSubTab, setFinanceSubTab] = useState<'payroll' | 'manual_invoice' | 'invoice' | 'kasbon'>('payroll');
+  const [vendorManualInvoices, setVendorManualInvoices] = useState<VendorManualInvoice[]>(() => {
+    try {
+      const saved = localStorage.getItem('konvek_vendor_manual_invoices');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      {
+        id: 'vmi-demo-1',
+        invoiceNo: 'INV-MAN/NIKEN/202609/001',
+        vendor: 'BU NIKEN',
+        tanggal: '2026-09-24',
+        jatuhTempo: '2026-09-25',
+        poNumber: 'PO-JEN-260916-537',
+        brand: 'JENAKA KIDS',
+        produk: 'SENARA',
+        kategori: 'DP_ONGKOS_JAHIT',
+        keterangan: 'Pembayaran Uang Muka (DP 50%) Jahit Kemeja Senara sebelum kirim Surat Jalan',
+        items: [
+          {
+            id: 'item-1',
+            deskripsi: 'DP Ongkos Jahit Kemeja Formal Senara (Est. 343 Pcs @ Rp 3.000 / 50%)',
+            qty: 343,
+            satuan: 'Pcs',
+            hargaSatuan: 3000,
+            subtotal: 1029000,
+          },
+        ],
+        totalNominal: 1029000,
+        metodePembayaran: 'TRANSFER',
+        bankTujuan: 'BCA',
+        nomorRekening: '772-091-8821',
+        namaRekening: 'Niken Sulastri',
+        referensiTransfer: 'TRF-BCA-8891283',
+        status: 'DIBAYAR',
+        tanggalBayar: '2026-09-24',
+        potongDiSlipGaji: true,
+        isDeducted: false,
+        catatan: 'Permintaan vendor uang muka jahit operasional sebelum barang tuntas dikirim via SJ.',
+        createdAt: '2026-09-24T10:00:00.000Z',
+      },
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('konvek_vendor_manual_invoices', JSON.stringify(vendorManualInvoices));
+    } catch (e) {
+      console.error('Gagal menyimpan vendor manual invoices ke storage:', e);
+    }
+  }, [vendorManualInvoices]);
+
+  const createVendorManualInvoice = async (
+    data: Omit<VendorManualInvoice, 'id' | 'createdAt'>
+  ): Promise<VendorManualInvoice> => {
+    const newInvoice: VendorManualInvoice = {
+      ...data,
+      id: `vmi-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: new Date().toISOString(),
+    };
+    setVendorManualInvoices((prev) => [newInvoice, ...prev]);
+    return newInvoice;
+  };
+
+  const updateVendorManualInvoice = async (
+    id: string,
+    updates: Partial<VendorManualInvoice>
+  ) => {
+    setVendorManualInvoices((prev) =>
+      prev.map((inv) => (inv.id === id ? { ...inv, ...updates } : inv))
+    );
+  };
+
+  const deleteVendorManualInvoice = async (id: string) => {
+    setVendorManualInvoices((prev) => prev.filter((inv) => inv.id !== id));
   };
 
   // FOB Costing & SPH State
@@ -4777,7 +4867,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    const netPay = Math.max(0, totalGrossPay - kasbon);
+    // Cari invoice manual yang DIBAYAR untuk vendor ini dan dipilih untuk dipotong di slip gaji yang belum terpotong
+    const activeManualInvoices = vendorManualInvoices.filter(
+      (inv) =>
+        inv.vendor === vendorName &&
+        inv.status === 'DIBAYAR' &&
+        inv.potongDiSlipGaji &&
+        !inv.isDeducted
+    );
+    const manualInvoiceDeduction = activeManualInvoices.reduce(
+      (sum, inv) => sum + (inv.totalNominal || 0),
+      0
+    );
+
+    const netPay = Math.max(0, totalGrossPay - kasbon - manualInvoiceDeduction);
 
     let periodeLabel: string | undefined;
     if (startDate && endDate) {
@@ -4789,6 +4892,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       totalPcs,
       totalGrossPay,
       kasbonDeduction: kasbon,
+      manualInvoiceDeduction,
+      manualInvoices: activeManualInvoices,
       netPay,
       totalPendingPcs,
       totalPendingPay,
@@ -5563,6 +5668,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         vendorSettlements,
         settleVendorPO,
         unsettleVendorPO,
+        vendorManualInvoices,
+        createVendorManualInvoice,
+        updateVendorManualInvoice,
+        deleteVendorManualInvoice,
+        financeSubTab,
+        setFinanceSubTab,
         fobDeposits,
         addFobDeposit,
         updateFobDeposit,
