@@ -93,10 +93,22 @@ export const CreateManualInvoiceModal: React.FC<CreateManualInvoiceModalProps> =
     }
   }, [vendor, vendors, editInvoice, namaRekening]);
 
-  // List of active POs for this vendor
-  const vendorPOs = React.useMemo(() => {
-    return productionPOs.filter((po) => !po.vendorTujuan || po.vendorTujuan === vendor);
+  // List of active POs for this vendor & other POs
+  const availablePOs = React.useMemo(() => {
+    if (!productionPOs || productionPOs.length === 0) return [];
+    const matchVendor = productionPOs.filter((po) => po.vendorTujuan === vendor);
+    const genericOrOthers = productionPOs.filter((po) => po.vendorTujuan !== vendor);
+    return [...matchVendor, ...genericOrOthers];
   }, [productionPOs, vendor]);
+
+  const getPoOptionLabel = (po: (typeof productionPOs)[0]) => {
+    const prodNames = po.items && po.items.length > 0
+      ? Array.from(new Set(po.items.map((i) => i.namaProduk).filter(Boolean))).join(', ')
+      : 'Produk';
+    const vName = po.vendorTujuan || vendor || 'Semua Vendor';
+    const bName = po.brand || 'Brand';
+    return `${po.noPO} • ${prodNames} (${bName} - ${vName})`;
+  };
 
   // When PO is chosen, auto fill brand & product
   const handleSelectPO = (poNo: string) => {
@@ -231,23 +243,23 @@ export const CreateManualInvoiceModal: React.FC<CreateManualInvoiceModalProps> =
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-slideUp">
         
         {/* Header Modal */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
               <ReceiptText className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white">
+              <h3 className="font-bold text-sm text-slate-900">
                 {editInvoice ? 'Edit Invoice Manual Vendor' : 'Terbitkan Invoice & Pembayaran Manual Vendor'}
               </h3>
-              <p className="text-[11px] text-slate-300">
+              <p className="text-[11px] text-slate-500">
                 Pencairan DP / uang muka sebelum barang hasil jahit dikirimkan via Surat Jalan.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -269,7 +281,7 @@ export const CreateManualInvoiceModal: React.FC<CreateManualInvoiceModalProps> =
               >
                 {vendors.map((v) => (
                   <option key={v.id} value={v.name}>
-                    {v.name} ({v.specialty || 'Mitra Jahit'})
+                    {v.name}
                   </option>
                 ))}
               </select>
@@ -339,9 +351,9 @@ export const CreateManualInvoiceModal: React.FC<CreateManualInvoiceModalProps> =
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono"
                 >
                   <option value="">-- Tanpa PO (Umum) --</option>
-                  {vendorPOs.map((po) => (
+                  {availablePOs.map((po) => (
                     <option key={po.id} value={po.noPO}>
-                      {po.noPO} ({po.brand})
+                      {getPoOptionLabel(po)}
                     </option>
                   ))}
                 </select>
@@ -489,50 +501,56 @@ export const CreateManualInvoiceModal: React.FC<CreateManualInvoiceModalProps> =
           </div>
 
           {/* Row 6: Metode Pembayaran & Rekening Bank */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-200 pt-3">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Metode Pembayaran</label>
-              <select
-                value={metodePembayaran}
-                onChange={(e) => setMetodePembayaran(e.target.value as any)}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs"
-              >
-                <option value="TRANSFER">Transfer Bank</option>
-                <option value="TUNAI">Kas Tunai</option>
-                <option value="CEK">Cek</option>
-                <option value="GIRO">Bilyet Giro</option>
-              </select>
-            </div>
+          <div className="border-t border-slate-200 pt-3 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Metode Pembayaran</label>
+                <select
+                  value={metodePembayaran}
+                  onChange={(e) => setMetodePembayaran(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="TRANSFER">Transfer Bank</option>
+                  <option value="TUNAI">Kas Tunai</option>
+                  <option value="CEK">Cek</option>
+                  <option value="GIRO">Bilyet Giro</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Bank & No Rekening Tujuan</label>
-              <div className="flex gap-1.5">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Bank Tujuan</label>
                 <input
                   type="text"
                   value={bankTujuan}
                   onChange={(e) => setBankTujuan(e.target.value)}
-                  placeholder="BCA"
-                  className="w-20 px-2 py-1.5 rounded-lg border border-slate-300 text-xs text-center uppercase"
-                />
-                <input
-                  type="text"
-                  value={nomorRekening}
-                  onChange={(e) => setNomorRekening(e.target.value)}
-                  placeholder="No Rekening"
-                  className="flex-1 px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-mono"
+                  placeholder="e.g. BCA, MANDIRI, BRI"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold uppercase focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Atas Nama Rekening</label>
-              <input
-                type="text"
-                value={namaRekening}
-                onChange={(e) => setNamaRekening(e.target.value)}
-                placeholder="Nama Pemilik Rekening"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nomor Rekening Tujuan</label>
+                <input
+                  type="text"
+                  value={nomorRekening}
+                  onChange={(e) => setNomorRekening(e.target.value)}
+                  placeholder="e.g. 772-091-8821"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Atas Nama Rekening</label>
+                <input
+                  type="text"
+                  value={namaRekening}
+                  onChange={(e) => setNamaRekening(e.target.value)}
+                  placeholder="Nama Pemilik Rekening (e.g. BU NIKEN)"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </div>
           </div>
 

@@ -810,45 +810,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem('konvek_vendor_manual_invoices');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          // Hapus mock data jika sebelumnya tersimpan di storage
+          return parsed.filter(
+            (item: any) => item.id !== 'vmi-demo-1' && !item.invoiceNo?.includes('NIKEN/202609/001')
+          );
+        }
       }
     } catch {}
-    return [
-      {
-        id: 'vmi-demo-1',
-        invoiceNo: 'INV-MAN/NIKEN/202609/001',
-        vendor: 'BU NIKEN',
-        tanggal: '2026-09-24',
-        jatuhTempo: '2026-09-25',
-        poNumber: 'PO-JEN-260916-537',
-        brand: 'JENAKA KIDS',
-        produk: 'SENARA',
-        kategori: 'DP_ONGKOS_JAHIT',
-        keterangan: 'Pembayaran Uang Muka (DP 50%) Jahit Kemeja Senara sebelum kirim Surat Jalan',
-        items: [
-          {
-            id: 'item-1',
-            deskripsi: 'DP Ongkos Jahit Kemeja Formal Senara (Est. 343 Pcs @ Rp 3.000 / 50%)',
-            qty: 343,
-            satuan: 'Pcs',
-            hargaSatuan: 3000,
-            subtotal: 1029000,
-          },
-        ],
-        totalNominal: 1029000,
-        metodePembayaran: 'TRANSFER',
-        bankTujuan: 'BCA',
-        nomorRekening: '772-091-8821',
-        namaRekening: 'Niken Sulastri',
-        referensiTransfer: 'TRF-BCA-8891283',
-        status: 'DIBAYAR',
-        tanggalBayar: '2026-09-24',
-        potongDiSlipGaji: true,
-        isDeducted: false,
-        catatan: 'Permintaan vendor uang muka jahit operasional sebelum barang tuntas dikirim via SJ.',
-        createdAt: '2026-09-24T10:00:00.000Z',
-      },
-    ];
+    return [];
   });
 
   useEffect(() => {
