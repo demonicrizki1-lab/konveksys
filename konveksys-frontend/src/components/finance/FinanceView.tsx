@@ -4,6 +4,7 @@ import { SlipGajiModal } from './SlipGajiModal';
 import { InvoiceModal } from './InvoiceModal';
 import { VendorManualInvoiceModal } from './VendorManualInvoiceModal';
 import { CreateManualInvoiceModal } from './CreateManualInvoiceModal';
+import { BrandInvoicePortal } from './BrandInvoicePortal';
 import { BuyerInvoiceSummary, VendorManualInvoice } from '../../types';
 import { formatRupiahInput, parseRupiahInput, formatDateIndo, getSabtuanPeriod } from '../../utils/formatters';
 import { resolveItemPONumber, matchPOItemColor } from '../../utils/spkHelper';
@@ -31,6 +32,7 @@ import {
   Info,
   Search,
   Filter,
+  Eye,
 } from 'lucide-react';
 
 export const FinanceView: React.FC = () => {
@@ -76,6 +78,7 @@ export const FinanceView: React.FC = () => {
   const [isCreateManualModalOpen, setIsCreateManualModalOpen] = useState(false);
   const [editingManualInvoice, setEditingManualInvoice] = useState<VendorManualInvoice | null>(null);
   const [previewManualInvoice, setPreviewManualInvoice] = useState<VendorManualInvoice | null>(null);
+  const [isAdminPreviewingBrandPortal, setIsAdminPreviewingBrandPortal] = useState(false);
 
   // Filter State untuk Tab Invoice Manual
   const [manualSearchQuery, setManualSearchQuery] = useState('');
@@ -723,6 +726,18 @@ export const FinanceView: React.FC = () => {
     setIsAddKasbonOpen(false);
   };
 
+  // Jika role BRAND, langsung tampilkan Portal Tagihan & Invoice Khusus Brand
+  // Atau jika ADMIN sedang mode pratinjau tampilan portal brand
+  if (userRole === 'BRAND' || isAdminPreviewingBrandPortal) {
+    return (
+      <BrandInvoicePortal
+        forcedBrand={userRole === 'ADMIN' ? effectiveBrand : undefined}
+        isAdminPreview={userRole === 'ADMIN' && isAdminPreviewingBrandPortal}
+        onExitAdminPreview={() => setIsAdminPreviewingBrandPortal(false)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       
@@ -798,7 +813,7 @@ export const FinanceView: React.FC = () => {
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            {userRole === 'BRAND' ? 'Invoice Tagihan Makloon' : 'Invoice Tagihan Buyer (Multi-Size)'}
+            Invoice Tagihan Buyer (Multi-Size)
           </button>
 
           {userRole === 'ADMIN' && (
@@ -2013,9 +2028,20 @@ export const FinanceView: React.FC = () => {
                   {selectedPoNumbers.length > 0 ? `Terkoneksi ke ${selectedPoNumbers.join(', ')} • Centang item yang masuk tagihan` : 'Pilih surat jalan & kain yang akan dimasukkan ke invoice'}
                 </span>
               </div>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full self-start sm:self-auto">
-                {compositeInvoice.invoiceNo}
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAdminPreviewingBrandPortal(true)}
+                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Lihat bagaimana klien Brand melihat portal tagihan ini"
+                >
+                  <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Pratinjau Portal Brand</span>
+                </button>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full self-start sm:self-auto">
+                  {compositeInvoice.invoiceNo}
+                </span>
+              </div>
             </div>
 
             {/* Sub Tabs: 1. Surat Jalan, 2. Pemakaian Kain */}
