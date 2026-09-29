@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { BuyerInvoiceSummary, BuyerInvoicePoInfo, ProductionPO, PembayaranBrand } from '../../types';
-import { formatDateIndo } from '../../utils/formatters';
+import { formatDateIndo, formatRp } from '../../utils/formatters';
 import { resolveItemPONumber } from '../../utils/spkHelper';
 import { InvoiceModal } from './InvoiceModal';
 import {
@@ -104,8 +104,6 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
     keterangan: '',
   });
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
-
-  const formatRp = (n: number) => 'Rp ' + Math.round(n).toLocaleString('id-ID');
 
   // Copy rekening BCA
   const handleCopyRekening = () => {
@@ -636,7 +634,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
             </span>
           </div>
           <div className="mt-2">
-            <div className={`text-2xl font-black font-mono tracking-tight ${
+            <div className={`text-2xl font-bold tracking-tight tabular-nums ${
               totalOutstandingAll > 0 ? 'text-amber-900' : 'text-emerald-900'
             }`}>
               {formatRp(totalOutstandingAll)}
@@ -668,7 +666,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
             </span>
           </div>
           <div className="mt-2">
-            <div className="text-lg font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">
               {nearestDueDate ? formatDateIndo(nearestDueDate) : 'Tidak Ada'}
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
@@ -688,7 +686,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
             </span>
           </div>
           <div className="mt-2">
-            <div className="text-2xl font-black font-mono text-emerald-700 tracking-tight">
+            <div className="text-2xl font-bold tabular-nums text-emerald-700 tracking-tight">
               {formatRp(totalPaidAll)}
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
@@ -708,7 +706,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
             </span>
           </div>
           <div className="mt-2">
-            <div className="text-2xl font-black font-mono text-indigo-900 tracking-tight">
+            <div className="text-2xl font-bold tabular-nums text-indigo-950 tracking-tight">
               {formatRp(totalTagihanAll)}
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
@@ -730,7 +728,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
             </div>
             <div className="text-base font-bold flex items-center gap-2 mt-0.5">
               <span>BCA :</span>
-              <span className="font-mono text-lg font-black tracking-wide text-white">3760923906</span>
+              <span className="text-lg font-bold tracking-wider text-white tabular-nums">3760923906</span>
               <span className="text-xs text-indigo-200 font-medium">a/n Cecep Dayat</span>
             </div>
             <div className="text-[11px] text-slate-300 mt-0.5">
@@ -836,7 +834,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                   <tr key={inv.id} className="hover:bg-slate-50/70 transition align-top">
                     {/* 1. Dokumen & Tanggal */}
                     <td className="p-3.5 whitespace-nowrap">
-                      <div className="font-mono font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                      <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                         <FileText className="w-3.5 h-3.5 text-indigo-600" />
                         <span>{inv.invoiceNo}</span>
                       </div>
@@ -854,7 +852,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
 
                     {/* 2. Rujukan PO & Artikel */}
                     <td className="p-3.5">
-                      <div className="font-mono font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded text-[10.5px] inline-block">
+                      <div className="font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded text-[10.5px] inline-block tracking-tight">
                         {inv.poNumber}
                       </div>
                       <div className="font-bold text-slate-900 text-xs mt-1">
@@ -868,10 +866,10 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                     {/* 3. Kuantiti Barang */}
                     <td className="p-3.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-900 font-mono">
+                        <span className="font-bold text-slate-900 tabular-nums">
                           {inv.deliveredPcs.toLocaleString('id-ID')} Pcs Terkirim
                         </span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-slate-400 tabular-nums">
                           Target: {inv.targetPcs.toLocaleString('id-ID')}
                         </span>
                       </div>
@@ -892,7 +890,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
 
                     {/* 4. Nilai Tagihan Bersih */}
                     <td className="p-3.5 text-right whitespace-nowrap">
-                      <div className="font-mono font-black text-slate-900 text-sm">
+                      <div className="font-bold tabular-nums text-slate-900 text-sm">
                         {formatRp(inv.netAmount)}
                       </div>
                       {inv.fabricDeduction > 0 && (
@@ -988,7 +986,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                 <div>
                   <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                     <span>Rincian Tagihan Invoice:</span>
-                    <span className="font-mono text-indigo-700">{selectedInvoiceForDetail.invoiceNo}</span>
+                    <span className="font-bold text-indigo-700">{selectedInvoiceForDetail.invoiceNo}</span>
                   </h3>
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     Rujukan: {selectedInvoiceForDetail.poNumber} • {selectedInvoiceForDetail.produkNames.join(', ')}
@@ -1020,13 +1018,13 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Terkirim</span>
-                  <span className="font-bold text-slate-900 font-mono">
+                  <span className="font-bold text-slate-900 tabular-nums">
                     {selectedInvoiceForDetail.deliveredPcs.toLocaleString('id-ID')} / {selectedInvoiceForDetail.targetPcs.toLocaleString('id-ID')} Pcs
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Tagihan Bersih</span>
-                  <span className="font-black text-emerald-700 font-mono text-sm">
+                  <span className="font-bold text-emerald-700 tabular-nums text-sm">
                     {formatRp(selectedInvoiceForDetail.netAmount)}
                   </span>
                 </div>
@@ -1039,7 +1037,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                     <Truck className="w-4 h-4 text-indigo-600" />
                     <span>Daftar Surat Jalan Pengiriman ({selectedInvoiceForDetail.linkedSJs.length})</span>
                   </h4>
-                  <span className="font-mono font-bold text-indigo-700">
+                  <span className="font-bold text-indigo-700 tabular-nums">
                     Subtotal: {formatRp(selectedInvoiceForDetail.grossAmount)}
                   </span>
                 </div>
@@ -1065,11 +1063,11 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                       ) : (
                         selectedInvoiceForDetail.linkedSJs.map((sj, idx) => (
                           <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-2.5 font-mono font-bold text-indigo-600">{sj.suratJalanNo}</td>
+                            <td className="p-2.5 font-bold text-indigo-600">{sj.suratJalanNo}</td>
                             <td className="p-2.5 text-slate-500">{formatDateIndo(sj.tanggal)}</td>
                             <td className="p-2.5 font-bold text-slate-900">{sj.produk}</td>
-                            <td className="p-2.5 text-center font-mono font-bold">{sj.totalPcs}</td>
-                            <td className="p-2.5 text-right font-mono font-bold text-slate-900">{formatRp(sj.totalAmount)}</td>
+                            <td className="p-2.5 text-center font-bold tabular-nums">{sj.totalPcs}</td>
+                            <td className="p-2.5 text-right font-bold tabular-nums text-slate-900">{formatRp(sj.totalAmount)}</td>
                           </tr>
                         ))
                       )}
@@ -1086,7 +1084,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                       <Scissors className="w-4 h-4 text-rose-600" />
                       <span>Potongan Nilai Kain Terpakai ({selectedInvoiceForDetail.linkedRolls.length} Rol)</span>
                     </h4>
-                    <span className="font-mono font-bold text-rose-700">
+                    <span className="font-bold text-rose-700 tabular-nums">
                       -{formatRp(selectedInvoiceForDetail.fabricDeduction)}
                     </span>
                   </div>
@@ -1104,10 +1102,10 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                       <tbody className="divide-y divide-rose-100">
                         {selectedInvoiceForDetail.linkedRolls.map((r, idx) => (
                           <tr key={idx}>
-                            <td className="p-2.5 font-mono text-rose-900 font-bold">{r.rollCode}</td>
+                            <td className="p-2.5 font-bold text-rose-900">{r.rollCode}</td>
                             <td className="p-2.5 text-slate-700">{r.jenisKain}</td>
-                            <td className="p-2.5 text-center font-mono">{r.meterUsed} m</td>
-                            <td className="p-2.5 text-right font-mono font-bold text-rose-700">
+                            <td className="p-2.5 text-center font-medium tabular-nums">{r.meterUsed} m</td>
+                            <td className="p-2.5 text-right font-bold text-rose-700 tabular-nums">
                               -{formatRp(r.totalNilaiKain)}
                             </td>
                           </tr>
@@ -1194,7 +1192,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                 </span>
                 <div>
                   <h3 className="font-bold text-slate-900 text-sm">Konfirmasi Pembayaran Transfer</h3>
-                  <div className="text-[11px] text-slate-500 font-mono">{paymentModalItem.invoiceNo}</div>
+                  <div className="text-[11px] text-slate-500 font-medium">{paymentModalItem.invoiceNo}</div>
                 </div>
               </div>
               <button
@@ -1209,15 +1207,15 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                 <div className="flex justify-between text-slate-500">
                   <span>Nomor PO:</span>
-                  <span className="font-mono font-bold text-slate-800">{paymentModalItem.poNumber}</span>
+                  <span className="font-bold text-slate-800">{paymentModalItem.poNumber}</span>
                 </div>
                 <div className="flex justify-between text-slate-500">
                   <span>Total Tagihan:</span>
-                  <span className="font-mono font-bold text-slate-800">{formatRp(paymentModalItem.netAmount)}</span>
+                  <span className="font-bold tabular-nums text-slate-800">{formatRp(paymentModalItem.netAmount)}</span>
                 </div>
                 <div className="flex justify-between text-indigo-700 font-bold border-t border-slate-200 pt-1 mt-1">
                   <span>Sisa Wajib Bayar:</span>
-                  <span className="font-mono text-sm">{formatRp(paymentModalItem.remainingAmount)}</span>
+                  <span className="font-bold tabular-nums text-sm">{formatRp(paymentModalItem.remainingAmount)}</span>
                 </div>
               </div>
 
@@ -1256,7 +1254,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
                   min="1"
                   value={paymentForm.jumlah || ''}
                   onChange={(e) => setPaymentForm({ ...paymentForm, jumlah: Number(e.target.value) || 0 })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-black font-mono text-slate-900 outline-none text-xs focus:bg-white focus:border-indigo-500 transition"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold tabular-nums text-slate-900 outline-none text-sm focus:bg-white focus:border-indigo-500 transition"
                 />
               </div>
 
