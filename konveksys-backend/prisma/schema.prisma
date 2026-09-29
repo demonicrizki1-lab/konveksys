@@ -646,3 +646,73 @@ model AuditLog {
   @@index([entityId])
   @@index([userId])
 }
+
+// ============================================================
+// SALDO SISA & TITIPAN KAIN DI KONVEKSI
+// ============================================================
+
+enum FabricDepositStatus {
+  TERSEDIA
+  TERPAKAI
+  DITARIK
+}
+
+model VendorFabricDeposit {
+  id                 String              @id @default(cuid())
+  sourcePOId         String
+  sourcePONumber     String
+  sourceVendor       String
+  targetVendor       String
+  brand              String
+  jenisKain          String
+  warna              String?
+  panjangAwal        Decimal             @db.Decimal(12, 2) @default(0)
+  panjangSisa        Decimal             @db.Decimal(12, 2) @default(0)
+  satuan             String              @default("METER")
+  status             FabricDepositStatus @default(TERSEDIA)
+  allocatedPOId      String?
+  allocatedPONumber  String?
+  allocatedSPKId     String?
+  allocatedSPKNumber String?
+  measuredBy         String?
+  tanggalTitip       DateTime            @default(now())
+  catatan            String?
+
+  transferNotes      FabricTransferNote[]
+
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([targetVendor])
+  @@index([brand])
+  @@index([status])
+}
+
+model FabricTransferNote {
+  id             String               @id @default(cuid())
+  transferNumber String               @unique
+  depositId      String
+  sourcePOId     String
+  sourcePONumber String
+  sourceVendor   String
+  targetVendor   String
+  brand          String
+  jenisKain      String
+  warna          String?
+  panjang        Decimal              @db.Decimal(12, 2) @default(0)
+  satuan         String               @default("METER")
+  driverName     String               @default("Tim Logistik")
+  kondisiKain    String?
+  tanggal        DateTime             @default(now())
+  catatan        String?
+
+  deposit        VendorFabricDeposit? @relation(fields: [depositId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([depositId])
+  @@index([targetVendor])
+  @@index([brand])
+}
+

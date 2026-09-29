@@ -73,6 +73,11 @@ import {
   apiUpdateProductionPO,
   apiUpdateProductionPOStatus,
   apiDeleteProductionPO,
+  apiGetVendorFabricDeposits,
+  apiGetFabricTransferNotes,
+  apiCreateVendorFabricDeposit,
+  apiUpdateVendorFabricDeposit,
+  apiDeleteVendorFabricDeposit,
   apiGetFobHppList,
   apiCreateFobHpp,
   apiUpdateFobHpp,
@@ -357,6 +362,8 @@ interface AppContextType {
   // Vendor Fabric Deposits (Saldo Titipan & Transfer Bahan Antar-Vendor)
   vendorFabricDeposits: VendorFabricDeposit[];
   fabricTransferNotes: FabricTransferNote[];
+  fetchVendorFabricDeposits: (params?: { brand?: string; targetVendor?: string; status?: string; search?: string }) => Promise<void>;
+  fetchFabricTransferNotes: () => Promise<void>;
   createFabricTransfer: (data: {
     sourcePOId: string;
     sourcePONumber: string;
@@ -951,6 +958,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobOrders(), // 21
         isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetFobDeposits(), // 22
         apiGetAuditLogs({ limit: 250 }), // 23
+        apiGetVendorFabricDeposits(), // 24
+        apiGetFabricTransferNotes(), // 25
       ]);
 
       // 0. Brands
@@ -1449,6 +1458,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }));
         setAuditLogs(mapped);
         try { localStorage.setItem('konvek_audit_logs', JSON.stringify(mapped)); } catch {}
+      }
+
+      // 24. Vendor Fabric Deposits from PostgreSQL Database
+      if (results[24]?.status === 'fulfilled' && Array.isArray((results[24].value as any)?.data)) {
+        const rawDeposits = (results[24].value as any).data;
+        setVendorFabricDeposits(rawDeposits);
+        setCache('vendor_fabric_deposits', rawDeposits);
+      }
+
+      // 25. Fabric Transfer Notes from PostgreSQL Database
+      if (results[25]?.status === 'fulfilled' && Array.isArray((results[25].value as any)?.data)) {
+        const rawNotes = (results[25].value as any).data;
+        setFabricTransferNotes(rawNotes);
+        setCache('fabric_transfer_notes', rawNotes);
       }
 
       setLastSyncedAt(new Date());
@@ -1997,7 +2020,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Vendor Fabric Deposits (Saldo Titipan & Transfer Bahan Antar-Vendor)
+  // ============================================================
+  // VENDOR FABRIC DEPOSITS (Database-backed Handlers)
+  // ============================================================
+
+  const fetchVendorFabricDeposits = useCallback(async (params?: { brand?: string; targetVendor?: string; status?: string; search?: string }) => {
+    try {
+      const { data, error } = await apiGetVendorFabricDeposits(params);
+      if (error) {
+        console.error('Error fetching vendor fabric deposits:', error);
+        return;
+      }
+      if (Array.isArray(data)) {
+        setVendorFabricDeposits(data);
+        setCache('vendor_fabric_deposits', data);
+      }
+    } catch (err) {
+      console.error('Error fetching vendor fabric deposits:', err);
+    }
+  }, []);
+
+  const fetchFabricTransferNotes = useCallback(async () => {
+    try {
+      const { data, error } = await apiGetFabricTransferNotes();
+      if (error) {
+        console.error('Error fetching fabric transfer notes:', error);
+        return;
+      }
+      if (Array.isArray(data)) {
+        setFabricTransferNotes(data);
+        setCache('fabric_transfer_notes', data);
+      }
+    } catch (err) {
+      console.error('Error fetching fabric transfer notes:', err);
+    }
+  }, []);
+
   const createFabricTransfer = async (data: {
     sourcePOId: string;
     sourcePONumber: string;
@@ -2013,78 +2071,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     catatan?: string;
   }): Promise<{ success: boolean; message: string; deposit?: VendorFabricDeposit; transferNote?: FabricTransferNote }> => {
     try {
-      const depositId = `dep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const transferId = `trf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-      const rand = Math.floor(100 + Math.random() * 900);
-      const isSameVendor = Boolean(
-        data.sourceVendor &&
-        data.targetVendor &&
-        data.sourceVendor.trim().toLowerCase() === data.targetVendor.trim().toLowerCase()
-      );
-      const prefix = isSameVendor ? 'BA-STB' : 'SJ-TRF';
-      const transferNumber = `${prefix}-${dateStr}-${rand}`;
-      const now = new Date().toISOString();
+      const res = await apiCreateVendorFabricDeposit(data);
+      if (res.error || !res.data?.success) {
+        throw new Error(res.error || res.data?.message || 'Gagal mencatat transfer kain ke database.');
+      }
 
-      const newDeposit: VendorFabricDeposit = {
-        id: depositId,
-        sourcePOId: data.sourcePOId,
-        sourcePONumber: data.sourcePONumber,
-        sourceVendor: data.sourceVendor,
-        targetVendor: data.targetVendor,
-        brand: data.brand,
-        jenisKain: data.jenisKain,
-        warna: data.warna || null,
-        panjangAwal: Number(data.panjang),
-        panjangSisa: Number(data.panjang),
-        satuan: data.satuan,
-        status: 'TERSEDIA',
-        measuredBy: data.driverName,
-        tanggalTitip: now.split('T')[0],
-        catatan: data.catatan || null,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      const newTransferNote: FabricTransferNote = {
-        id: transferId,
-        transferNumber,
-        depositId,
-        sourcePOId: data.sourcePOId,
-        sourcePONumber: data.sourcePONumber,
-        sourceVendor: data.sourceVendor,
-        targetVendor: data.targetVendor,
-        brand: data.brand,
-        jenisKain: data.jenisKain,
-        warna: data.warna || null,
-        panjang: Number(data.panjang),
-        satuan: data.satuan,
-        driverName: data.driverName,
-        kondisiKain: data.kondisiKain || null,
-        tanggal: now.split('T')[0],
-        catatan: data.catatan || null,
-        createdAt: now,
-      };
+      const { deposit, transferNote, message } = res.data;
 
       setVendorFabricDeposits(prev => {
-        const updated = [newDeposit, ...prev];
+        const updated = [deposit, ...prev.filter(d => d.id !== deposit.id)];
         setCache('vendor_fabric_deposits', updated);
         return updated;
       });
 
       setFabricTransferNotes(prev => {
-        const updated = [newTransferNote, ...prev];
+        const updated = [transferNote, ...prev.filter(n => n.id !== transferNote.id)];
         setCache('fabric_transfer_notes', updated);
         return updated;
       });
 
       return {
         success: true,
-        message: isSameVendor
-          ? `Sisa kain berhasil dicatat standby di ${data.targetVendor} dengan Berita Acara ${transferNumber}.`
-          : `Sisa kain berhasil dititipkan ke ${data.targetVendor} dengan Surat Jalan ${transferNumber}.`,
-        deposit: newDeposit,
-        transferNote: newTransferNote,
+        message,
+        deposit,
+        transferNote,
       };
     } catch (err: any) {
       return { success: false, message: err?.message || 'Gagal memproses transfer kain.' };
@@ -2098,20 +2108,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     usedLength: number
   ): Promise<{ success: boolean; message: string }> => {
     try {
+      const dep = vendorFabricDeposits.find(d => d.id === depositId);
+      const remaining = dep ? Math.max(0, dep.panjangSisa - usedLength) : 0;
+      const newStatus = (remaining === 0 ? 'TERPAKAI' : 'TERSEDIA') as FabricDepositStatus;
+
+      // Update in PostgreSQL Database
+      await apiUpdateVendorFabricDeposit(depositId, {
+        panjangSisa: remaining,
+        status: newStatus,
+        allocatedPOId: poId,
+        allocatedPONumber: poNumber,
+      });
+
       setVendorFabricDeposits(prev => {
-        const updated = prev.map(dep => {
-          if (dep.id === depositId) {
-            const remaining = Math.max(0, dep.panjangSisa - usedLength);
+        const updated = prev.map(d => {
+          if (d.id === depositId) {
             return {
-              ...dep,
+              ...d,
               panjangSisa: remaining,
-              status: (remaining === 0 ? 'TERPAKAI' : 'TERSEDIA') as FabricDepositStatus,
+              status: newStatus,
               allocatedPOId: poId,
               allocatedPONumber: poNumber,
               updatedAt: new Date().toISOString(),
             };
           }
-          return dep;
+          return d;
         });
         setCache('vendor_fabric_deposits', updated);
         return updated;
@@ -2127,17 +2148,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     catatan?: string
   ): Promise<{ success: boolean; message: string }> => {
     try {
+      const dep = vendorFabricDeposits.find(d => d.id === depositId);
+      const updatedCatatan = catatan ? `${dep?.catatan || ''} | Ditarik ke Gudang: ${catatan}` : dep?.catatan;
+
+      // Update in PostgreSQL Database
+      await apiUpdateVendorFabricDeposit(depositId, {
+        status: 'DITARIK',
+        catatan: updatedCatatan,
+      });
+
       setVendorFabricDeposits(prev => {
-        const updated = prev.map(dep => {
-          if (dep.id === depositId) {
+        const updated = prev.map(d => {
+          if (d.id === depositId) {
             return {
-              ...dep,
+              ...d,
               status: 'DITARIK' as FabricDepositStatus,
-              catatan: catatan ? `${dep.catatan || ''} | Ditarik ke Gudang: ${catatan}` : dep.catatan,
+              catatan: updatedCatatan,
               updatedAt: new Date().toISOString(),
             };
           }
-          return dep;
+          return d;
         });
         setCache('vendor_fabric_deposits', updated);
         return updated;
@@ -2150,6 +2180,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteFabricDeposit = async (depositId: string): Promise<{ success: boolean; message: string }> => {
     try {
+      // Delete in PostgreSQL Database
+      await apiDeleteVendorFabricDeposit(depositId);
+
       setVendorFabricDeposits(prev => {
         const updated = prev.filter(d => d.id !== depositId);
         setCache('vendor_fabric_deposits', updated);
@@ -3176,6 +3209,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Jika bersumber dari Saldo Titipan di Vendor, tandai titipan menjadi TERPAKAI
     if (spkData.fabricSourceType === 'TITIPAN_VENDOR' && spkData.depositId) {
+      apiUpdateVendorFabricDeposit(spkData.depositId, {
+        status: 'TERPAKAI',
+        allocatedSPKId: tempId,
+        allocatedSPKNumber: spkNumber,
+      }).catch(e => console.warn('Failed to sync deposit status to DB for SPK:', e));
+
       setVendorFabricDeposits(prev => {
         const updated = prev.map(dep => {
           if (dep.id === spkData.depositId) {
@@ -5546,6 +5585,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPendingSpkPrefillFromPO,
         vendorFabricDeposits,
         fabricTransferNotes,
+        fetchVendorFabricDeposits,
+        fetchFabricTransferNotes,
         createFabricTransfer,
         useVendorDeposit,
         returnDepositToWarehouse,

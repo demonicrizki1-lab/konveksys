@@ -33,7 +33,7 @@ import { ProductionPOPrintModal } from './ProductionPOPrintModal';
 import { FabricTransferModal } from './FabricTransferModal';
 import { FabricTransferPrintModal } from './FabricTransferPrintModal';
 import { formatDateIndo } from '../../utils/formatters';
-import { resolveItemPONumber } from '../../utils/spkHelper';
+import { resolveItemPONumber, matchBrand } from '../../utils/spkHelper';
 import { sortProductionPOItems, autoSortItemsByColorAndSize } from '../../utils/poItemSorter';
 
 interface ItemFormState {
@@ -45,6 +45,7 @@ interface ItemFormState {
   bahanKain: string;
   catatan: string;
   sortOrder?: number;
+  isManualFabric?: boolean;
 }
 
 export const SuratPOProduksiView: React.FC = () => {
@@ -144,7 +145,7 @@ export const SuratPOProduksiView: React.FC = () => {
         namaProduk: '',
         warna: '',
         ukuran: 'All Size',
-        qty: 50,
+        qty: 0,
         bahanKain: '',
         catatan: '',
       },
@@ -327,8 +328,8 @@ export const SuratPOProduksiView: React.FC = () => {
         namaProduk: '',
         warna: '',
         ukuran: 'All Size',
-        qty: 50,
-        bahanKain: '',
+        qty: 0,
+        bahanKain: prev.length > 0 ? prev[prev.length - 1].bahanKain : '',
         catatan: '',
       },
     ]);
@@ -360,6 +361,52 @@ export const SuratPOProduksiView: React.FC = () => {
   const formTotalPcs = useMemo(() => {
     return formItems.reduce((sum, item) => sum + Math.max(0, Number(item.qty) || 0), 0);
   }, [formItems]);
+
+  // Daftar rol kain fisik aktif dari Inbound Stok untuk Brand yang dipilih (Per Rol Fisik & Barcode)
+  const availableFabricsForBrand = useMemo(() => {
+    if (!formBrand) return [];
+    const currentBrandObj = brands.find(b => b.name === formBrand || b.code === formBrand);
+    const rollsList: {
+      id: string;
+      rollCode: string;
+      jenisKain: string;
+      meterSisa: number;
+      value: string;
+      label: string;
+    }[] = [];
+
+    (inboundRolls || []).forEach(r => {
+      const isBrandMatch = r.brand && (
+        matchBrand(r.brand, formBrand) ||
+        (currentBrandObj?.code && matchBrand(r.brand, currentBrandObj.code))
+      );
+      if (isBrandMatch && r.jenisKain && r.jenisKain.trim()) {
+        const name = r.jenisKain.trim();
+        const sisa = Math.max(0, (Number(r.meterLength) || 0) - (Number(r.meterUsed) || 0));
+
+        // Hanya rol yang belum berstatus SELESAI dan masih memiliki sisa meter
+        if (r.status !== 'SELESAI' && sisa > 0) {
+          const code = r.rollCode ? r.rollCode.trim() : '';
+          const value = code ? `${name} (${code})` : name;
+          const label = code ? `${name} — ${code} (${Math.round(sisa)}m)` : `${name} (${Math.round(sisa)}m)`;
+          rollsList.push({
+            id: r.id,
+            rollCode: code,
+            jenisKain: name,
+            meterSisa: sisa,
+            value,
+            label,
+          });
+        }
+      }
+    });
+
+    return rollsList.sort((a, b) => {
+      const cmp = a.jenisKain.localeCompare(b.jenisKain);
+      if (cmp !== 0) return cmp;
+      return a.rollCode.localeCompare(b.rollCode);
+    });
+  }, [formBrand, inboundRolls, brands]);
 
   // Submit Handler
   const handleSubmitPO = async (andPrint = false) => {
@@ -1641,26 +1688,81 @@ export const SuratPOProduksiView: React.FC = () => {
                         </label>
                         <input
                           type="number"
-                          min="1"
-                          value={item.qty}
-                          onChange={e => handleItemChange(idx, 'qty', e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 font-mono text-right focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                          min="0"
+                          value={item.qty === 0 ? 0 : item.qty || ''}
+                          onChange={e => handleItemChange(idx, 'qty', e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))}
+                          onFocus={e => {
+                            if (e.target.value === '0') e.target.select();
+                          }}
+                          className="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 tabular-nums text-right focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
                         />
                       </div>
 
                       {/* Bahan / Kain */}
                       <div className="sm:col-span-2 flex items-center gap-1.5">
-                        <div className="flex-1">
-                          <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
-                            Bahan / Kain
-                          </label>
-                          <input
-                            type="text"
-                            value={item.bahanKain}
-                            onChange={e => handleItemChange(idx, 'bahanKain', e.target.value)}
-                            placeholder="Rayon Twill, Katun..."
-                            className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                          />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <label className="block text-[10px] font-bold text-slate-600 uppercase">
+                              Bahan / Kain
+                            </label>
+                            {availableFabricsForBrand.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleItemChange(idx, 'isManualFabric', !item.isManualFabric)}
+                                className="text-[9.5px] font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                                title={item.isManualFabric ? "Pilih dari stok kain brand" : "Ketik nama bahan manual"}
+                              >
+                                {item.isManualFabric ? 'Pilih Stok' : '+ Ketik'}
+                              </button>
+                            )}
+                          </div>
+
+                          {availableFabricsForBrand.length > 0 && !item.isManualFabric ? (
+                            <select
+                              value={
+                                availableFabricsForBrand.find(
+                                  f => f.value.toLowerCase() === (item.bahanKain || '').toLowerCase()
+                                )?.value ||
+                                availableFabricsForBrand.find(
+                                  f => f.jenisKain.toLowerCase() === (item.bahanKain || '').toLowerCase()
+                                )?.value ||
+                                item.bahanKain
+                              }
+                              onChange={e => {
+                                if (e.target.value === '__MANUAL__') {
+                                  handleItemChange(idx, 'isManualFabric', true);
+                                  handleItemChange(idx, 'bahanKain', '');
+                                } else {
+                                  handleItemChange(idx, 'bahanKain', e.target.value);
+                                }
+                              }}
+                              className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer truncate"
+                            >
+                              <option value="">-- Pilih Rol Kain (Inbound Stok) --</option>
+                              {availableFabricsForBrand.map((r) => (
+                                <option key={r.id || r.rollCode} value={r.value}>
+                                  {r.label}
+                                </option>
+                              ))}
+                              {item.bahanKain &&
+                                !availableFabricsForBrand.some(
+                                  f =>
+                                    f.value.toLowerCase() === item.bahanKain.toLowerCase() ||
+                                    f.jenisKain.toLowerCase() === item.bahanKain.toLowerCase()
+                                ) && (
+                                  <option value={item.bahanKain}>{item.bahanKain} (Lainnya)</option>
+                                )}
+                              <option value="__MANUAL__">✏️ + Ketik Manual...</option>
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={item.bahanKain}
+                              onChange={e => handleItemChange(idx, 'bahanKain', e.target.value)}
+                              placeholder={availableFabricsForBrand.length === 0 ? "Ketik bahan kain..." : "Ketik nama bahan..."}
+                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+                            />
+                          )}
                         </div>
 
                         <button

@@ -16,6 +16,7 @@ import { returnRoutes } from './routes/returns.js';
 import { accessoryRoutes } from './routes/accessories.js';
 import { brandInventoryRoutes } from './routes/brand-inventory.js';
 import { productionPoRoutes } from './routes/production-po.js';
+import { vendorDepositRoutes } from './routes/vendor-deposits.js';
 import { fobRoutes } from './routes/fob.js';
 import { auditRoutes } from './routes/audit.js';
 
@@ -47,6 +48,7 @@ app.route('/api/finance', financeRoutes);
 app.route('/api/arus-kas', arusKasRoutes);
 app.route('/api/brand-inventory', brandInventoryRoutes);
 app.route('/api/production-po', productionPoRoutes);
+app.route('/api/vendor-fabric-deposits', vendorDepositRoutes);
 app.route('/api/fob', fobRoutes);
 app.route('/api/audit', auditRoutes);
 

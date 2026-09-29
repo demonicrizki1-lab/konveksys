@@ -893,6 +893,71 @@ export async function apiDeleteProductionPO(id: string) {
 }
 
 // ============================================================
+// SALDO TITIPAN KAIN DI KONVEKSI & SURAT JALAN OPER KAIN
+// ============================================================
+
+export async function apiGetVendorFabricDeposits(params?: {
+  brand?: string;
+  targetVendor?: string;
+  status?: string;
+  search?: string;
+}) {
+  const queryParts: string[] = [];
+  if (params?.brand && params.brand !== 'ALL') queryParts.push(`brand=${encodeURIComponent(params.brand)}`);
+  if (params?.targetVendor && params.targetVendor !== 'ALL') queryParts.push(`targetVendor=${encodeURIComponent(params.targetVendor)}`);
+  if (params?.status && params.status !== 'ALL') queryParts.push(`status=${encodeURIComponent(params.status)}`);
+  if (params?.search && params.search.trim()) queryParts.push(`search=${encodeURIComponent(params.search.trim())}`);
+  const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return apiFetch<any[]>(`/api/vendor-fabric-deposits${query}`);
+}
+
+export async function apiGetFabricTransferNotes() {
+  return apiFetch<any[]>('/api/vendor-fabric-deposits/transfer-notes');
+}
+
+export async function apiCreateVendorFabricDeposit(data: {
+  id?: string;
+  sourcePOId: string;
+  sourcePONumber: string;
+  sourceVendor: string;
+  targetVendor: string;
+  brand: string;
+  jenisKain: string;
+  warna?: string;
+  panjang: number;
+  satuan?: 'METER' | 'YARD';
+  driverName?: string;
+  kondisiKain?: string;
+  catatan?: string;
+}) {
+  return apiFetch<{ success: boolean; message: string; deposit: any; transferNote: any }>('/api/vendor-fabric-deposits', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateVendorFabricDeposit(id: string, data: {
+  panjangSisa?: number;
+  status?: 'TERSEDIA' | 'TERPAKAI' | 'DITARIK';
+  allocatedPOId?: string | null;
+  allocatedPONumber?: string | null;
+  allocatedSPKId?: string | null;
+  allocatedSPKNumber?: string | null;
+  catatan?: string | null;
+}) {
+  return apiFetch<{ success: boolean; data: any }>(`/api/vendor-fabric-deposits/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteVendorFabricDeposit(id: string) {
+  return apiFetch<{ success: boolean; message: string }>(`/api/vendor-fabric-deposits/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================
 // FOB COSTING & COMMERCIAL QUOTATION (SPH)
 // ============================================================
 
