@@ -26,12 +26,14 @@ import {
   Scissors,
   ShieldAlert,
   Eye,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ProductionPO, ProductionPOItem, ProductionPOStatus, VendorFabricDeposit, FabricTransferNote, SizeBreakdown, SuratJalan, SuratJalanItem } from '../../types';
 import { ProductionPOPrintModal } from './ProductionPOPrintModal';
 import { FabricTransferModal } from './FabricTransferModal';
 import { FabricTransferPrintModal } from './FabricTransferPrintModal';
+import { BatchFabricDepositPrintModal } from './BatchFabricDepositPrintModal';
 import { formatDateIndo } from '../../utils/formatters';
 import { resolveItemPONumber, matchBrand } from '../../utils/spkHelper';
 import { sortProductionPOItems, autoSortItemsByColorAndSize } from '../../utils/poItemSorter';
@@ -94,6 +96,7 @@ export const SuratPOProduksiView: React.FC = () => {
   const [printTransferNote, setPrintTransferNote] = useState<FabricTransferNote | null>(null);
   const [returnConfirmDeposit, setReturnConfirmDeposit] = useState<VendorFabricDeposit | null>(null);
   const [deleteConfirmDeposit, setDeleteConfirmDeposit] = useState<VendorFabricDeposit | null>(null);
+  const [isBatchPrintModalOpen, setIsBatchPrintModalOpen] = useState(false);
 
   // Form states for deposit usage
   const [formUsedDepositId, setFormUsedDepositId] = useState<string | null>(null);
@@ -1196,7 +1199,7 @@ export const SuratPOProduksiView: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
               <div className="flex items-center gap-1.5 text-xs text-slate-600">
                 <span className="text-[11px] font-medium text-slate-400">Konveksi Penerima:</span>
                 <select
@@ -1212,6 +1215,17 @@ export const SuratPOProduksiView: React.FC = () => {
                   ))}
                 </select>
               </div>
+
+              {/* Tombol Download PDF Semua Sisa Kain */}
+              <button
+                type="button"
+                onClick={() => setIsBatchPrintModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-md shadow-violet-200 transition cursor-pointer shrink-0"
+                title="Download / Cetak PDF Rekap Seluruh Sisa Kain di Konveksi"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download PDF Semua Sisa Kain</span>
+              </button>
             </div>
           </div>
 
@@ -1224,7 +1238,7 @@ export const SuratPOProduksiView: React.FC = () => {
                     <th className="py-3 px-4">Konveksi Penyimpan (Tujuan)</th>
                     <th className="py-3 px-3">Asal Bahan & PO</th>
                     <th className="py-3 px-3">Jenis Kain & Warna</th>
-                    <th className="py-3 px-3 text-center">Saldo Sisa / Awal</th>
+                    <th className="py-3 px-3 text-center">Sisa Kain</th>
                     <th className="py-3 px-3">Pengukur & Tanggal</th>
                     <th className="py-3 px-3 text-center">Status Kain</th>
                     <th className="py-3 px-4 text-right">Aksi</th>
@@ -1278,13 +1292,10 @@ export const SuratPOProduksiView: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* Saldo Sisa / Awal */}
+                          {/* Sisa Kain */}
                           <td className="py-3 px-3 text-center">
                             <div className="font-mono font-bold text-xs text-emerald-700">
                               {dep.panjangSisa.toLocaleString('id-ID')} {dep.satuan === 'METER' ? 'Meter' : 'Yard'}
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              Awal: {dep.panjangAwal.toLocaleString('id-ID')} {dep.satuan === 'METER' ? 'm' : 'yd'}
                             </div>
                           </td>
 
@@ -2144,6 +2155,19 @@ export const SuratPOProduksiView: React.FC = () => {
           isOpen={!!printTransferNote}
           transferNote={printTransferNote}
           onClose={() => setPrintTransferNote(null)}
+        />
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL: DOWNLOAD / CETAK REKAP SEMUA SISA KAIN KONVEKSI */}
+      {/* ============================================================ */}
+      {isBatchPrintModalOpen && (
+        <BatchFabricDepositPrintModal
+          isOpen={isBatchPrintModalOpen}
+          onClose={() => setIsBatchPrintModalOpen(false)}
+          deposits={filteredDeposits}
+          allDeposits={vendorFabricDeposits}
+          selectedVendorFilter={selectedDepositVendorFilter}
         />
       )}
 

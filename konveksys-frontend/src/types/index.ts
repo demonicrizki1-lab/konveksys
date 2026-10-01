@@ -1074,3 +1074,59 @@ export interface AuditLogEntry {
   notes?: string;
 }
 
+export interface SavedNetProfitReport {
+  id: string;
+  reportNo: string;
+  title: string;
+  monthKey: string;
+  monthLabel: string;
+  brand: string;
+  orderScheme: 'ALL' | 'CMT' | 'FOB';
+  createdAt: string;
+  savedBy: string;
+  notes?: string;
+  kpi: {
+    totalPcs: number;
+    totalRevenue: number;
+    totalCmtCost: number;
+    totalFabricCost: number;
+    netProfit: number;
+    avgMargin: number;
+    fabricMeters: number;
+    cmtProfit?: number;
+    fobProfit?: number;
+  };
+  selectedPoNumbers: string[];
+  selectedSjRowKeys: string[];
+  selectedRollIds: string[];
+  items: Array<{
+    id: string;
+    noSuratJalan: string;
+    spkNumber: string;
+    tanggal: string;
+    produk: string;
+    jenisKain: string;
+    brand: string;
+    vendor: string;
+    totalPcs: number;
+    omzetBuyer: number;
+    biayaCmt: number;
+    labaBersih: number;
+    marginPersen: number;
+    statusMargin: 'SEHAT' | 'MODERAT' | 'TIPIS';
+    orderType?: 'CMT' | 'FOB';
+    fobPoNumber?: string;
+    itemPo?: string;
+    itemCount?: number;
+    subItems?: any[];
+  }>;
+  fabricItems?: Array<{
+    id: string;
+    rollCode: string;
+    jenisKain: string;
+    tanggalMasuk?: string;
+    meterUsed: number;
+    hargaModalMeter: number;
+    totalNilaiKain: number;
+  }>;
+}

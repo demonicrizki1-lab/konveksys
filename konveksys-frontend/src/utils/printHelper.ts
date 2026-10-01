@@ -1,8 +1,14 @@
-// ============================================================
-// KonvekSys Isolated PDF / Print Generator (1-Page Pure Document)
-// ============================================================
+export interface PrintIsolatedOptions {
+  orientation?: 'portrait' | 'landscape';
+}
 
-export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: string) {
+export function printIsolatedDocument(
+  paperElement: HTMLElement,
+  documentTitle: string,
+  options?: PrintIsolatedOptions
+) {
+  const orientation = options?.orientation || 'portrait';
+
   // Buat iframe tersembunyi agar TIDAK PERNAH mencetak elemen website di belakangnya
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
@@ -32,7 +38,7 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
         ${stylesHtml}
         <style>
           @page {
-            size: A4 portrait;
+            size: A4 ${orientation};
             /* Margin minimal menghilangkan tulisan header/footer browser tanpa membuang ruang kertas */
             margin: 4mm 6mm;
           }
@@ -46,22 +52,34 @@ export function printIsolatedDocument(paperElement: HTMLElement, documentTitle: 
             padding: 0 !important;
             background: #ffffff !important;
             color: #0f172a !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
           }
           body {
-            padding: 2mm 4mm !important;
+            padding: 2mm 3mm !important;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
           }
           .print-wrapper {
             width: 100% !important;
             max-width: 100% !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             background: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
             border-radius: 8px !important;
-            padding: 10px 14px !important;
+            padding: 8px 10px !important;
+            box-sizing: border-box !important;
+            overflow: visible !important;
           }
           table {
             width: 100% !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+          }
+          th, td {
+            box-sizing: border-box !important;
+            overflow-wrap: break-word !important;
+            word-wrap: break-word !important;
           }
           /* Jangan ulangi thead dan tfoot di setiap halaman cetak, cukup tampil 1x */
           thead, tfoot {
