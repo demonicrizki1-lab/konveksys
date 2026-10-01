@@ -33,6 +33,7 @@ interface ArticleOption {
   vendor: string;
   sourcePOId?: string | null;
   sourcePONumber?: string | null;
+  jenisKain?: string;
 }
 
 export interface SelectablePOItem {
@@ -202,12 +203,26 @@ export const OutboundView: React.FC = () => {
             )
           : null;
 
+        const resolvedFabric = (() => {
+          if (it.jenisKain) return it.jenisKain;
+          if (it.depositInfo?.jenisKain) {
+            return `${it.depositInfo.jenisKain}${it.depositInfo.warna ? ` (${it.depositInfo.warna})` : ''}`;
+          }
+          if (it.rollIds && it.rollIds.length > 0) {
+            const matchedRolls = inboundRolls.filter((r) => it.rollIds!.includes(r.id));
+            const names = Array.from(new Set(matchedRolls.map((r) => r.jenisKain).filter(Boolean)));
+            if (names.length > 0) return names.join(', ');
+          }
+          return undefined;
+        })();
+
         return {
           id: it.id,
           produk: it.produk,
           vendor: it.vendor || spk.vendor,
           sourcePOId: it.sourcePOId || matchedPO?.id || spk.sourcePOId || null,
           sourcePONumber: it.sourcePONumber || matchedPO?.noPO || spk.sourcePONumber || null,
+          jenisKain: resolvedFabric,
         };
       });
     }
@@ -286,13 +301,18 @@ export const OutboundView: React.FC = () => {
       setSelectedArticleName(articles[0].produk);
       setSelectedArticleVendor(articles[0].vendor);
       setSelectedSpkItemId(articles[0].id || '');
+      if (articles[0].jenisKain) {
+        setCustomJenisKain(articles[0].jenisKain);
+      } else if (spk) {
+        setCustomJenisKain(getSPKFabricName(spk) || 'Kain Standar');
+      }
     } else {
       setSelectedArticleName(spk?.produk || '');
       setSelectedArticleVendor(spk?.vendor || '');
       setSelectedSpkItemId('');
-    }
-    if (spk) {
-      setCustomJenisKain(getSPKFabricName(spk) || 'Kain Standar');
+      if (spk) {
+        setCustomJenisKain(getSPKFabricName(spk) || 'Kain Standar');
+      }
     }
     setQtySend(emptySizeBreakdown());
   };
@@ -302,6 +322,11 @@ export const OutboundView: React.FC = () => {
     setSelectedArticleName(article.produk);
     setSelectedArticleVendor(article.vendor);
     setSelectedSpkItemId(article.id || '');
+    if (article.jenisKain) {
+      setCustomJenisKain(article.jenisKain);
+    } else if (currentSPK) {
+      setCustomJenisKain(getSPKFabricName(currentSPK) || 'Kain Standar');
+    }
     setQtySend(emptySizeBreakdown());
   };
 

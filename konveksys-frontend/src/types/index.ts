@@ -123,6 +123,21 @@ export interface SPKProductItem {
   deliveredQty: SizeBreakdown;
   sourcePOId?: string | null;
   sourcePONumber?: string | null;
+  // Multi-fabric / Setelan support
+  fabricSourceType?: 'ROLL_GUDANG' | 'TITIPAN_VENDOR';
+  rollIds?: string[];
+  jenisKain?: string;
+  depositId?: string | null;
+  depositInfo?: {
+    depositNumber?: string;
+    sourceVendor?: string;
+    targetVendor?: string;
+    jenisKain: string;
+    warna?: string | null;
+    panjang: number;
+    satuan: string;
+    sourcePONumber?: string;
+  } | null;
 }
 
 export interface SPKCutting {
@@ -131,7 +146,7 @@ export interface SPKCutting {
   brand: string;
   produk: string;
   vendor: string;
-  rollIds: string[]; // Rol yang di-pool
+  rollIds: string[]; // Rol yang di-pool (seluruh rol jika multi-bahan)
   targetCutQty: SizeBreakdown;
   deliveredQty: SizeBreakdown;
   tanggalSPK: string;
@@ -142,6 +157,7 @@ export interface SPKCutting {
   // Sisa bahan / Saldo Titipan Antar-Vendor
   fabricSourceType?: 'ROLL_GUDANG' | 'TITIPAN_VENDOR';
   depositId?: string | null;
+  depositIds?: string[];
   depositInfo?: {
     depositNumber?: string;
     sourceVendor?: string;
@@ -155,6 +171,7 @@ export interface SPKCutting {
   sourcePOId?: string | null;
   sourcePONumber?: string | null;
   sourcePONumbers?: string[]; // Daftar seluruh nomor PO jika multi-PO
+  isMultiFabric?: boolean; // True jika SPK adalah setelan multi-bahan (tiap komponen beda bahan)
 }
 
 export interface SuratJalanItem {

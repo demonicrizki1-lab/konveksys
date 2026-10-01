@@ -520,6 +520,11 @@ export function buildSplitSpkItems(
             : mergedDeliv),
       sourcePOId: orig?.sourcePOId,
       sourcePONumber: orig?.sourcePONumber,
+      fabricSourceType: orig?.fabricSourceType,
+      rollIds: orig?.rollIds,
+      jenisKain: orig?.jenisKain,
+      depositId: orig?.depositId,
+      depositInfo: orig?.depositInfo,
     };
   });
 }

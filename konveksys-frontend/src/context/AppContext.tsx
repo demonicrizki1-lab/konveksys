@@ -3193,11 +3193,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'IN_PRODUCTION',
     };
 
-    // Update status of pooled rolls to DIPROSES (hanya jika bersumber dari gudang pusat)
-    if (spkData.fabricSourceType !== 'TITIPAN_VENDOR' && spkData.rollIds && spkData.rollIds.length > 0) {
+    // Kumpulkan seluruh ID rol (baik dari spkData.rollIds maupun dari masing-masing artikel jika setelan multi-kain)
+    const effectiveRollIds = Array.from(
+      new Set([
+        ...(spkData.rollIds || []),
+        ...(spkData.items?.flatMap((it) => it.rollIds || []) || []),
+      ])
+    );
+
+    // Update status of pooled rolls to DIPROSES
+    if (effectiveRollIds.length > 0) {
       setInboundRolls(prev => {
         const updated = prev.map(roll => {
-          if (spkData.rollIds.includes(roll.id)) {
+          if (effectiveRollIds.includes(roll.id)) {
             return { ...roll, status: 'DIPROSES' as RollStatus, meterUsed: roll.meterLength };
           }
           return roll;
@@ -3207,17 +3215,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
-    // Jika bersumber dari Saldo Titipan di Vendor, tandai titipan menjadi TERPAKAI
-    if (spkData.fabricSourceType === 'TITIPAN_VENDOR' && spkData.depositId) {
-      apiUpdateVendorFabricDeposit(spkData.depositId, {
-        status: 'TERPAKAI',
-        allocatedSPKId: tempId,
-        allocatedSPKNumber: spkNumber,
-      }).catch(e => console.warn('Failed to sync deposit status to DB for SPK:', e));
+    // Kumpulkan seluruh deposit ID yang digunakan (SPK utama maupun per item)
+    const effectiveDepositIds = Array.from(
+      new Set([
+        spkData.depositId,
+        ...(spkData.depositIds || []),
+        ...(spkData.items?.map((it) => it.depositId).filter(Boolean) || []),
+      ])
+    ).filter(Boolean) as string[];
+
+    if (effectiveDepositIds.length > 0) {
+      effectiveDepositIds.forEach(depId => {
+        apiUpdateVendorFabricDeposit(depId, {
+          status: 'TERPAKAI',
+          allocatedSPKId: tempId,
+          allocatedSPKNumber: spkNumber,
+        }).catch(e => console.warn('Failed to sync deposit status to DB for SPK:', e));
+      });
 
       setVendorFabricDeposits(prev => {
         const updated = prev.map(dep => {
-          if (dep.id === spkData.depositId) {
+          if (effectiveDepositIds.includes(dep.id)) {
             return {
               ...dep,
               status: 'TERPAKAI' as FabricDepositStatus,
@@ -3305,10 +3323,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return reverted;
       });
       // Rollback fabric roll status
-      if (spkData.fabricSourceType !== 'TITIPAN_VENDOR' && spkData.rollIds && spkData.rollIds.length > 0) {
+      if (effectiveRollIds.length > 0) {
         setInboundRolls(prev => {
           const reverted = prev.map(roll => {
-            if (spkData.rollIds.includes(roll.id)) {
+            if (effectiveRollIds.includes(roll.id)) {
               return { ...roll, status: 'DI_GUDANG' as RollStatus, meterUsed: 0 };
             }
             return roll;
@@ -3318,10 +3336,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
       // Rollback fabric deposit status
-      if (spkData.fabricSourceType === 'TITIPAN_VENDOR' && spkData.depositId) {
+      if (effectiveDepositIds.length > 0) {
         setVendorFabricDeposits(prev => {
           const reverted = prev.map(dep => {
-            if (dep.id === spkData.depositId) {
+            if (effectiveDepositIds.includes(dep.id)) {
               return {
                 ...dep,
                 status: 'TERSEDIA' as FabricDepositStatus,
@@ -3550,10 +3568,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Kembalikan status rol kain yang digunakan SPK menjadi DI_GUDANG dan meterUsed: 0
-    if (targetSpk.rollIds && targetSpk.rollIds.length > 0) {
+    const targetRollIds = Array.from(
+      new Set([
+        ...(targetSpk.rollIds || []),
+        ...(targetSpk.items?.flatMap((it) => it.rollIds || []) || []),
+      ])
+    );
+    if (targetRollIds.length > 0) {
       setInboundRolls(prev => {
         const updated = prev.map(r => {
-          if (targetSpk.rollIds.includes(r.id)) {
+          if (targetRollIds.includes(r.id)) {
             return { ...r, status: 'DI_GUDANG' as RollStatus, meterUsed: 0 };
           }
           return r;
@@ -3563,11 +3587,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     }
 
-    // Kembalikan status kain titipan jika SPK bersumber dari saldo titipan vendor
-    if (targetSpk.depositId) {
+    // Kembalikan status kain titipan jika SPK bersumber dari saldo titipan vendor (utama maupun per item)
+    const targetDepositIds = Array.from(
+      new Set([
+        targetSpk.depositId,
+        ...(targetSpk.depositIds || []),
+        ...(targetSpk.items?.map((it) => it.depositId).filter(Boolean) || []),
+      ])
+    ).filter(Boolean) as string[];
+
+    if (targetDepositIds.length > 0) {
       setVendorFabricDeposits(prev => {
         const updated = prev.map(dep => {
-          if (dep.id === targetSpk.depositId) {
+          if (targetDepositIds.includes(dep.id)) {
             return {
               ...dep,
               status: 'TERSEDIA' as FabricDepositStatus,

@@ -4,6 +4,7 @@ import { SPKCutting, SPKProductItem, SizeBreakdown, VendorFabricDeposit, Product
 import { formatDateIndo } from '../../utils/formatters';
 import { buildSplitSpkItems } from '../../utils/spkHelper';
 import { ConfirmModal } from '../common/ConfirmModal';
+import { SPKPrintModal } from './SPKPrintModal';
 import {
   Scissors,
   Plus,
@@ -28,6 +29,7 @@ import {
   Edit2,
   Sparkles,
   FileText,
+  Printer,
 } from 'lucide-react';
 
 interface ProductFormItem {
@@ -38,6 +40,20 @@ interface ProductFormItem {
   deliveredQty?: SizeBreakdown;
   sourcePOId?: string | null;
   sourcePONumber?: string | null;
+  fabricSourceType?: 'ROLL_GUDANG' | 'TITIPAN_VENDOR';
+  rollIds?: string[];
+  jenisKain?: string;
+  depositId?: string | null;
+  depositInfo?: {
+    depositNumber?: string;
+    sourceVendor?: string;
+    targetVendor?: string;
+    jenisKain: string;
+    warna?: string | null;
+    panjang: number;
+    satuan: string;
+    sourcePONumber?: string;
+  } | null;
 }
 
 const emptySizeBreakdown: SizeBreakdown = {
@@ -144,7 +160,11 @@ export const SPKView: React.FC = () => {
   // Fabric Source & Selection State
   const [fabricSourceType, setFabricSourceType] = useState<'ROLL_GUDANG' | 'TITIPAN_VENDOR'>('ROLL_GUDANG');
   const [selectedDepositId, setSelectedDepositId] = useState<string | null>(null);
+  const [selectedDepositIds, setSelectedDepositIds] = useState<string[]>([]);
   const [depositVendorFilter, setDepositVendorFilter] = useState<string>('');
+  const [rollFabricFilter, setRollFabricFilter] = useState<string>('ALL');
+
+  const [printingSpk, setPrintingSpk] = useState<SPKCutting | null>(null);
 
   const [selectedBrand, setSelectedBrand] = useState(brands[0]?.name || 'GREYWOLF');
   const [selectedRollIds, setSelectedRollIds] = useState<string[]>([]);
@@ -156,6 +176,8 @@ export const SPKView: React.FC = () => {
       targetCut: { ...emptySizeBreakdown },
       sourcePOId: null,
       sourcePONumber: null,
+      fabricSourceType: 'ROLL_GUDANG',
+      rollIds: [],
     },
   ]);
   const [activeProductTab, setActiveProductTab] = useState(0);
@@ -165,8 +187,6 @@ export const SPKView: React.FC = () => {
   const [catatan, setCatatan] = useState('');
   const [sourcePOId, setSourcePOId] = useState<string | null>(null);
   const [sourcePONumber, setSourcePONumber] = useState<string | null>(null);
-
-
 
   // Detail Modal State
   const [selectedSPKDetail, setSelectedSPKDetail] = useState<SPKCutting | null>(null);
@@ -179,20 +199,43 @@ export const SPKView: React.FC = () => {
       (r.status === 'DI_GUDANG' || (editingSpk && editingSpk.rollIds && editingSpk.rollIds.includes(r.id)))
   );
 
+  const availableFabricsInWarehouse = Array.from(
+    new Set(availableRolls.map((r) => r.jenisKain).filter(Boolean))
+  ) as string[];
+
+  const filteredAvailableRolls = availableRolls.filter((r) => {
+    if (rollFabricFilter === 'ALL') return true;
+    return r.jenisKain === rollFabricFilter;
+  });
+
   // Available fabric deposits (filtered by vendor if selected, termasuk titipan yang sedang dipakai jika mode edit)
   const availableDeposits = vendorFabricDeposits.filter(
     (d) =>
       (d.status === 'TERSEDIA' &&
         d.panjangSisa > 0 &&
         (!depositVendorFilter || d.targetVendor === depositVendorFilter)) ||
-      (editingSpk && editingSpk.depositId === d.id)
+      (editingSpk && (editingSpk.depositId === d.id || editingSpk.depositIds?.includes(d.id)))
   );
 
   const selectedDeposit = vendorFabricDeposits.find((d) => d.id === selectedDepositId);
+  const selectedDeposits = vendorFabricDeposits.filter((d) => selectedDepositIds.includes(d.id));
 
-  const totalPooledMeters = inboundRolls
-    .filter((r) => selectedRollIds.includes(r.id))
-    .reduce((a, b) => a + (b.meterLength - b.meterUsed), 0);
+  // Selected roll objects
+  const selectedRolls = inboundRolls.filter((r) => selectedRollIds.includes(r.id));
+
+  // Distinct fabrics selected at top level
+  const activeSelectedFabrics = Array.from(
+    new Set(
+      fabricSourceType === 'ROLL_GUDANG'
+        ? selectedRolls.map((r) => r.jenisKain).filter(Boolean)
+        : selectedDeposits.map((d) => d.jenisKain).filter(Boolean)
+    )
+  ) as string[];
+
+  const isMultiFabric = activeSelectedFabrics.length > 1;
+
+  const totalPooledMeters = selectedRolls.reduce((a, b) => a + (b.meterLength - b.meterUsed), 0);
+  const totalPooledDeposits = selectedDeposits.reduce((a, b) => a + (b.panjangSisa || 0), 0);
 
   // Calculate sum of a single product item
   const getItemTotalPcs = (cut: SizeBreakdown) =>
@@ -313,6 +356,8 @@ export const SPKView: React.FC = () => {
     const initVendor = vendors[0]?.name || 'SAHIRA';
     setFabricSourceType('ROLL_GUDANG');
     setSelectedDepositId(null);
+    setSelectedDepositIds([]);
+    setRollFabricFilter('ALL');
     setDepositVendorFilter(initVendor);
     setSelectedBrand(initBrand);
     setSelectedRollIds([]);
@@ -324,6 +369,8 @@ export const SPKView: React.FC = () => {
         targetCut: { ...emptySizeBreakdown },
         sourcePOId: null,
         sourcePONumber: null,
+        fabricSourceType: 'ROLL_GUDANG',
+        rollIds: [],
       },
     ]);
     setActiveProductTab(0);
@@ -380,7 +427,16 @@ export const SPKView: React.FC = () => {
     setEditingSpk(spk);
     const sourceType = spk.fabricSourceType || (spk.depositId ? 'TITIPAN_VENDOR' : 'ROLL_GUDANG');
     setFabricSourceType(sourceType);
-    setSelectedDepositId(spk.depositId || null);
+    const depIds = Array.from(
+      new Set([
+        spk.depositId,
+        ...(spk.depositIds || []),
+        ...(spk.items?.map((it) => it.depositId).filter(Boolean) || []),
+      ])
+    ).filter(Boolean) as string[];
+    setSelectedDepositIds(depIds);
+    setSelectedDepositId(spk.depositId || (depIds.length > 0 ? depIds[0] : null));
+    setRollFabricFilter('ALL');
     setDepositVendorFilter(spk.depositInfo?.targetVendor || spk.vendor || (vendors[0]?.name || 'SAHIRA'));
     setSelectedBrand(spk.brand);
     setSelectedRollIds(spk.rollIds ? [...spk.rollIds] : []);
@@ -396,6 +452,11 @@ export const SPKView: React.FC = () => {
         deliveredQty: it.deliveredQty ? { ...it.deliveredQty } : undefined,
         sourcePOId: it.sourcePOId || null,
         sourcePONumber: it.sourcePONumber || null,
+        fabricSourceType: it.fabricSourceType || (it.depositId ? 'TITIPAN_VENDOR' : 'ROLL_GUDANG'),
+        rollIds: it.rollIds && it.rollIds.length > 0 ? [...it.rollIds] : (spk.rollIds ? [...spk.rollIds] : []),
+        jenisKain: it.jenisKain,
+        depositId: it.depositId || null,
+        depositInfo: it.depositInfo || null,
       }))
     );
 
@@ -450,15 +511,25 @@ export const SPKView: React.FC = () => {
   };
 
   const handleSelectDeposit = (deposit: VendorFabricDeposit) => {
-    setSelectedDepositId(deposit.id);
+    toggleDepositSelection(deposit);
+  };
+
+  const toggleDepositSelection = (deposit: VendorFabricDeposit) => {
+    setSelectedDepositIds((prev) => {
+      const next = prev.includes(deposit.id)
+        ? prev.filter((id) => id !== deposit.id)
+        : [...prev, deposit.id];
+      setSelectedDepositId(next[0] || null);
+      return next;
+    });
     if (deposit.brand) {
       setSelectedBrand(deposit.brand);
     }
-    // Update vendor pada artikel produk agar otomatis diarahkan ke vendor lokasi kain dititipkan
+    // Update vendor pada artikel produk jika belum diset
     setProductItems((prev) =>
       prev.map((it) => ({
         ...it,
-        vendor: deposit.targetVendor,
+        vendor: it.vendor || deposit.targetVendor,
       }))
     );
   };
@@ -485,6 +556,8 @@ export const SPKView: React.FC = () => {
       targetCut: { ...emptySizeBreakdown },
       sourcePOId: sourcePOId || null,
       sourcePONumber: sourcePONumber || null,
+      fabricSourceType,
+      rollIds: [],
     };
     setProductItems((prev) => [...prev, newItem]);
     setActiveProductTab(productItems.length);
@@ -540,8 +613,8 @@ export const SPKView: React.FC = () => {
         return;
       }
     } else {
-      if (!selectedDepositId) {
-        alert('Pilih salah satu saldo kain titipan yang akan dicutting!');
+      if (selectedDepositIds.length === 0 && !selectedDepositId) {
+        alert('Pilih minimal salah satu saldo kain titipan yang akan dicutting!');
         return;
       }
     }
@@ -598,6 +671,23 @@ export const SPKView: React.FC = () => {
 
     const freshSplitItems = editingSpk ? getSpkItems(editingSpk) : [];
 
+    const effectiveDepIds = Array.from(
+      new Set([selectedDepositId, ...selectedDepositIds].filter(Boolean))
+    ) as string[];
+
+    const chosenRolls = inboundRolls.filter((r) => selectedRollIds.includes(r.id));
+    const chosenDeposits = vendorFabricDeposits.filter((d) => effectiveDepIds.includes(d.id));
+
+    const finalFabrics = Array.from(
+      new Set(
+        fabricSourceType === 'ROLL_GUDANG'
+          ? chosenRolls.map((r) => r.jenisKain).filter(Boolean)
+          : chosenDeposits.map((d) => d.jenisKain).filter(Boolean)
+      )
+    ) as string[];
+
+    const hasMulti = finalFabrics.length > 1;
+
     const itemsPayload: SPKProductItem[] = productItems.map((it, idx) => {
       const freshItem = freshSplitItems.find(
         (ex) => ex.id === it.id || ex.produk.trim().toUpperCase() === it.produk.trim().toUpperCase()
@@ -615,6 +705,26 @@ export const SPKView: React.FC = () => {
           ? it.sourcePONumber
           : existingItem?.sourcePONumber || sourcePONumber || null;
 
+      // Tentukan jenisKain untuk artikel ini:
+      let itemFabric = it.jenisKain;
+      if (!itemFabric || itemFabric.trim() === '') {
+        if (finalFabrics.length === 1) {
+          itemFabric = finalFabrics[0];
+        } else if (hasMulti) {
+          // Petakan default: artikel 0 -> kain 0, artikel 1 -> kain 1 jika belum dipilih
+          itemFabric = finalFabrics[idx] || finalFabrics.join(' + ');
+        }
+      }
+
+      // Alokasi rol untuk item ini
+      const itemRolls = hasMulti && itemFabric && !itemFabric.includes('+')
+        ? chosenRolls.filter((r) => r.jenisKain === itemFabric).map((r) => r.id)
+        : [...selectedRollIds];
+
+      const itemDeposit = hasMulti && itemFabric && !itemFabric.includes('+')
+        ? chosenDeposits.find((d) => d.jenisKain === itemFabric) || chosenDeposits[idx] || chosenDeposits[0] || null
+        : chosenDeposits[0] || null;
+
       return {
         id: it.id || existingItem?.id || `item-${Date.now()}-${idx + 1}`,
         produk: it.produk.trim().toUpperCase(),
@@ -629,6 +739,20 @@ export const SPKView: React.FC = () => {
           : { ...emptySizeBreakdown },
         sourcePOId: resolvedPOId,
         sourcePONumber: resolvedPONumber,
+        fabricSourceType,
+        rollIds: fabricSourceType === 'ROLL_GUDANG' ? itemRolls : [],
+        jenisKain: itemFabric,
+        depositId: fabricSourceType === 'TITIPAN_VENDOR' ? (itemDeposit?.id || null) : null,
+        depositInfo: fabricSourceType === 'TITIPAN_VENDOR' && itemDeposit ? {
+          depositNumber: itemDeposit.sourcePONumber ? `DEP-${itemDeposit.sourcePONumber}` : undefined,
+          sourceVendor: itemDeposit.sourceVendor,
+          targetVendor: itemDeposit.targetVendor,
+          jenisKain: itemDeposit.jenisKain,
+          warna: itemDeposit.warna || null,
+          panjang: itemDeposit.panjangSisa,
+          satuan: itemDeposit.satuan,
+          sourcePONumber: itemDeposit.sourcePONumber,
+        } : null,
       };
     });
 
@@ -642,10 +766,10 @@ export const SPKView: React.FC = () => {
     const primaryPOId =
       sourcePOId || primaryPO?.id || (editingSpk?.sourcePOId ?? null);
 
-    const chosenDep = fabricSourceType === 'TITIPAN_VENDOR' ? selectedDeposit : null;
+    const primaryDep = chosenDeposits[0] || null;
 
     const payload = {
-      brand: chosenDep ? chosenDep.brand : selectedBrand,
+      brand: primaryDep ? primaryDep.brand : selectedBrand,
       produk: produkSummary,
       vendor: vendorSummary,
       rollIds: fabricSourceType === 'ROLL_GUDANG' ? [...selectedRollIds] : [],
@@ -655,17 +779,18 @@ export const SPKView: React.FC = () => {
       catatan,
       items: itemsPayload,
       fabricSourceType,
-      depositId: chosenDep ? chosenDep.id : null,
-      depositInfo: chosenDep
+      depositId: primaryDep ? primaryDep.id : null,
+      depositIds: fabricSourceType === 'TITIPAN_VENDOR' ? effectiveDepIds : [],
+      depositInfo: primaryDep
         ? {
-            depositNumber: chosenDep.sourcePONumber ? `DEP-${chosenDep.sourcePONumber}` : undefined,
-            sourceVendor: chosenDep.sourceVendor,
-            targetVendor: chosenDep.targetVendor,
-            jenisKain: chosenDep.jenisKain,
-            warna: chosenDep.warna || null,
-            panjang: chosenDep.panjangSisa,
-            satuan: chosenDep.satuan,
-            sourcePONumber: chosenDep.sourcePONumber,
+            depositNumber: primaryDep.sourcePONumber ? `DEP-${primaryDep.sourcePONumber}` : undefined,
+            sourceVendor: primaryDep.sourceVendor,
+            targetVendor: primaryDep.targetVendor,
+            jenisKain: finalFabrics.join(' + ') || primaryDep.jenisKain,
+            warna: chosenDeposits.map((d) => d.warna).filter(Boolean).join(', ') || primaryDep.warna || null,
+            panjang: chosenDeposits.reduce((acc, d) => acc + (d.panjangSisa || 0), 0),
+            satuan: primaryDep.satuan,
+            sourcePONumber: primaryDep.sourcePONumber,
           }
         : null,
       sourcePOId: primaryPOId,
@@ -676,6 +801,7 @@ export const SPKView: React.FC = () => {
           : primaryPONumber
           ? [primaryPONumber]
           : [],
+      isMultiFabric: hasMulti,
     };
 
     try {
@@ -1092,8 +1218,33 @@ export const SPKView: React.FC = () => {
 
                         {/* Artikel & Kain */}
                         <td className="py-3 px-3">
-                          <strong className="text-slate-900 text-xs block leading-tight">{spk.produk}</strong>
-                          {fabricSummary ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <strong className="text-slate-900 text-xs block leading-tight">{spk.produk}</strong>
+                            {spk.isMultiFabric && (
+                              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                                Multi-Bahan
+                              </span>
+                            )}
+                          </div>
+                          {spk.isMultiFabric ? (
+                            <div className="space-y-0.5 mt-1 max-w-[240px]">
+                              {spkItems.map((it, idx) => {
+                                const itFabric = it.jenisKain || it.depositInfo?.jenisKain || (() => {
+                                  if (it.rollIds && it.rollIds.length > 0) {
+                                    const r = inboundRolls.find((item) => item.id === it.rollIds![0] || item.rollCode === it.rollIds![0]);
+                                    return r?.jenisKain;
+                                  }
+                                  return null;
+                                })();
+                                return (
+                                  <div key={it.id || idx} className="text-[10px] flex items-center gap-1 truncate" title={`${it.produk}: ${itFabric || 'Belum ada bahan'}`}>
+                                    <span className="font-bold text-slate-700">• {it.produk}:</span>
+                                    <span className="text-indigo-600 font-semibold">{itFabric || '-'}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : fabricSummary ? (
                             <div className="flex items-center gap-1 text-[11px] text-indigo-700 mt-1 font-semibold truncate max-w-[200px]" title={fabricSummary}>
                               <span>🧵</span>
                               <span>{fabricSummary}</span>
@@ -1169,6 +1320,13 @@ export const SPKView: React.FC = () => {
                         <td className="py-3 px-3 text-right pr-4">
                           <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                             <button
+                              onClick={() => setPrintingSpk(spk)}
+                              className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition border border-indigo-200/80"
+                              title="Cetak SPK Potong (Meja Potong / Vendor)"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => {
                                 setSelectedSPKDetail(spk);
                                 setActiveDetailTab(0);
@@ -1207,22 +1365,34 @@ export const SPKView: React.FC = () => {
                             <div className="bg-white rounded-xl border border-slate-200/90 p-4 space-y-4 shadow-2xs">
                               {/* Subrow Header */}
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
                                   <h4 className="font-bold text-slate-900 text-xs sm:text-sm">
                                     Rincian Ukuran Potong & Alokasi Kain ({spk.spkNumber})
                                   </h4>
+                                  {spk.isMultiFabric && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                      Setelan Multi-Bahan
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => setPrintingSpk(spk)}
+                                    className="text-[11px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition"
+                                  >
+                                    <Printer className="w-3 h-3" />
+                                    Cetak Lembar SPK
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setSelectedSPKDetail(spk);
                                       setActiveDetailTab(0);
                                     }}
-                                    className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 underline underline-offset-2"
+                                    className="text-[11px] text-slate-600 hover:text-slate-800 font-bold flex items-center gap-1 underline underline-offset-2"
                                   >
                                     <Eye className="w-3 h-3" />
-                                    Buka Pratinjau Lengkap / Modal
+                                    Modal Lengkap
                                   </button>
                                 </div>
                               </div>
@@ -1233,24 +1403,40 @@ export const SPKView: React.FC = () => {
                                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
                                     Pilih Artikel:
                                   </span>
-                                  {spkItems.map((it, idx) => (
-                                    <button
-                                      key={it.id || idx}
-                                      onClick={() =>
-                                        setExpandedDetailTabs((prev) => ({
-                                          ...prev,
-                                          [spk.id]: idx,
-                                        }))
+                                  {spkItems.map((it, idx) => {
+                                    const itFabric = it.jenisKain || it.depositInfo?.jenisKain || (() => {
+                                      if (it.rollIds && it.rollIds.length > 0) {
+                                        const r = inboundRolls.find((item) => item.id === it.rollIds![0] || item.rollCode === it.rollIds![0]);
+                                        return r?.jenisKain;
                                       }
-                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 ${
-                                        activeSubIndex === idx
-                                          ? 'bg-indigo-600 text-white shadow-2xs'
-                                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                      }`}
-                                    >
-                                      {it.produk} ({it.vendor})
-                                    </button>
-                                  ))}
+                                      return null;
+                                    })();
+                                    return (
+                                      <button
+                                        key={it.id || idx}
+                                        onClick={() =>
+                                          setExpandedDetailTabs((prev) => ({
+                                            ...prev,
+                                            [spk.id]: idx,
+                                          }))
+                                        }
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                                          activeSubIndex === idx
+                                            ? 'bg-indigo-600 text-white shadow-2xs'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                      >
+                                        <span>{it.produk} ({it.vendor})</span>
+                                        {spk.isMultiFabric && itFabric && (
+                                          <span className={`text-[9px] px-1 py-0.2 rounded font-semibold ${
+                                            activeSubIndex === idx ? 'bg-indigo-800 text-indigo-100' : 'bg-slate-200 text-slate-700'
+                                          }`}>
+                                            🧵 {itFabric}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               )}
 
@@ -1321,10 +1507,54 @@ export const SPKView: React.FC = () => {
                                 {/* Detail Kain & Catatan (4 Kolom) */}
                                 <div className="lg:col-span-4 space-y-3">
                                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2 text-xs">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                                      Identitas Bahan Baku:
-                                    </span>
-                                    {spk.fabricSourceType === 'TITIPAN_VENDOR' ? (
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                        Identitas Bahan Baku:
+                                      </span>
+                                      {spk.isMultiFabric && (
+                                        <span className="text-[9.5px] font-bold text-purple-700">
+                                          {activeSubProduct?.produk || 'Komponen'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {spk.isMultiFabric && activeSubProduct ? (
+                                      <div className="space-y-1.5">
+                                        <div className="font-bold text-slate-900 text-xs">
+                                          Kain: <span className="text-indigo-700">{activeSubProduct.jenisKain || activeSubProduct.depositInfo?.jenisKain || 'Belum dipilih'}</span>
+                                        </div>
+                                        {activeSubProduct.fabricSourceType === 'TITIPAN_VENDOR' ? (
+                                          <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 text-amber-900 space-y-0.5 text-[11px]">
+                                            <div className="font-bold">Sisa Kain (Titipan):</div>
+                                            <div>{activeSubProduct.depositInfo?.panjang} {activeSubProduct.depositInfo?.satuan} - Asal: Konveksi {activeSubProduct.depositInfo?.sourceVendor || '-'}</div>
+                                            {activeSubProduct.depositInfo?.sourcePONumber && (
+                                              <div className="text-[10px] text-slate-500">Ex PO: {activeSubProduct.depositInfo.sourcePONumber}</div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div>
+                                            <div className="text-[11px] text-slate-600 mb-1">
+                                              Rol Gudang Terkait ({(activeSubProduct.rollIds || []).length} Rol):
+                                            </div>
+                                            <div className="flex flex-wrap gap-1">
+                                              {(activeSubProduct.rollIds || []).map((id) => {
+                                                const r = inboundRolls.find((item) => item.id === id || item.rollCode === id);
+                                                return (
+                                                  <span
+                                                    key={id}
+                                                    className="px-1.5 py-0.5 bg-white border border-slate-200 rounded font-mono text-[10px] text-indigo-700 font-bold"
+                                                  >
+                                                    {r ? r.rollCode : id} {r ? `(${r.meterLength}m)` : ''}
+                                                  </span>
+                                                );
+                                              })}
+                                              {(!activeSubProduct.rollIds || activeSubProduct.rollIds.length === 0) && (
+                                                <span className="text-slate-400 italic text-[10px]">Belum ada rol terhubung</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : spk.fabricSourceType === 'TITIPAN_VENDOR' ? (
                                       <div className="space-y-1">
                                         <div className="font-bold text-indigo-900">
                                           {spk.depositInfo?.panjang} {spk.depositInfo?.satuan} {spk.depositInfo?.jenisKain}
@@ -1484,9 +1714,14 @@ export const SPKView: React.FC = () => {
                         <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded text-[9.5px]">
                           {spk.brand}
                         </span>
+                        {spk.isMultiFabric && (
+                          <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 font-bold rounded text-[9.5px] border border-purple-200">
+                            Multi-Bahan
+                          </span>
+                        )}
                         {(() => {
                           const cardItems = getSpkItems(spk);
-                          if (cardItems.length > 1) {
+                          if (cardItems.length > 1 && !spk.isMultiFabric) {
                             return (
                               <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 font-bold rounded text-[9.5px] border border-purple-200">
                                 Combo ({cardItems.length})
@@ -1497,7 +1732,25 @@ export const SPKView: React.FC = () => {
                         })()}
                       </div>
                       <h3 className="font-bold text-slate-900 text-xs sm:text-sm mt-1 leading-snug">{spk.produk}</h3>
-                      {fabricSummary && (
+                      {spk.isMultiFabric ? (
+                        <div className="space-y-0.5 mt-1">
+                          {spkItems.map((it, idx) => {
+                            const itFabric = it.jenisKain || it.depositInfo?.jenisKain || (() => {
+                              if (it.rollIds && it.rollIds.length > 0) {
+                                const r = inboundRolls.find((item) => item.id === it.rollIds![0] || item.rollCode === it.rollIds![0]);
+                                return r?.jenisKain;
+                              }
+                              return null;
+                            })();
+                            return (
+                              <div key={it.id || idx} className="text-[10.5px] text-slate-600 truncate">
+                                <span className="font-bold text-slate-700">• {it.produk}:</span>{' '}
+                                <span className="text-indigo-600 font-semibold">{itFabric || '-'}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : fabricSummary && (
                         <div className="text-[11px] text-indigo-700 font-semibold mt-0.5 truncate">
                           🧵 {fabricSummary}
                         </div>
@@ -1552,28 +1805,36 @@ export const SPKView: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                    {userRole === 'ADMIN' ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleOpenEdit(spk)}
-                          className="px-2 py-1 text-amber-700 hover:text-amber-800 hover:bg-amber-50 font-semibold rounded-lg text-xs flex items-center gap-1 transition"
-                          title="Edit SPK ini"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSPK(spk)}
-                          className="px-2 py-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold rounded-lg text-xs flex items-center gap-1 transition"
-                          title="Hapus SPK ini"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          Hapus
-                        </button>
-                      </div>
-                    ) : (
-                      <div></div>
-                    )}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setPrintingSpk(spk)}
+                        className="px-2 py-1 text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50 font-semibold rounded-lg text-xs flex items-center gap-1 transition"
+                        title="Cetak SPK Potong"
+                      >
+                        <Printer className="w-3 h-3" />
+                        Cetak
+                      </button>
+                      {userRole === 'ADMIN' && (
+                        <>
+                          <button
+                            onClick={() => handleOpenEdit(spk)}
+                            className="px-2 py-1 text-amber-700 hover:text-amber-800 hover:bg-amber-50 font-semibold rounded-lg text-xs flex items-center gap-1 transition"
+                            title="Edit SPK ini"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSPK(spk)}
+                            className="px-2 py-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold rounded-lg text-xs flex items-center gap-1 transition"
+                            title="Hapus SPK ini"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Hapus
+                          </button>
+                        </>
+                      )}
+                    </div>
                     <button
                       onClick={() => {
                         setSelectedSPKDetail(spk);
@@ -1741,17 +2002,26 @@ export const SPKView: React.FC = () => {
                 )}
               </div>
 
-              {/* Pilihan Sumber Bahan Kain */}
+              {/* Sumber Bahan Kain: Rol Gudang Pusat vs Sisa Kain Konveksi */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Pilih Sumber Bahan Kain untuk SPK Cutting Ini:
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-bold text-slate-700">
+                    Pilih Sumber Bahan Kain untuk SPK Cutting Ini:
+                  </label>
+                  {isMultiFabric && (
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-purple-600" />
+                      {activeSelectedFabrics.length} Jenis Kain Terpilih
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
                   <button
                     type="button"
                     onClick={() => {
                       setFabricSourceType('ROLL_GUDANG');
                       setSelectedDepositId(null);
+                      setSelectedDepositIds([]);
                     }}
                     className={`py-2.5 px-3 rounded-lg font-bold text-xs transition cursor-pointer text-center ${
                       fabricSourceType === 'ROLL_GUDANG'
@@ -1804,6 +2074,7 @@ export const SPKView: React.FC = () => {
                         onChange={(e) => {
                           setSelectedBrand(e.target.value);
                           setSelectedRollIds([]);
+                          setRollFabricFilter('ALL');
                         }}
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none"
                       >
@@ -1829,23 +2100,74 @@ export const SPKView: React.FC = () => {
 
                   {/* Smart Pooling Box: Select Rolls */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                      <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-200 pb-2">
+                      <span className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs sm:text-sm">
                         <Layers className="w-4 h-4 text-indigo-600" />
                         Smart Pooling: Pilih Rol Kain Milik {selectedBrand}
                       </span>
-                      <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                        Total Pool: {totalPooledMeters} Meter ({selectedRollIds.length} Rol)
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {isMultiFabric && (
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded border border-purple-200">
+                            🧵 {activeSelectedFabrics.length} Jenis Kain
+                          </span>
+                        )}
+                        <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded">
+                          Total Pool: {totalPooledMeters} Meter ({selectedRollIds.length} Rol)
+                        </span>
+                      </div>
                     </div>
 
+                    {/* Filter Jenis Kain jika terdapat lebih dari 1 jenis kain di gudang */}
+                    {availableFabricsInWarehouse.length > 1 && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                        <span className="text-[11px] font-bold text-slate-500 shrink-0">Filter:</span>
+                        <button
+                          type="button"
+                          onClick={() => setRollFabricFilter('ALL')}
+                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition shrink-0 cursor-pointer ${
+                            rollFabricFilter === 'ALL'
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          Semua ({availableRolls.length})
+                        </button>
+                        {availableFabricsInWarehouse.map((fab) => {
+                          const count = availableRolls.filter((r) => r.jenisKain === fab).length;
+                          const isFabSelected = selectedRolls.some((r) => r.jenisKain === fab);
+                          return (
+                            <button
+                              key={fab}
+                              type="button"
+                              onClick={() => setRollFabricFilter(fab)}
+                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                                rollFabricFilter === fab
+                                  ? 'bg-indigo-600 text-white shadow-xs'
+                                  : isFabSelected
+                                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-300'
+                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>{fab}</span>
+                              <span className="text-[9.5px] opacity-75 font-mono">({count})</span>
+                              {isFabSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {availableRolls.length === 0 ? (
-                      <p className="text-slate-400 italic py-2">
+                      <p className="text-slate-400 italic py-2 text-xs">
                         Tidak ada stok rol kain yang berstatus &quot;Di Gudang&quot; untuk brand {selectedBrand}. Harap tambahkan rol di Modul Inbound terlebih dahulu.
                       </p>
+                    ) : filteredAvailableRolls.length === 0 ? (
+                      <p className="text-slate-400 italic py-2 text-xs">
+                        Tidak ada stok rol untuk filter jenis kain terpilih.
+                      </p>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
-                        {availableRolls.map((roll) => {
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                        {filteredAvailableRolls.map((roll) => {
                           const isSelected = selectedRollIds.includes(roll.id);
                           return (
                             <div
@@ -1869,6 +2191,33 @@ export const SPKView: React.FC = () => {
                         })}
                       </div>
                     )}
+
+                    {/* Ringkasan Kain Terpilih */}
+                    {selectedRollIds.length > 0 && (
+                      <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="text-slate-600 flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-700">Kain Terpilih:</span>
+                          {activeSelectedFabrics.map((fab) => {
+                            const rollsOfFabric = selectedRolls.filter((r) => r.jenisKain === fab);
+                            const mOfFabric = rollsOfFabric.reduce((a, b) => a + (b.meterLength - b.meterUsed), 0);
+                            return (
+                              <span
+                                key={fab}
+                                className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md text-[11px]"
+                              >
+                                {fab} ({rollsOfFabric.length} rol • {mOfFabric}m)
+                              </span>
+                            );
+                          })}
+                        </div>
+                        {isMultiFabric && (
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-purple-600" />
+                            Multi-Bahan Terpilih
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -1886,6 +2235,7 @@ export const SPKView: React.FC = () => {
                         onChange={(e) => {
                           setDepositVendorFilter(e.target.value);
                           setSelectedDepositId(null);
+                          setSelectedDepositIds([]);
                         }}
                         className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:border-indigo-500 outline-none"
                       >
@@ -1912,10 +2262,20 @@ export const SPKView: React.FC = () => {
 
                   {/* List Saldo Sisa Kain */}
                   <div className="space-y-2.5">
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-200 pb-2">
                       <span className="font-bold text-slate-800 text-xs">
                         Pilih Sisa Kain yang Akan Dicutting ({availableDeposits.length} Tersedia)
                       </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {isMultiFabric && (
+                          <span className="text-[10px] font-bold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded border border-purple-200">
+                            🧵 {activeSelectedFabrics.length} Jenis Kain
+                          </span>
+                        )}
+                        <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded">
+                          Total: {totalPooledDeposits} {selectedDeposits[0]?.satuan || 'm'} ({selectedDepositIds.length} Sisa Kain)
+                        </span>
+                      </div>
                     </div>
 
                     {availableDeposits.length === 0 ? (
@@ -1933,11 +2293,11 @@ export const SPKView: React.FC = () => {
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
                         {availableDeposits.map((dep) => {
-                          const isSelected = selectedDepositId === dep.id;
+                          const isSelected = selectedDepositIds.includes(dep.id);
                           return (
                             <div
                               key={dep.id}
-                              onClick={() => handleSelectDeposit(dep)}
+                              onClick={() => toggleDepositSelection(dep)}
                               className={`p-3 rounded-xl border cursor-pointer transition flex flex-col justify-between gap-2 shadow-sm ${
                                 isSelected
                                   ? 'bg-indigo-50/80 border-indigo-600 ring-2 ring-indigo-500/20'
@@ -1980,11 +2340,13 @@ export const SPKView: React.FC = () => {
                       </div>
                     )}
 
-                    {selectedDeposit && (
+                    {selectedDeposits.length > 0 && (
                       <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs text-emerald-900">
                         <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                         <div>
-                          <strong>Kain Siap Potong:</strong> {selectedDeposit.panjangSisa} {selectedDeposit.satuan} {selectedDeposit.jenisKain} {selectedDeposit.warna ? `(${selectedDeposit.warna})` : ''} di <strong>Konveksi {selectedDeposit.targetVendor}</strong> (Brand: {selectedDeposit.brand}). Silakan input rincian artikel dan target size potong di bawah.
+                          <strong>Kain Siap Potong:</strong>{' '}
+                          {selectedDeposits.map((d) => `${d.panjangSisa} ${d.satuan} ${d.jenisKain}${d.warna ? ` (${d.warna})` : ''}`).join(' + ')}{' '}
+                          di <strong>Konveksi {selectedDeposits[0]?.targetVendor}</strong> (Brand: {selectedDeposits[0]?.brand}).
                         </div>
                       </div>
                     )}
@@ -2000,7 +2362,7 @@ export const SPKView: React.FC = () => {
                       Daftar Produk yang Dipotong dari Kain Ini (Maks. 3 Produk):
                     </span>
                     <span className="text-[10px] text-slate-500">
-                      Gunakan fitur ini jika 1 gelaran kain menghasilkan beberapa artikel berbeda (misal: Atasan + Bawahan + Perca).
+                      Gunakan fitur ini jika kain menghasilkan beberapa artikel berbeda (misal: Atasan + Bawahan atau Produk 1 + Produk 2).
                     </span>
                   </div>
 
@@ -2008,7 +2370,7 @@ export const SPKView: React.FC = () => {
                     <button
                       type="button"
                       onClick={addProductItem}
-                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-lg text-xs flex items-center gap-1 transition shrink-0"
+                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-lg text-xs flex items-center gap-1 transition shrink-0 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Tambah Produk ({productItems.length + 1}/3)
@@ -2022,12 +2384,13 @@ export const SPKView: React.FC = () => {
                     const isActive = activeProductTab === idx;
                     const itemPcs = getItemTotalPcs(item.targetCut);
                     const itemPO = item.sourcePONumber || sourcePONumber;
+
                     return (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => setActiveProductTab(idx)}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 border shrink-0 ${
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 border shrink-0 cursor-pointer ${
                           isActive
                             ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                             : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -2038,11 +2401,25 @@ export const SPKView: React.FC = () => {
                           {idx === 0 ? '1. Produk Utama' : `${idx + 1}. Produk #${idx + 1}`}
                           {item.produk ? `: ${item.produk}` : ''}
                         </span>
+                        {isMultiFabric && (
+                          <span
+                            className={`text-[9.5px] px-1.5 py-0.5 rounded font-medium max-w-[120px] truncate ${
+                              item.jenisKain
+                                ? isActive
+                                  ? 'bg-indigo-800 text-indigo-100 border border-indigo-400'
+                                  : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                            title={item.jenisKain || 'Semua Bahan SPK'}
+                          >
+                            🧵 {item.jenisKain || 'Semua Bahan'}
+                          </span>
+                        )}
                         {itemPO && (
                           <span
                             className={`text-[9.5px] px-1.5 py-0.5 rounded font-mono ${
                               isActive
-                                ? 'bg-indigo-700 text-white'
+                                ? 'bg-indigo-800 text-white'
                                 : 'bg-blue-50 text-blue-700 border border-blue-200'
                             }`}
                           >
@@ -2051,7 +2428,7 @@ export const SPKView: React.FC = () => {
                         )}
                         <span
                           className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                            isActive ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-600'
+                            isActive ? 'bg-black/20 text-white' : 'bg-slate-100 text-slate-600'
                           }`}
                         >
                           {itemPcs} Pcs
@@ -2193,6 +2570,37 @@ export const SPKView: React.FC = () => {
                       </select>
                     </div>
                   </div>
+
+                  {/* Alokasi Kain untuk Artikel Ini (Hanya muncul jika di atas memilih lebih dari 1 jenis kain) */}
+                  {isMultiFabric && (
+                    <div className="bg-indigo-50/60 border border-indigo-200/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 block">
+                            Alokasi Kain Khusus untuk Artikel #{activeProductTab + 1} ({currentActiveProduct.produk || 'Artikel Ini'}):
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            Pilih jenis kain dari bahan SPK yang sudah dipilih di atas, atau biarkan gabungan seluruh bahan SPK.
+                          </span>
+                        </div>
+                      </div>
+                      <select
+                        value={currentActiveProduct.jenisKain || ''}
+                        onChange={(e) => updateProductItem(activeProductTab, 'jenisKain', e.target.value)}
+                        className="p-2 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer min-w-[210px]"
+                      >
+                        <option value="">
+                          -- Semua Bahan SPK ({activeSelectedFabrics.join(' + ')}) --
+                        </option>
+                        {activeSelectedFabrics.map((fabric) => (
+                          <option key={fabric} value={fabric}>
+                            🧵 Khusus Kain: {fabric}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* Size Breakdown per Product */}
                   <div className="space-y-3 pt-2">
@@ -2410,7 +2818,57 @@ export const SPKView: React.FC = () => {
 
             <div className="space-y-4 text-xs">
               {/* Rol Kain yang Di-Pool atau Sisa Kain Konveksi */}
-              {selectedSPKDetail.fabricSourceType === 'TITIPAN_VENDOR' ? (
+              {selectedSPKDetail.isMultiFabric ? (
+                <div className="bg-purple-50/70 p-4 rounded-xl border border-purple-200/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                      <span className="font-bold text-purple-950 text-xs">
+                        Setelan Multi-Bahan (Atasan & Bawahan Menggunakan Kain Berbeda)
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-800">
+                      Multi-Bahan
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs pt-1">
+                    {getSpkItems(selectedSPKDetail).map((it, idx) => {
+                      const itFabric = it.jenisKain || it.depositInfo?.jenisKain || (() => {
+                        if (it.rollIds && it.rollIds.length > 0) {
+                          const r = inboundRolls.find((item) => item.id === it.rollIds![0] || item.rollCode === it.rollIds![0]);
+                          return r?.jenisKain;
+                        }
+                        return 'Rol Gudang';
+                      })();
+                      return (
+                        <div key={it.id || idx} className="bg-white p-3 rounded-xl border border-purple-100 shadow-2xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              Komponen #{idx + 1}
+                            </span>
+                            <span className="font-bold text-slate-800 text-[11px]">{it.produk}</span>
+                          </div>
+                          <div className="font-bold text-indigo-700 text-xs">
+                            🧵 {itFabric}
+                          </div>
+                          <div className="text-[10px] text-slate-500 pt-0.5">
+                            {it.fabricSourceType === 'TITIPAN_VENDOR' ? (
+                              <span>Sisa Kain: <strong>{it.depositInfo?.panjang} {it.depositInfo?.satuan}</strong> (Asal: Konveksi {it.depositInfo?.sourceVendor || '-'})</span>
+                            ) : (
+                              <span>
+                                Rol: {(it.rollIds || []).map(id => {
+                                  const r = inboundRolls.find(item => item.id === id || item.rollCode === id);
+                                  return r ? `${r.rollCode} (${r.meterLength}m)` : id;
+                                }).join(', ') || 'Belum dipilih'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : selectedSPKDetail.fabricSourceType === 'TITIPAN_VENDOR' ? (
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-800 text-xs">
@@ -2600,6 +3058,17 @@ export const SPKView: React.FC = () => {
             </div>
 
             <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPrintingSpk(selectedSPKDetail);
+                }}
+                className="py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-indigo-200"
+                title="Cetak SPK Potong"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Cetak Lembar Potong
+              </button>
               {userRole === 'ADMIN' && (
                 <button
                   onClick={() => {
@@ -2653,6 +3122,15 @@ export const SPKView: React.FC = () => {
             : "Kain rol yang di-pool akan otomatis dikembalikan ke status 'Di Gudang'."
         }
       />
+
+      {/* MODAL: Cetak Dokumen SPK Meja Potong */}
+      {printingSpk && (
+        <SPKPrintModal
+          spk={printingSpk}
+          inboundRolls={inboundRolls}
+          onClose={() => setPrintingSpk(null)}
+        />
+      )}
     </div>
   );
 };
