@@ -249,14 +249,19 @@ export const FinanceView: React.FC = () => {
     const totalPcs = targetItems.reduce((s, it) => s + it.pcs, 0);
     const totalGrossPay = targetItems.reduce((s, it) => s + it.subtotal, 0);
     const kasbonDeduction = currentPayroll.kasbonDeduction;
-    const netPay = Math.max(0, totalGrossPay - kasbonDeduction);
+    const manualInvoiceDeduction = currentPayroll.manualInvoiceDeduction || 0;
+    const netPay = Math.max(0, totalGrossPay - kasbonDeduction - manualInvoiceDeduction);
 
     return {
       vendor: currentPayroll.vendor,
       totalPcs,
       totalGrossPay,
       kasbonDeduction,
+      manualInvoiceDeduction,
+      manualInvoices: currentPayroll.manualInvoices,
       netPay,
+      totalPendingPcs: currentPayroll.totalPendingPcs,
+      totalPendingPay: currentPayroll.totalPendingPay,
       periodeAwal: currentPayroll.periodeAwal,
       periodeAkhir: currentPayroll.periodeAkhir,
       periodeLabel: currentPayroll.periodeLabel,

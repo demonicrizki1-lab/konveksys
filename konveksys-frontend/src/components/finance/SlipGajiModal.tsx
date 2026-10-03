@@ -220,9 +220,21 @@ export const SlipGajiModal: React.FC<SlipGajiModalProps> = ({ payroll, onClose }
                 <span className="font-bold text-rose">- {formatRp(payroll.kasbonDeduction)}</span>
               </div>
               {(payroll.manualInvoiceDeduction ?? 0) > 0 && (
-                <div className="flex justify-between text-amber-700 font-medium">
-                  <span>Potongan Pembayaran Dimuka (Invoice Manual):</span>
-                  <span className="font-bold text-amber-800">- {formatRp(payroll.manualInvoiceDeduction || 0)}</span>
+                <div className="space-y-0.5">
+                  <div className="flex justify-between text-amber-700 font-medium">
+                    <span>Potongan Invoice Manual (DP):</span>
+                    <span className="font-bold text-amber-800">- {formatRp(payroll.manualInvoiceDeduction || 0)}</span>
+                  </div>
+                  {payroll.manualInvoices && payroll.manualInvoices.length > 0 && (
+                    <div className="text-[10px] text-amber-800/80 pl-2 space-y-0.5">
+                      {payroll.manualInvoices.map((inv) => (
+                        <div key={inv.id} className="flex justify-between">
+                          <span>• Ref: {inv.invoiceNo} ({inv.kategori.replace(/_/g, ' ')})</span>
+                          <span className="font-semibold">- {formatRp(inv.totalNominal || 0)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               <div className="flex justify-between text-slate-900 border-t-2 border-slate-900 pt-1.5 text-sm font-bold">
