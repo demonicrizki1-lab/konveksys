@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   Layers,
@@ -23,6 +23,52 @@ import { SATUAN_OPTIONS, SatuanDropdown } from './FobCalculatorTab';
 export const YARD_TO_METER_FACTOR = 0.9144;
 export const convertYardToMeterPrice = (hargaYard: number): number =>
   Math.round((hargaYard || 0) / YARD_TO_METER_FACTOR);
+
+// Generator Kode Material Otomatis berurutan (misal: K01 -> K02 atau MAT-001 -> MAT-002)
+export const generateNextMaterialCode = (materials?: FOBMaterialMaster[]): string => {
+  if (!materials || materials.length === 0) {
+    return 'MAT-001';
+  }
+
+  let maxK = 0;
+  let maxMat = 0;
+  let maxNum = 0;
+
+  materials.forEach(m => {
+    if (!m.kodeMaterial) return;
+    const code = m.kodeMaterial.trim().toUpperCase();
+
+    // Check pattern K01, K02...
+    const kMatch = code.match(/^K(\d+)$/i);
+    if (kMatch) {
+      const n = parseInt(kMatch[1], 10);
+      if (!isNaN(n) && n > maxK) maxK = n;
+    }
+
+    // Check pattern MAT-001, MAT001...
+    const matMatch = code.match(/^MAT-?(\d+)$/i);
+    if (matMatch) {
+      const n = parseInt(matMatch[1], 10);
+      if (!isNaN(n) && n > maxMat) maxMat = n;
+    }
+
+    const anyMatch = code.match(/(\d+)$/);
+    if (anyMatch) {
+      const n = parseInt(anyMatch[1], 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    }
+  });
+
+  if (maxK > 0 && maxK >= maxMat) {
+    return `K${String(maxK + 1).padStart(2, '0')}`;
+  }
+  if (maxMat > 0) {
+    return `MAT-${String(maxMat + 1).padStart(3, '0')}`;
+  }
+
+  const next = (maxNum > 0 ? maxNum : materials.length) + 1;
+  return `MAT-${String(next).padStart(3, '0')}`;
+};
 
 interface FobMasterDataTabProps {
   materials: FOBMaterialMaster[];
@@ -53,8 +99,8 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'materials' | 'products'>('materials');
 
-  // Form Material State
-  const [matKode, setMatKode] = useState<string>('');
+  // Form Material State (Kode Material Otomatis)
+  const [matKode, setMatKode] = useState<string>(() => generateNextMaterialCode(materials));
   const [matNama, setMatNama] = useState<string>('');
   const [matKategori, setMatKategori] = useState<HPPComponentType>('BAHAN_BAKU');
   const [matSatuan, setMatSatuan] = useState<string>('Yard');
@@ -62,6 +108,13 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
   const [matHarga, setMatHarga] = useState<number>(0);
   const [matSupplier, setMatSupplier] = useState<string>('');
   const [matCatatan, setMatCatatan] = useState<string>('');
+
+  // Sinkronkan kode material otomatis jika daftar materials diperbarui
+  useEffect(() => {
+    if (!matKode || materials.some(m => m.kodeMaterial === matKode)) {
+      setMatKode(generateNextMaterialCode(materials));
+    }
+  }, [materials]);
 
   // Form Product State
   const [prodKode, setProdKode] = useState<string>('');
@@ -77,13 +130,14 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
   // Submit Material
   const handleSubmitMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!matKode.trim() || !matNama.trim()) {
-      setStatusMsg({ type: 'error', text: 'Kode dan Nama Bahan wajib diisi.' });
+    const finalKode = matKode.trim() ? matKode.trim().toUpperCase() : generateNextMaterialCode(materials);
+    if (!matNama.trim()) {
+      setStatusMsg({ type: 'error', text: 'Nama Bahan wajib diisi.' });
       return;
     }
 
     const res = await onSaveMaterial({
-      kodeMaterial: matKode.trim().toUpperCase(),
+      kodeMaterial: finalKode,
       namaBahan: matNama.trim(),
       kategori: matKategori,
       satuan: matSatuan.trim() || 'Pcs',
@@ -94,8 +148,9 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
     });
 
     if (res.success) {
-      setStatusMsg({ type: 'success', text: `Master Material ${matNama} berhasil disimpan!` });
-      setMatKode('');
+      setStatusMsg({ type: 'success', text: `Master Material ${matNama} (${finalKode}) berhasil disimpan!` });
+      const nextList = [...materials, { kodeMaterial: finalKode } as any];
+      setMatKode(generateNextMaterialCode(nextList));
       setMatNama('');
       setMatQty(1);
       setMatHarga(0);
@@ -209,14 +264,19 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
               <div>
-                <label className="block text-slate-500 font-semibold mb-1">Kode Material *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-500 font-semibold">Kode Material</label>
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+                    Otomatis
+                  </span>
+                </div>
                 <input
                   type="text"
                   value={matKode}
                   onChange={e => setMatKode(e.target.value)}
-                  placeholder="MAT-KTN-30S"
-                  className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 font-semibold text-slate-900 focus:ring-1 focus:ring-indigo-500"
-                  required
+                  placeholder="K02"
+                  className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 bg-slate-50 font-bold text-slate-900 focus:bg-white focus:ring-1 focus:ring-indigo-500 uppercase"
+                  title="Kode material diterbitkan berurutan otomatis oleh sistem (bisa diubah jika perlu)"
                 />
               </div>
 
