@@ -11,6 +11,7 @@ import { OutboundView } from './components/outbound/OutboundView';
 import { ReturnView } from './components/return/ReturnView';
 import { FinanceView } from './components/finance/FinanceView';
 import { ArusKasView } from './components/arus-kas/ArusKasView';
+import { KasOperasionalView } from './components/kas-operasional/KasOperasionalView';
 import { MarginAnalyticsView } from './components/finance/MarginAnalyticsView';
 import { AccessoriesView } from './components/accessories/AccessoriesView';
 import { BarangMasukView } from './components/barang-masuk/BarangMasukView';
@@ -25,7 +26,7 @@ const MainLayout: React.FC = () => {
   const { activeTab, setActiveTab, currentUser, userRole, isApprovalModalOpen, setIsApprovalModalOpen } = useApp();
 
   useEffect(() => {
-    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics' || activeTab === 'manajemen-user' || activeTab === 'po-produksi' || activeTab === 'kalkulator-fob' || activeTab === 'audit-trail')) {
+    if (userRole === 'BRAND' && (activeTab === 'accessories' || activeTab === 'master-harga' || activeTab === 'spk' || activeTab === 'margin-analytics' || activeTab === 'kas-operasional' || activeTab === 'manajemen-user' || activeTab === 'po-produksi' || activeTab === 'kalkulator-fob' || activeTab === 'audit-trail')) {
       setActiveTab('dashboard');
     }
     if (userRole === 'ADMIN' && activeTab === 'stok-penjualan') {
@@ -57,6 +58,7 @@ const MainLayout: React.FC = () => {
           {activeTab === 'return' && <ReturnView />}
           {activeTab === 'finance' && <FinanceView />}
           {activeTab === 'arus-kas' && <ArusKasView />}
+          {activeTab === 'kas-operasional' && userRole === 'ADMIN' && <KasOperasionalView />}
           {activeTab === 'margin-analytics' && userRole === 'ADMIN' && <MarginAnalyticsView />}
           {activeTab === 'manajemen-user' && userRole === 'ADMIN' && <UserManagementView />}
           {activeTab === 'kalkulator-fob' && userRole === 'ADMIN' && <FobCostingView />}

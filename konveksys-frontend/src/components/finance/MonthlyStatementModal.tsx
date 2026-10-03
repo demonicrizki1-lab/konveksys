@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { Download, Printer, X, FileSpreadsheet, Scissors, Package } from 'lucide-react';
+import { Download, Printer, X, FileSpreadsheet, Scissors, Package, Wallet } from 'lucide-react';
 import { printIsolatedDocument } from '../../utils/printHelper';
 import { formatRp, formatDateIndo } from '../../utils/formatters';
+import { OperationalExpense } from '../../types';
 
 export interface MarginReportItem {
   id: string;
@@ -48,13 +49,18 @@ interface MonthlyStatementModalProps {
     totalFabricCost?: number;
     fabricMeters?: number;
     grossProfit: number;
+    productionProfit?: number;
+    totalOpex?: number;
+    totalOtherIncome?: number;
     netProfit?: number;
     avgMargin: number;
+    grossMargin?: number;
     cmtProfit?: number;
     fobProfit?: number;
   };
   items: MarginReportItem[];
   fabricItems?: FabricReportItem[];
+  opexItems?: OperationalExpense[];
   poNumbers?: string[];
   notes?: string;
   onClose: () => void;
@@ -69,6 +75,7 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
   kpi,
   items,
   fabricItems = [],
+  opexItems = [],
   poNumbers = [],
   notes,
   onClose,
@@ -76,10 +83,17 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
   const paperRef = useRef<HTMLDivElement>(null);
   const [printOrientation, setPrintOrientation] = useState<'landscape' | 'portrait'>('landscape');
 
+  const grossProductionProfit =
+    kpi.productionProfit !== undefined
+      ? kpi.productionProfit
+      : Math.max(0, kpi.grossProfit - (kpi.totalFabricCost || 0));
+
+  const totalOpexDeduction = kpi.totalOpex || 0;
+
   const finalNetProfit =
     kpi.netProfit !== undefined
       ? kpi.netProfit
-      : Math.max(0, kpi.grossProfit - (kpi.totalFabricCost || 0));
+      : grossProductionProfit - totalOpexDeduction + (kpi.totalOtherIncome || 0);
 
   const handleExportPDF = () => {
     if (!paperRef.current) return;
@@ -242,7 +256,9 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
 
             {/* Executive KPI Summary Box */}
             <div className={`grid gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 text-center ${
-              (kpi.totalFabricCost || 0) > 0 ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
+              totalOpexDeduction > 0
+                ? (kpi.totalFabricCost || 0) > 0 ? 'grid-cols-2 sm:grid-cols-6' : 'grid-cols-2 sm:grid-cols-5'
+                : (kpi.totalFabricCost || 0) > 0 ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
             }`}>
               <div className="border-r border-slate-200 pr-2">
                 <span className="text-[9.5px] uppercase font-bold text-slate-400 block whitespace-nowrap">Total Omzet:</span>
@@ -264,10 +280,18 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
                 </div>
               )}
 
+              {totalOpexDeduction > 0 && (
+                <div className="border-r border-slate-200 pr-2">
+                  <span className="text-[9.5px] uppercase font-bold text-purple-700 block whitespace-nowrap">Beban OPEX:</span>
+                  <strong className="text-purple-700 text-xs font-bold block mt-0.5 whitespace-nowrap tabular-nums">- {formatRp(totalOpexDeduction)}</strong>
+                  <span className="text-[9px] text-purple-600 whitespace-nowrap">{opexItems.length} pos biaya rutin</span>
+                </div>
+              )}
+
               <div className="border-r border-slate-200 pr-2">
-                <span className="text-[9.5px] uppercase font-bold text-slate-400 block whitespace-nowrap">Net Profit:</span>
+                <span className="text-[9.5px] uppercase font-bold text-slate-400 block whitespace-nowrap">Net Operating Profit:</span>
                 <strong className="text-emerald-700 text-xs font-bold block mt-0.5 whitespace-nowrap tabular-nums">{formatRp(finalNetProfit)}</strong>
-                <span className="text-[9px] text-emerald-600 font-semibold whitespace-nowrap">Laba Bersih Akhir</span>
+                <span className="text-[9px] text-emerald-600 font-semibold whitespace-nowrap">Laba Bersih Riil</span>
               </div>
 
               <div>
@@ -280,7 +304,7 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
             {/* Formula Breakdown Banner */}
             <div className="p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-lg text-[10.5px] text-emerald-950 flex justify-between items-center flex-wrap gap-2">
               <span className="font-semibold">
-                Rumus Net Profit: Omzet ({formatRp(kpi.totalRevenue)}) - Beban Jahit ({formatRp(kpi.totalCost)}) {(kpi.totalFabricCost || 0) > 0 ? `- Beban Kain (${formatRp(kpi.totalFabricCost || 0)})` : ''}
+                Rumus Net Profit: Omzet ({formatRp(kpi.totalRevenue)}) - HPP Produksi ({formatRp(kpi.totalCost + (kpi.totalFabricCost || 0))}) {totalOpexDeduction > 0 ? `- Beban OPEX (${formatRp(totalOpexDeduction)})` : ''}
               </span>
               <span className="font-bold text-emerald-800 font-mono text-xs">
                 = {formatRp(finalNetProfit)} ({kpi.avgMargin.toFixed(1)}%)
@@ -441,6 +465,59 @@ export const MonthlyStatementModal: React.FC<MonthlyStatementModalProps> = ({
                         <td className="p-1.5 text-center font-mono text-rose-950 text-[9px]">{kpi.fabricMeters || 0} m</td>
                         <td className="p-1.5"></td>
                         <td className="p-1.5 text-right text-rose-800 font-mono tabular-nums text-[9px]">{formatRp(kpi.totalFabricCost || 0)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Table 3: Rincian Beban Operasional Perusahaan (OPEX) */}
+            {opexItems && opexItems.length > 0 && (
+              <div className="space-y-1.5 pt-1.5">
+                <div className="text-[10.5px] font-bold uppercase tracking-wider text-purple-900 flex justify-between items-center">
+                  <span className="flex items-center gap-1.5">
+                    <Wallet className="w-3.5 h-3.5" />
+                    3. Rincian Beban Operasional Perusahaan (OPEX)
+                  </span>
+                  <span className="text-slate-400 font-normal">Total {opexItems.length} Pos Pengeluaran</span>
+                </div>
+
+                <div className="border border-purple-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse table-fixed">
+                    <colgroup>
+                      <col style={{ width: '14%' }} />
+                      <col style={{ width: '22%' }} />
+                      <col style={{ width: '32%' }} />
+                      <col style={{ width: '16%' }} />
+                      <col style={{ width: '16%' }} />
+                    </colgroup>
+                    <thead className="bg-purple-50/80 text-purple-900 font-bold text-[8.5px] uppercase border-b border-purple-200">
+                      <tr>
+                        <th className="p-1.5 whitespace-nowrap">Tanggal</th>
+                        <th className="p-1.5">Kategori Biaya</th>
+                        <th className="p-1.5">Keterangan / Keperluan</th>
+                        <th className="p-1.5">Akun Kas</th>
+                        <th className="p-1.5 text-right whitespace-nowrap">Nominal (Rp)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-purple-100">
+                      {opexItems.map((e, idx) => (
+                        <tr key={e.id || idx} className="hover:bg-purple-50/40">
+                          <td className="p-1.5 text-slate-600 whitespace-nowrap text-[8.5px]">{formatDateIndo(e.tanggal)}</td>
+                          <td className="p-1.5 font-bold text-purple-900 text-[9px] truncate">{e.kategori}</td>
+                          <td className="p-1.5 font-medium text-slate-800 text-[9px] break-words leading-tight">{e.deskripsi}</td>
+                          <td className="p-1.5 text-slate-600 text-[8.5px] truncate">{e.akunKas}</td>
+                          <td className="p-1.5 text-right font-bold text-rose-700 whitespace-nowrap font-mono tabular-nums text-[9px]">
+                            - {formatRp(e.nominal)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-purple-50 font-bold border-t border-purple-300">
+                      <tr>
+                        <td colSpan={4} className="p-1.5 text-right uppercase text-[9px] text-purple-950">Total Beban Operasional (OPEX):</td>
+                        <td className="p-1.5 text-right text-rose-700 font-mono tabular-nums text-[9px]">- {formatRp(totalOpexDeduction)}</td>
                       </tr>
                     </tfoot>
                   </table>

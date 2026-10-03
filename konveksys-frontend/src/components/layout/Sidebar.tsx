@@ -24,6 +24,7 @@ import {
   Calculator,
   ShieldAlert,
   FileText,
+  Landmark,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -204,6 +205,13 @@ export const Sidebar: React.FC = () => {
           icon: TrendingUp,
           badge: hasOutstanding ? 'Ada Saldo' : undefined,
           roles: ['ADMIN', 'BRAND'],
+        },
+        {
+          id: 'kas-operasional',
+          label: 'Kas Operasional (OPEX)',
+          description: 'Gaji, Server & Biaya Rutin',
+          icon: Landmark,
+          roles: ['ADMIN'],
         },
         {
           id: 'margin-analytics',

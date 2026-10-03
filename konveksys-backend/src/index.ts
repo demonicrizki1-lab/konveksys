@@ -19,6 +19,7 @@ import { productionPoRoutes } from './routes/production-po.js';
 import { vendorDepositRoutes } from './routes/vendor-deposits.js';
 import { fobRoutes } from './routes/fob.js';
 import { auditRoutes } from './routes/audit.js';
+import { operationalExpenseRoutes } from './routes/operational-expenses.js';
 
 const app = new Hono();
 
@@ -46,6 +47,7 @@ app.route('/api/returns', returnRoutes);
 app.route('/api/accessories', accessoryRoutes);
 app.route('/api/finance', financeRoutes);
 app.route('/api/arus-kas', arusKasRoutes);
+app.route('/api/operational-expenses', operationalExpenseRoutes);
 app.route('/api/brand-inventory', brandInventoryRoutes);
 app.route('/api/production-po', productionPoRoutes);
 app.route('/api/vendor-fabric-deposits', vendorDepositRoutes);

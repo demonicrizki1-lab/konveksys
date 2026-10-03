@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
 
-export const SATUAN_OPTIONS = ['Yard', 'Meter', 'Pcs', 'Lusin', 'Kodi', 'Gross'];
+export const SATUAN_OPTIONS = ['Yard', 'Meter', 'Kg', 'Pcs', 'Lusin', 'Kodi', 'Gross'];
 
 interface SatuanDropdownProps {
   value: string;

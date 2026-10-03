@@ -479,6 +479,7 @@ model FobMaterialMaster {
   namaBahan    String
   kategori     String
   satuan       String
+  qty          Decimal? @default(1) @db.Decimal(12, 2)
   hargaStandar Decimal  @db.Decimal(12, 2)
   supplier     String?
   catatan      String?
@@ -716,3 +717,24 @@ model FabricTransferNote {
   @@index([brand])
 }
 
+
+model OperationalExpense {
+  id               String   @id @default(cuid())
+  tanggal          DateTime
+  jenis            String   @default("KAS_KELUAR")
+  kategori         String
+  nominal          Decimal  @db.Decimal(14, 2)
+  akunKas          String   @default("BCA Perusahaan")
+  deskripsi        String
+  penerimaPenyetor String?
+  referensiNomor   String?
+  lampiranUrl      String?  @db.Text
+  createdBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tanggal])
+  @@index([kategori])
+  @@index([jenis])
+  @@index([akunKas])
+}

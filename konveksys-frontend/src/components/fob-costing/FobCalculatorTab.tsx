@@ -13,6 +13,8 @@ import {
   Package,
   Layers,
   Percent,
+  ArrowRightLeft,
+  Search,
 } from 'lucide-react';
 import {
   HPPCalculationRecord,
@@ -39,14 +41,19 @@ export const AVAILABLE_SIZES = [...FOB_LETTER_SIZES, ...FOB_NUMBER_SIZES];
 import { SATUAN_OPTIONS, SatuanDropdown } from './SatuanDropdown';
 export { SATUAN_OPTIONS, SatuanDropdown };
 
+// 1 Yard = 91.44 cm = 0.9144 Meter (1 Meter = 1.09361 Yard)
+const YARD_TO_METER_FACTOR = 0.9144;
+const convertYardToMeterPrice = (hargaYard: number): number =>
+  Math.round((hargaYard || 0) / YARD_TO_METER_FACTOR);
+
 const COMPONENT_TYPES: { key: HPPComponentType; label: string }[] = [
-  { key: 'BAHAN_BAKU', label: 'Bahan Baku Utama' },
-  { key: 'BAHAN_PENDUKUNG', label: 'Bahan Pendukung / Furing' },
+  { key: 'BAHAN_BAKU', label: 'Bahan Baku' },
+  { key: 'BAHAN_PENDUKUNG', label: 'Furing / Pendukung' },
   { key: 'AKSESORIS', label: 'Aksesoris & Trims' },
   { key: 'JASA_CMT', label: 'Jasa CMT Jahit' },
   { key: 'SABLON_BORDIR', label: 'Sablon & Bordir' },
-  { key: 'PACKAGING', label: 'Finishing & Packaging' },
-  { key: 'OPERASIONAL', label: 'Biaya Operasional' },
+  { key: 'PACKAGING', label: 'Packaging' },
+  { key: 'OPERASIONAL', label: 'Operasional' },
 ];
 
 export const generateNextHppNo = (records?: HPPCalculationRecord[]): string => {
@@ -107,6 +114,11 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
   // Alert/Banner State
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [yardNotice, setYardNotice] = useState<string | null>(null);
+  // Master Material Selection Modal State
+  const [isMasterModalOpen, setIsMasterModalOpen] = useState<boolean>(false);
+  const [masterModalSearch, setMasterModalSearch] = useState<string>('');
+  const [targetRowForMaster, setTargetRowForMaster] = useState<number | null>(null);
 
   // Auto-generate No HPP when existingRecords loads if not in edit mode
   useEffect(() => {
@@ -182,8 +194,31 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
       const updated = [...prev];
       const item = { ...updated[idx], [field]: val };
 
+      // Jika user memilih satuan 'Yard' di tabel kalkulator HPP,
+      // otomatis diconvert ke 'Meter' dengan patokan 1 yard = 91,44 cm (0,9144 m)
+      if (field === 'satuan' && typeof val === 'string' && val.trim().toLowerCase() === 'yard') {
+        item.satuan = 'Meter';
+        item.isYardConverted = true;
+        if (item.hargaSatuan && item.hargaSatuan > 0) {
+          const oldHarga = item.hargaSatuan;
+          item.originalYardPrice = oldHarga;
+          item.hargaSatuan = convertYardToMeterPrice(item.hargaSatuan);
+          setYardNotice(
+            `Komponen #${idx + 1} (${item.namaBahan || 'Bahan'}) diconvert dari Yard ke Meter (1 Yard = 91,44 cm). Harga: ${formatRp(oldHarga)}/yd ➔ ${formatRp(item.hargaSatuan)}/m.`
+          );
+        } else {
+          setYardNotice(
+            `Komponen #${idx + 1} dialihkan ke satuan Meter (standar perhitungan HPP: 1 Yard = 91,44 cm / 0,9144 m).`
+          );
+        }
+      }
+
+      if (field === 'supplier' && typeof val === 'string') {
+        item.supplier = val.replace(/^\[Asal:.*?\]\s*/, '');
+      }
+
       // Auto hitung subtotal jika pemakaian, harga, atau waste diubah
-      if (field === 'pemakaian' || field === 'hargaSatuan' || field === 'wastePercent') {
+      if (field === 'pemakaian' || field === 'hargaSatuan' || field === 'wastePercent' || field === 'satuan') {
         const p = Number(field === 'pemakaian' ? val : item.pemakaian) || 0;
         const h = Number(field === 'hargaSatuan' ? val : item.hargaSatuan) || 0;
         const w = Number(field === 'wastePercent' ? val : item.wastePercent) || 0;
@@ -231,23 +266,75 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
   const handleInsertMasterMaterial = (idx: number, matKode: string) => {
     const mat = materials.find(m => m.kodeMaterial === matKode);
     if (mat) {
+      const isYard = (mat.satuan || '').trim().toLowerCase() === 'yard';
+      // 1 Yard = 91.44 cm (0.9144 meter) -> Konversi ke Meter
+      const targetSatuan = isYard ? 'Meter' : mat.satuan;
+      const targetHarga = isYard
+        ? convertYardToMeterPrice(Number(mat.hargaStandar) || 0)
+        : Number(mat.hargaStandar) || 0;
+
+      if (isYard) {
+        const qtyYard = Number(mat.qty) || 1;
+        const qtyMeter = (qtyYard * 0.9144).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+        setYardNotice(
+          `Bahan "${mat.namaBahan}" (satuan Yard) otomatis dikonversi ke Meter (1 Yard = 91,44 cm). Kuantitas: ${qtyYard} Yd ➔ ${qtyMeter} m | Harga: ${formatRp(mat.hargaStandar)}/yd ➔ ${formatRp(targetHarga)}/m.`
+        );
+      }
+
       setComponents(prev => {
         const updated = [...prev];
         const current = updated[idx];
         const p = Number(current.pemakaian) || 1;
-        const h = Number(mat.hargaStandar) || 0;
         const w = Number(current.wastePercent) || 0;
         updated[idx] = {
           ...current,
           namaBahan: mat.namaBahan,
-          satuan: mat.satuan,
-          hargaSatuan: h,
-          supplier: mat.supplier || '',
-          subtotal: Math.round(p * h * (1 + w / 100)),
+          jenisBiaya: (mat.kategori as HPPComponentType) || current.jenisBiaya || 'BAHAN_BAKU',
+          satuan: targetSatuan,
+          hargaSatuan: targetHarga,
+          supplier: (mat.supplier || '').replace(/^\[Asal:.*?\]\s*/, ''),
+          isYardConverted: isYard,
+          originalYardPrice: isYard ? Number(mat.hargaStandar) || 0 : undefined,
+          subtotal: Math.round(p * targetHarga * (1 + w / 100)),
         };
         return updated;
       });
     }
+  };
+
+  // Quick add new material from Master Modal
+  const handleAddFromMasterModal = (mat: FOBMaterialMaster) => {
+    const isYard = (mat.satuan || '').trim().toLowerCase() === 'yard';
+    const targetSatuan = isYard ? 'Meter' : mat.satuan;
+    const targetHarga = isYard
+      ? convertYardToMeterPrice(Number(mat.hargaStandar) || 0)
+      : Number(mat.hargaStandar) || 0;
+
+    if (isYard) {
+      const qtyYard = Number(mat.qty) || 1;
+      const qtyMeter = (qtyYard * 0.9144).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+      setYardNotice(
+        `Bahan "${mat.namaBahan}" (satuan Yard) otomatis dikonversi ke Meter (1 Yard = 91,44 cm). Kuantitas: ${qtyYard} Yd ➔ ${qtyMeter} m | Harga: ${formatRp(mat.hargaStandar)}/yd ➔ ${formatRp(targetHarga)}/m.`
+      );
+    }
+
+    const isBahan = mat.kategori === 'BAHAN_BAKU' || !mat.kategori;
+    const wasteVal = isBahan ? 5 : 0;
+    const newItem: HPPComponentItem = {
+      id: `c-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      jenisBiaya: (mat.kategori as HPPComponentType) || 'BAHAN_BAKU',
+      namaBahan: mat.namaBahan,
+      satuan: targetSatuan,
+      pemakaian: 1,
+      hargaSatuan: targetHarga,
+      wastePercent: wasteVal,
+      subtotal: Math.round(1 * targetHarga * (1 + wasteVal / 100)),
+      supplier: (mat.supplier || '').replace(/^\[Asal:.*?\]\s*/, ''),
+      isYardConverted: isYard,
+      originalYardPrice: isYard ? Number(mat.hargaStandar) || 0 : undefined,
+    };
+
+    setComponents(prev => [...prev, newItem]);
   };
 
   // Save Record
@@ -620,11 +707,14 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
 
       {/* DYNAMIC COMPONENT TABLE */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Layers className="w-4 h-4 text-indigo-600" />
               Rincian Komponen Bahan, CMT & Finishing
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-mono">
+                {components.length} Item
+              </span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Tambahkan konsumsi marker bahan baku, ongkos jahit, dan perlengkapan garment
@@ -635,29 +725,52 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
             <button
               type="button"
               onClick={() => handleAddComponent('BAHAN_BAKU')}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-base btn-press shrink-0 cursor-pointer"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition btn-press shrink-0 cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Bahan Baku</span>
             </button>
           </div>
         </div>
 
+        {/* Notifikasi Konversi Yard ke Meter */}
+        {yardNotice && (
+          <div className="bg-amber-50/90 border border-amber-200/90 text-amber-900 rounded-xl px-3.5 py-2 text-xs flex items-center justify-between gap-3 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="p-1 rounded-md bg-amber-200/70 text-amber-800 shrink-0">
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+              </span>
+              <div className="text-[11.5px] leading-tight truncate">
+                <span className="font-bold text-amber-950 mr-1.5">Konversi Yard ke Meter:</span>
+                <span className="text-amber-800">{yardNotice}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setYardNotice(null)}
+              className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-100/60 transition cursor-pointer shrink-0 font-bold"
+              title="Tutup Notifikasi"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* TABLE */}
-        <div className="overflow-x-auto border border-slate-200 rounded-xl">
-          <table className="w-full text-xs">
-            <thead className="bg-slate-50 text-slate-700 text-[11px] uppercase font-bold border-b border-slate-200">
-              <tr>
-                <th className="py-2 px-2 text-center w-8">#</th>
-                <th className="py-2 px-2.5 text-left w-36">Kategori Biaya</th>
-                <th className="py-2 px-2.5 text-left min-w-[200px]">Nama Komponen Bahan</th>
-                <th className="py-2 px-1 text-center w-20">Satuan</th>
-                <th className="py-2 px-2.5 text-right w-24">Pemakaian</th>
-                <th className="py-2 px-2.5 text-right w-28">Harga Satuan (Rp)</th>
-                <th className="py-2 px-2 text-center w-20">Waste %</th>
-                <th className="py-2 px-2.5 text-right w-32">Subtotal / Pcs</th>
-                <th className="py-2 px-2.5 text-left min-w-[140px]">Supplier / Vendor</th>
-                <th className="py-2 px-2 text-center w-10">Aksi</th>
+        <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-2xs">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50/90 text-slate-600 text-[11px] uppercase font-bold tracking-wider border-b border-slate-200 select-none">
+                <th className="py-3 px-2 text-center w-10">#</th>
+                <th className="py-3 px-3 text-left w-44">Kategori Biaya</th>
+                <th className="py-3 px-3 text-left min-w-[280px]">Nama Komponen Bahan</th>
+                <th className="py-3 px-2 text-center w-28">Satuan</th>
+                <th className="py-3 px-2.5 text-right w-24">Pemakaian</th>
+                <th className="py-3 px-2.5 text-right w-32">Harga Satuan (Rp)</th>
+                <th className="py-3 px-2 text-center w-20">Waste %</th>
+                <th className="py-3 px-3 text-right w-32">Subtotal / Pcs</th>
+                <th className="py-3 px-3 text-left w-36">Supplier / Vendor</th>
+                <th className="py-3 px-2 text-center w-12">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -672,135 +785,309 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                         Belum ada rincian komponen bahan atau jasa CMT dimasukkan.
                       </p>
                       <p className="text-[11px] text-slate-400 max-w-sm">
-                        Silakan klik tombol <strong className="text-indigo-600">+ Bahan Baku</strong> atau <strong className="text-amber-600">+ Jasa CMT / Bordir</strong> di atas untuk mulai menyusun kalkulasi.
+                        Klik tombol <strong className="text-indigo-600">+ Bahan Baku</strong>, <strong className="text-indigo-600">⚡ Tarik Master Bahan</strong>, atau <strong className="text-slate-700">+ Jasa CMT</strong> di atas untuk mulai menyusun kalkulasi.
                       </p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 components.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-slate-50/50">
-                  <td className="py-2 px-2 text-center font-medium text-slate-400">{idx + 1}</td>
-                  
-                  {/* Jenis Biaya Dropdown */}
-                  <td className="py-2 px-2.5">
-                    <select
-                      value={item.jenisBiaya}
-                      onChange={e => handleUpdateComponent(idx, 'jenisBiaya', e.target.value)}
-                      className="w-full h-8 py-1 px-2 rounded-md border border-slate-200 text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-indigo-500 bg-white"
-                    >
-                      {COMPONENT_TYPES.map(ct => (
-                        <option key={ct.key} value={ct.key}>{ct.label}</option>
-                      ))}
-                    </select>
-                  </td>
+                  <tr key={item.id} className="hover:bg-slate-50/60 transition-colors border-b border-slate-100 last:border-b-0">
+                    {/* Index */}
+                    <td className="py-2.5 px-2 text-center font-bold text-slate-400 text-xs align-middle">
+                      {idx + 1}
+                    </td>
+                    
+                    {/* Kategori Biaya */}
+                    <td className="py-2.5 px-2.5 align-middle">
+                      <select
+                        value={item.jenisBiaya}
+                        onChange={e => handleUpdateComponent(idx, 'jenisBiaya', e.target.value)}
+                        className="w-full h-9 py-1 px-2.5 rounded-lg border border-slate-200 text-slate-800 text-xs font-semibold focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 bg-white shadow-2xs cursor-pointer truncate"
+                      >
+                        {COMPONENT_TYPES.map(ct => (
+                          <option key={ct.key} value={ct.key}>{ct.label}</option>
+                        ))}
+                      </select>
+                    </td>
 
-                  {/* Nama Bahan + Master Material Quick Pick */}
-                  <td className="py-2 px-2.5">
-                    <div className="space-y-1">
+                    {/* Nama Bahan + Master Material Quick Pick */}
+                    <td className="py-2.5 px-2.5 align-middle">
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          value={item.namaBahan}
+                          onChange={e => handleUpdateComponent(idx, 'namaBahan', e.target.value)}
+                          placeholder="Ketik nama bahan/aksesoris..."
+                          className="w-full h-9 pl-3 pr-20 rounded-lg border border-slate-200 font-semibold text-xs text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 shadow-2xs transition"
+                        />
+                        {materials.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTargetRowForMaster(idx);
+                              setIsMasterModalOpen(true);
+                            }}
+                            className="absolute right-1 px-2 py-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-800 rounded-md border border-indigo-200/80 transition flex items-center gap-1 cursor-pointer select-none"
+                            title="Pilih atau ganti dari Katalog Master Bahan"
+                          >
+                            <span>⚡ Master</span>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Satuan Dropdown */}
+                    <td className="py-2.5 px-1.5 align-middle">
+                      <SatuanDropdown
+                        value={item.satuan}
+                        onChange={(newSat: string) => handleUpdateComponent(idx, 'satuan', newSat)}
+                        size="md"
+                      />
+                    </td>
+
+                    {/* Pemakaian */}
+                    <td className="py-2.5 px-2 align-middle">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={item.pemakaian}
+                        onChange={e => handleUpdateComponent(idx, 'pemakaian', parseFloat(e.target.value) || 0)}
+                        className="w-full h-9 py-1 px-2.5 text-right font-bold text-xs rounded-lg border border-slate-200 text-slate-900 tabular-nums shadow-2xs focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
+                      />
+                    </td>
+
+                    {/* Harga Satuan */}
+                    <td className="py-2.5 px-2 align-middle">
                       <input
                         type="text"
-                        value={item.namaBahan}
-                        onChange={e => handleUpdateComponent(idx, 'namaBahan', e.target.value)}
-                        placeholder="Ketik nama bahan/aksesoris..."
-                        className="w-full h-8 py-1 px-2 rounded-md border border-slate-200 font-medium text-slate-900 focus:ring-1 focus:ring-indigo-500"
+                        value={formatRupiahInput(item.hargaSatuan)}
+                        onChange={e => handleUpdateComponent(idx, 'hargaSatuan', parseRupiahInput(e.target.value))}
+                        className="w-full h-9 py-1 px-2.5 text-right font-bold text-xs rounded-lg border border-slate-200 text-slate-900 tabular-nums shadow-2xs focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
+                        placeholder="0"
                       />
-                      {materials.length > 0 && (
-                        <select
-                          defaultValue=""
-                          onChange={e => {
-                            if (e.target.value) handleInsertMasterMaterial(idx, e.target.value);
-                          }}
-                          className="w-full text-[10px] py-0.5 px-1.5 text-slate-500 border border-slate-100 bg-slate-50/70 rounded"
-                        >
-                          <option value="">-- Isi Cepat Dari Master Material --</option>
-                          {materials.map(m => (
-                            <option key={m.id} value={m.kodeMaterial}>
-                              {m.namaBahan} ({m.satuan} - {formatRp(m.hargaStandar)})
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Satuan Dropdown */}
-                  <td className="py-2 px-1">
-                    <SatuanDropdown
-                      value={item.satuan}
-                      onChange={(newSat: string) => handleUpdateComponent(idx, 'satuan', newSat)}
-                    />
-                  </td>
+                    {/* Waste % */}
+                    <td className="py-2.5 px-1.5 align-middle">
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          value={item.wastePercent}
+                          onChange={e => handleUpdateComponent(idx, 'wastePercent', parseFloat(e.target.value) || 0)}
+                          className="w-full h-9 py-1 pr-5 pl-2 text-center font-bold text-xs rounded-lg border border-slate-200 text-slate-800 tabular-nums shadow-2xs focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
+                          title="Susut pemotongan kain (Cutting waste %)"
+                        />
+                        <span className="absolute right-2 top-2.5 text-[10px] font-bold text-slate-400 pointer-events-none">%</span>
+                      </div>
+                    </td>
 
-                  {/* Pemakaian */}
-                  <td className="py-2 px-2.5">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={item.pemakaian}
-                      onChange={e => handleUpdateComponent(idx, 'pemakaian', parseFloat(e.target.value) || 0)}
-                      className="w-full h-8 py-1 px-2 text-right font-semibold text-xs rounded-md border border-slate-200 text-slate-900 tabular-nums"
-                    />
-                  </td>
+                    {/* Subtotal */}
+                    <td className="py-2.5 px-2.5 align-middle">
+                      <div className="h-9 px-2.5 rounded-lg bg-slate-50 border border-slate-200/80 font-bold text-xs text-slate-900 font-mono tabular-nums flex items-center justify-end shadow-2xs">
+                        {formatRp(item.subtotal)}
+                      </div>
+                    </td>
 
-                  {/* Harga Satuan */}
-                  <td className="py-2 px-2.5">
-                    <input
-                      type="text"
-                      value={formatRupiahInput(item.hargaSatuan)}
-                      onChange={e => handleUpdateComponent(idx, 'hargaSatuan', parseRupiahInput(e.target.value))}
-                      className="w-full h-8 py-1 px-2 text-right font-semibold text-xs rounded-md border border-slate-200 text-slate-800 tabular-nums"
-                      placeholder="0"
-                    />
-                  </td>
+                    {/* Supplier */}
+                    <td className="py-2.5 px-2 align-middle">
+                      <input
+                        type="text"
+                        value={(item.supplier || '').replace(/^\[Asal:.*?\]\s*/, '')}
+                        onChange={e => handleUpdateComponent(idx, 'supplier', e.target.value)}
+                        placeholder="Nama supplier..."
+                        className="w-full h-9 py-1 px-2.5 rounded-lg border border-slate-200 text-xs text-slate-700 shadow-2xs focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 placeholder:text-slate-400"
+                      />
+                    </td>
 
-                  {/* Waste % */}
-                  <td className="py-2 px-2">
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={item.wastePercent}
-                      onChange={e => handleUpdateComponent(idx, 'wastePercent', parseFloat(e.target.value) || 0)}
-                      className="w-full h-8 py-1 px-1 text-center font-semibold text-xs rounded-md border border-slate-200 text-slate-700 tabular-nums"
-                      title="Susut pemotongan kain (Cutting waste %)"
-                    />
-                  </td>
-
-                  {/* Subtotal */}
-                  <td className="py-2 px-2.5 text-right font-bold text-slate-900 tabular-nums">
-                    {formatRp(item.subtotal)}
-                  </td>
-
-                  {/* Supplier */}
-                  <td className="py-2 px-2.5">
-                    <input
-                      type="text"
-                      value={item.supplier || ''}
-                      onChange={e => handleUpdateComponent(idx, 'supplier', e.target.value)}
-                      placeholder="Nama supplier..."
-                      className="w-full h-8 py-1 px-2 rounded-md border border-slate-200 text-[11px] text-slate-600"
-                    />
-                  </td>
-
-                  {/* Delete button */}
-                  <td className="py-2 px-2 text-center">
-                    <button
-                      onClick={() => handleRemoveComponent(idx)}
-                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
-                      title="Hapus baris"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
+                    {/* Delete button */}
+                    <td className="py-2.5 px-2 text-center align-middle">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveComponent(idx)}
+                        className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition cursor-pointer mx-auto"
+                        title="Hapus Baris Komponen"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>
+            {components.length > 0 && (
+              <tfoot className="bg-slate-50/80 border-t-2 border-slate-200 font-semibold text-slate-700">
+                <tr>
+                  <td colSpan={3} className="py-3 px-3 text-right font-bold text-xs text-slate-600 uppercase tracking-wider">
+                    Total Biaya Komponen / Pcs:
+                  </td>
+                  <td className="py-3 px-2 text-center text-xs text-slate-500 font-semibold">
+                    <span className="px-2 py-0.5 bg-white border border-slate-200 rounded-md shadow-2xs">
+                      {components.length} item
+                    </span>
+                  </td>
+                  <td className="py-3 px-2 text-right font-bold text-xs text-slate-800 font-mono tabular-nums">
+                    {components.reduce((sum, c) => sum + (c.jenisBiaya === 'BAHAN_BAKU' ? (c.pemakaian || 0) : 0), 0).toFixed(2)} m
+                  </td>
+                  <td colSpan={2}></td>
+                  <td className="py-3 px-2.5 text-right font-black text-sm text-indigo-700 font-mono tabular-nums bg-indigo-50/60 border-x border-indigo-100">
+                    {formatRp(components.reduce((sum, c) => sum + (c.subtotal || 0), 0))}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
+
+      {/* MASTER MATERIAL SELECTION MODAL */}
+      {isMasterModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    {targetRowForMaster !== null
+                      ? `Pilih Bahan Baku untuk Baris #${targetRowForMaster + 1}`
+                      : 'Katalog Master Bahan Baku & Trims'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    {targetRowForMaster !== null
+                      ? 'Pilih bahan untuk menggantikan atau mengisi rincian baris ini.'
+                      : 'Pilih bahan untuk langsung menambahkannya ke lembar kerja kalkulasi HPP.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMasterModalOpen(false);
+                  setMasterModalSearch('');
+                  setTargetRowForMaster(null);
+                }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Search Bar */}
+            <div className="p-3.5 border-b border-slate-100 bg-white">
+              <div className="relative flex items-center">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                <input
+                  type="text"
+                  value={masterModalSearch}
+                  onChange={e => setMasterModalSearch(e.target.value)}
+                  placeholder="Cari berdasarkan nama bahan, kode, kategori, atau supplier..."
+                  className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 text-slate-800"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Materials List */}
+            <div className="overflow-y-auto p-4 space-y-2 divide-y divide-slate-100 max-h-[60vh]">
+              {materials
+                .filter(m => {
+                  if (!masterModalSearch.trim()) return true;
+                  const q = masterModalSearch.toLowerCase();
+                  return (
+                    m.namaBahan.toLowerCase().includes(q) ||
+                    m.kodeMaterial.toLowerCase().includes(q) ||
+                    (m.supplier && m.supplier.toLowerCase().includes(q)) ||
+                    (m.kategori && m.kategori.toLowerCase().includes(q))
+                  );
+                })
+                .map(m => {
+                  const isYard = (m.satuan || '').trim().toLowerCase() === 'yard';
+                  const qty = Number(m.qty) || 1;
+                  const hargaPerMeter = isYard
+                    ? convertYardToMeterPrice(Number(m.hargaStandar) || 0)
+                    : Number(m.hargaStandar) || 0;
+                  const qtyMeter = isYard
+                    ? (qty * 0.9144).toLocaleString('id-ID', { maximumFractionDigits: 1 })
+                    : null;
+
+                  return (
+                    <div
+                      key={m.id || m.kodeMaterial}
+                      className="pt-2.5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl hover:bg-indigo-50/40 border border-transparent hover:border-indigo-100 transition"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-xs text-slate-900">{m.namaBahan}</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
+                            {m.kodeMaterial}
+                          </span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
+                            {m.kategori}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center gap-3">
+                          {isYard ? (
+                            <span className="text-amber-700 font-medium">
+                              Stok: {qty} Yard ➔ Konversi: <strong>{qtyMeter} Meter</strong>
+                            </span>
+                          ) : (
+                            <span>Stok: <strong>{qty} {m.satuan}</strong></span>
+                          )}
+                          {m.supplier && <span>Supplier: <strong className="text-slate-700">{m.supplier}</strong></span>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0 justify-between sm:justify-end">
+                        <div className="text-right">
+                          {isYard ? (
+                            <div>
+                              <div className="text-xs font-bold text-indigo-600 font-mono">
+                                {formatRp(hargaPerMeter)} / Meter
+                              </div>
+                              <div className="text-[10px] text-amber-600 font-medium">
+                                (Asal: {formatRp(m.hargaStandar)} / Yard)
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-xs font-bold text-slate-800 font-mono">
+                              {formatRp(m.hargaStandar)} / {m.satuan}
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (targetRowForMaster !== null) {
+                              handleInsertMasterMaterial(targetRowForMaster, m.kodeMaterial);
+                            } else {
+                              handleAddFromMasterModal(m);
+                            }
+                            setIsMasterModalOpen(false);
+                            setMasterModalSearch('');
+                            setTargetRowForMaster(null);
+                          }}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1 btn-press"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{targetRowForMaster !== null ? 'Terapkan' : 'Pilih'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PARAMETER BIAYA & LIVE SUMMARY PANEL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

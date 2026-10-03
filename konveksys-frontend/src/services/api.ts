@@ -1167,3 +1167,56 @@ export async function apiCreateAuditLog(data: any) {
     body: JSON.stringify(data),
   });
 }
+
+// ============================================================
+// KAS OPERASIONAL (OPEX)
+// ============================================================
+
+export interface OpexFilterParams {
+  month?: string;
+  startDate?: string;
+  endDate?: string;
+  kategori?: string;
+  jenis?: string;
+  akunKas?: string;
+  search?: string;
+}
+
+export async function apiGetOperationalExpenses(params?: OpexFilterParams) {
+  const queryParts: string[] = [];
+  if (params?.month && params.month !== 'ALL') queryParts.push(`month=${encodeURIComponent(params.month)}`);
+  if (params?.startDate) queryParts.push(`startDate=${encodeURIComponent(params.startDate)}`);
+  if (params?.endDate) queryParts.push(`endDate=${encodeURIComponent(params.endDate)}`);
+  if (params?.kategori && params.kategori !== 'ALL') queryParts.push(`kategori=${encodeURIComponent(params.kategori)}`);
+  if (params?.jenis && params.jenis !== 'ALL') queryParts.push(`jenis=${encodeURIComponent(params.jenis)}`);
+  if (params?.akunKas && params.akunKas !== 'ALL') queryParts.push(`akunKas=${encodeURIComponent(params.akunKas)}`);
+  if (params?.search && params.search.trim()) queryParts.push(`search=${encodeURIComponent(params.search.trim())}`);
+
+  const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return apiFetch<any[]>(`/api/operational-expenses${query}`);
+}
+
+export async function apiGetOperationalExpenseSummary(params?: { month?: string }) {
+  const query = params?.month && params.month !== 'ALL' ? `?month=${encodeURIComponent(params.month)}` : '';
+  return apiFetch<any>(`/api/operational-expenses/summary${query}`);
+}
+
+export async function apiCreateOperationalExpense(data: any) {
+  return apiFetch<any>('/api/operational-expenses', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateOperationalExpense(id: string, data: any) {
+  return apiFetch<any>(`/api/operational-expenses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteOperationalExpense(id: string) {
+  return apiFetch<{ message: string }>(`/api/operational-expenses/${id}`, {
+    method: 'DELETE',
+  });
+}

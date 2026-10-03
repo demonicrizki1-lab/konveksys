@@ -102,6 +102,10 @@ import {
   apiDeleteFobDeposit,
   apiGetAuditLogs,
   apiCreateAuditLog,
+  apiGetOperationalExpenses,
+  apiCreateOperationalExpense,
+  apiUpdateOperationalExpense,
+  apiDeleteOperationalExpense,
 } from '../services/api';
 import {
   AuthUser,
@@ -156,6 +160,8 @@ import {
   AuditModule,
   AuditActionType,
   AuditSeverity,
+  OperationalExpense,
+  OpexFilterParams,
 } from '../types';
 import {
   demoUsers,
@@ -187,6 +193,7 @@ export type ActiveTab =
   | 'return'
   | 'finance'
   | 'arus-kas'
+  | 'kas-operasional'
   | 'margin-analytics'
   | 'accessories'
   | 'barang-masuk'
@@ -481,6 +488,13 @@ interface AppContextType {
   deletePembayaran: (id: string) => void;
   getArusKasSummary: () => ArusKasSummary[];
 
+  // Kas Operasional & OPEX (Overhead Perusahaan)
+  operationalExpenses: OperationalExpense[];
+  fetchOperationalExpenses: (params?: OpexFilterParams) => Promise<void>;
+  addOperationalExpense: (data: Omit<OperationalExpense, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateOperationalExpense: (id: string, data: Partial<Omit<OperationalExpense, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
+  deleteOperationalExpense: (id: string) => Promise<void>;
+
   // Return Management
   returnList: ReturnItem[];
   createReturn: (data: {
@@ -649,6 +663,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [suratJalanList, setSuratJalanList] = useState<SuratJalan[]>(() => getCache('surat_jalan', []));
   const [kasbonList, setKasbonList] = useState<KasbonTransaction[]>(() => getCache('kasbon', []));
   const [pembayaranList, setPembayaranList] = useState<PembayaranBrand[]>(() => getCache('pembayaran', []));
+  const [operationalExpenses, setOperationalExpenses] = useState<OperationalExpense[]>(() => getCache('operational_expenses', []));
   const [returnList, setReturnList] = useState<ReturnItem[]>(() => getCache('returns', []));
   const [accessories, setAccessories] = useState<AccessoryItem[]>(() => getCache('accessories', []));
   const [accessoryMutations, setAccessoryMutations] = useState<AccessoryMutation[]>(() => getCache('accessory_mutations', []));
@@ -960,6 +975,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         apiGetAuditLogs({ limit: 250 }), // 23
         apiGetVendorFabricDeposits(), // 24
         apiGetFabricTransferNotes(), // 25
+        isBrandUser ? Promise.resolve({ data: [] as any[], error: null }) : apiGetOperationalExpenses(), // 26
       ]);
 
       // 0. Brands
@@ -1472,6 +1488,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const rawNotes = (results[25].value as any).data;
         setFabricTransferNotes(rawNotes);
         setCache('fabric_transfer_notes', rawNotes);
+      }
+
+      // 26. Operational Expenses (OPEX) from PostgreSQL Database
+      if (results[26]?.status === 'fulfilled' && Array.isArray((results[26].value as any)?.data)) {
+        const rawOpex = (results[26].value as any).data;
+        const mapped: OperationalExpense[] = rawOpex.map((e: any) => ({
+          id: e.id,
+          tanggal: e.tanggal ? new Date(e.tanggal).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          jenis: e.jenis || 'KAS_KELUAR',
+          kategori: e.kategori,
+          nominal: Number(e.nominal),
+          akunKas: e.akunKas || 'BCA Perusahaan',
+          deskripsi: e.deskripsi,
+          penerimaPenyetor: e.penerimaPenyetor || undefined,
+          referensiNomor: e.referensiNomor || undefined,
+          lampiranUrl: e.lampiranUrl || undefined,
+          createdBy: e.createdBy || undefined,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt,
+        }));
+        setOperationalExpenses(mapped);
+        setCache('operational_expenses', mapped);
       }
 
       setLastSyncedAt(new Date());
@@ -5167,6 +5205,128 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Operational Expenses (OPEX) Handlers
+  const fetchOperationalExpenses = async (params?: OpexFilterParams) => {
+    try {
+      const { data } = await apiGetOperationalExpenses(params);
+      if (data && Array.isArray(data)) {
+        const mapped: OperationalExpense[] = data.map((e: any) => ({
+          id: e.id,
+          tanggal: e.tanggal ? new Date(e.tanggal).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          jenis: e.jenis || 'KAS_KELUAR',
+          kategori: e.kategori,
+          nominal: Number(e.nominal),
+          akunKas: e.akunKas || 'BCA Perusahaan',
+          deskripsi: e.deskripsi,
+          penerimaPenyetor: e.penerimaPenyetor || undefined,
+          referensiNomor: e.referensiNomor || undefined,
+          lampiranUrl: e.lampiranUrl || undefined,
+          createdBy: e.createdBy || undefined,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt,
+        }));
+        setOperationalExpenses(mapped);
+        setCache('operational_expenses', mapped);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch operational expenses:', err);
+    }
+  };
+
+  const addOperationalExpense = async (data: Omit<OperationalExpense, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const tempId = `opex-${Date.now()}`;
+    const newEntry: OperationalExpense = {
+      ...data,
+      id: tempId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setOperationalExpenses(prev => {
+      const next = [newEntry, ...prev];
+      setCache('operational_expenses', next);
+      return next;
+    });
+
+    logAudit({
+      module: 'ARUS_KAS',
+      action: 'CREATE',
+      severity: 'INFO',
+      entityId: tempId,
+      entityName: `Kas Operasional - ${data.jenis === 'KAS_KELUAR' ? 'Beban' : 'Masuk'} (${data.kategori})`,
+      details: `${data.deskripsi} - Rp ${data.nominal.toLocaleString('id-ID')} via ${data.akunKas}`,
+      newData: data,
+    });
+
+    try {
+      const { data: resData } = await apiCreateOperationalExpense(data);
+      if (resData) {
+        setOperationalExpenses(prev => {
+          const next = prev.map(item => (item.id === tempId ? {
+            ...item,
+            id: resData.id,
+            createdAt: resData.createdAt,
+            updatedAt: resData.updatedAt,
+          } : item));
+          setCache('operational_expenses', next);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.warn('Backend sync failed for operational expense, saved locally:', err);
+    }
+  };
+
+  const updateOperationalExpense = async (id: string, data: Partial<Omit<OperationalExpense, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    const prevItem = operationalExpenses.find(item => item.id === id);
+    setOperationalExpenses(prev => {
+      const next = prev.map(item => (item.id === id ? { ...item, ...data, updatedAt: new Date().toISOString() } : item));
+      setCache('operational_expenses', next);
+      return next;
+    });
+
+    logAudit({
+      module: 'ARUS_KAS',
+      action: 'UPDATE',
+      severity: 'WARNING',
+      entityId: id,
+      entityName: `Kas Operasional - ${prevItem?.kategori || 'OPEX'}`,
+      details: `Ubah kas operasional: ${data.deskripsi || prevItem?.deskripsi}`,
+      previousData: prevItem,
+      newData: data,
+    });
+
+    try {
+      await apiUpdateOperationalExpense(id, data);
+    } catch (err) {
+      console.warn('Backend sync failed for operational expense update, updated locally:', err);
+    }
+  };
+
+  const deleteOperationalExpense = async (id: string) => {
+    const target = operationalExpenses.find(p => p.id === id);
+    setOperationalExpenses(prev => {
+      const next = prev.filter(p => p.id !== id);
+      setCache('operational_expenses', next);
+      return next;
+    });
+
+    logAudit({
+      module: 'ARUS_KAS',
+      action: 'DELETE',
+      severity: 'CRITICAL',
+      entityId: id,
+      entityName: `Kas Operasional - ${target?.kategori || 'OPEX'}`,
+      details: `Hapus kas operasional: ${target?.deskripsi} (Rp ${(target?.nominal || 0).toLocaleString('id-ID')})`,
+      previousData: target,
+    });
+
+    try {
+      await apiDeleteOperationalExpense(id);
+    } catch (err) {
+      console.warn('Backend sync failed for operational expense delete:', err);
+    }
+  };
+
   // Return Handlers
   const createReturn = async (data: {
     sumber: ReturnSource;
@@ -5705,6 +5865,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatePembayaran,
         deletePembayaran,
         getArusKasSummary,
+        operationalExpenses,
+        fetchOperationalExpenses,
+        addOperationalExpense,
+        updateOperationalExpense,
+        deleteOperationalExpense,
         getVendorRate,
         getBuyerRates,
         getSPKRemainingQty,

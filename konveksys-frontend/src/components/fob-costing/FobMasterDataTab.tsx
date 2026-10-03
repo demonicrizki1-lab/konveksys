@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Tag,
   Building2,
+  ArrowRightLeft,
 } from 'lucide-react';
 import {
   FOBMaterialMaster,
@@ -17,6 +18,11 @@ import {
 } from '../../types';
 import { formatRp, formatRupiahInput, parseRupiahInput } from '../../utils/formatters';
 import { SATUAN_OPTIONS, SatuanDropdown } from './FobCalculatorTab';
+
+// 1 Yard = 91.44 cm = 0.9144 Meter (1 Meter = 1.09361 Yard)
+export const YARD_TO_METER_FACTOR = 0.9144;
+export const convertYardToMeterPrice = (hargaYard: number): number =>
+  Math.round((hargaYard || 0) / YARD_TO_METER_FACTOR);
 
 interface FobMasterDataTabProps {
   materials: FOBMaterialMaster[];
@@ -52,6 +58,7 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
   const [matNama, setMatNama] = useState<string>('');
   const [matKategori, setMatKategori] = useState<HPPComponentType>('BAHAN_BAKU');
   const [matSatuan, setMatSatuan] = useState<string>('Yard');
+  const [matQty, setMatQty] = useState<number>(1);
   const [matHarga, setMatHarga] = useState<number>(0);
   const [matSupplier, setMatSupplier] = useState<string>('');
   const [matCatatan, setMatCatatan] = useState<string>('');
@@ -80,6 +87,7 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
       namaBahan: matNama.trim(),
       kategori: matKategori,
       satuan: matSatuan.trim() || 'Pcs',
+      qty: Number(matQty) || 1,
       hargaStandar: Number(matHarga) || 0,
       supplier: matSupplier.trim() || null,
       catatan: matCatatan.trim() || null,
@@ -89,6 +97,7 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
       setStatusMsg({ type: 'success', text: `Master Material ${matNama} berhasil disimpan!` });
       setMatKode('');
       setMatNama('');
+      setMatQty(1);
       setMatHarga(0);
       setMatSupplier('');
       setMatCatatan('');
@@ -246,6 +255,19 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
               </div>
 
               <div>
+                <label className="block text-slate-500 font-semibold mb-1">Qty (Kuantitas)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={matQty}
+                  onChange={e => setMatQty(Number(e.target.value) || 0)}
+                  placeholder="1"
+                  className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 font-semibold text-slate-900 tabular-nums focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
                 <label className="block text-slate-500 font-semibold mb-1">Harga Standar (Rp)</label>
                 <input
                   type="text"
@@ -256,7 +278,14 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
                 />
               </div>
 
-              <div className="lg:col-span-3">
+              <div>
+                <label className="block text-slate-500 font-semibold mb-1">Total Estimasi (Rp)</label>
+                <div className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 bg-slate-50 font-bold text-slate-900 tabular-nums text-right flex items-center justify-end h-[35px]">
+                  {formatRp((matQty || 0) * (matHarga || 0))}
+                </div>
+              </div>
+
+              <div className="lg:col-span-2">
                 <label className="block text-slate-500 font-semibold mb-1">Supplier / Vendor Rekanan</label>
                 <input
                   type="text"
@@ -277,6 +306,47 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
                   className="w-full py-1.5 px-2.5 rounded-lg border border-slate-200 text-slate-800"
                 />
               </div>
+
+              {/* Live Preview Konversi Yard ke Meter */}
+              {matSatuan.trim().toLowerCase() === 'yard' && (
+                <div className="lg:col-span-6 p-3.5 bg-indigo-50/90 border border-indigo-200/90 rounded-xl text-xs text-indigo-900 flex items-start gap-2.5 shadow-2xs">
+                  <ArrowRightLeft className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-bold flex items-center justify-between text-indigo-950">
+                      <span>Konversi Otomatis ke Meter (1 Yard = 91,44 cm / 0,9144 Meter)</span>
+                      <span className="text-[10px] text-indigo-600 font-semibold">Standar Tekstil Garment</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 pt-2 border-t border-indigo-200/60 text-[11px]">
+                      <div className="bg-white/80 p-2 rounded-lg border border-indigo-100">
+                        <span className="text-slate-500 block text-[10px] uppercase font-semibold">Kuantitas (Qty):</span>
+                        <span className="font-bold text-slate-900 text-xs">{matQty || 0} Yard</span>
+                        <span className="text-indigo-600 font-bold block text-[11px] mt-0.5">
+                          ➔ {((matQty || 0) * 0.9144).toLocaleString('id-ID', { maximumFractionDigits: 2 })} Meter
+                        </span>
+                      </div>
+                      <div className="bg-white/80 p-2 rounded-lg border border-indigo-100">
+                        <span className="text-slate-500 block text-[10px] uppercase font-semibold">Harga Satuan:</span>
+                        <span className="font-bold text-slate-900 text-xs">{formatRp(matHarga)} / Yard</span>
+                        <span className="text-indigo-600 font-bold block text-[11px] mt-0.5">
+                          ➔ {formatRp(convertYardToMeterPrice(matHarga))} / Meter
+                        </span>
+                      </div>
+                      <div className="bg-white/80 p-2 rounded-lg border border-indigo-100">
+                        <span className="text-slate-500 block text-[10px] uppercase font-semibold">Total Nilai Bahan:</span>
+                        <span className="font-bold text-slate-900 text-xs">{formatRp((matQty || 0) * (matHarga || 0))}</span>
+                        <span className="text-slate-500 block text-[10px] mt-0.5">
+                          (Nilai total tetap seimbang)
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-[10.5px] text-indigo-700 mt-2 font-medium">
+                      ✓ Saat bahan ini ditarik ke <strong>Kalkulator HPP</strong>, satuannya otomatis menjadi <strong>Meter</strong> dengan kuantitas dan harga per meter di atas.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end pt-1">
@@ -307,35 +377,64 @@ export const FobMasterDataTab: React.FC<FobMasterDataTabProps> = ({
                     <th className="py-2.5 px-3 text-left">Nama Bahan</th>
                     <th className="py-2.5 px-3 text-left">Kategori</th>
                     <th className="py-2.5 px-3 text-center">Satuan</th>
+                    <th className="py-2.5 px-3 text-center">Qty</th>
                     <th className="py-2.5 px-3 text-right">Harga Standar</th>
+                    <th className="py-2.5 px-3 text-right">Total Nilai</th>
                     <th className="py-2.5 px-3 text-left">Supplier</th>
                     <th className="py-2.5 px-3 text-center w-12">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {materials.map(m => (
-                    <tr key={m.id || m.kodeMaterial} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 font-semibold text-indigo-700">{m.kodeMaterial}</td>
-                      <td className="py-2.5 px-3 font-semibold text-slate-900">{m.namaBahan}</td>
-                      <td className="py-2.5 px-3">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-semibold">
-                          {m.kategori}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-medium text-slate-600">{m.satuan}</td>
-                      <td className="py-2.5 px-3 text-right font-semibold text-slate-900 tabular-nums">{formatRp(m.hargaStandar)}</td>
-                      <td className="py-2.5 px-3 text-slate-600">{m.supplier || '-'}</td>
-                      <td className="py-2.5 px-3 text-center">
-                        <button
-                          onClick={() => onDeleteMaterial(m.id || m.kodeMaterial)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
-                          title="Hapus Material"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {materials.map(m => {
+                    const isYard = (m.satuan || '').trim().toLowerCase() === 'yard';
+                    const qty = Number(m.qty) || 1;
+                    const harga = Number(m.hargaStandar) || 0;
+                    const totalNilai = qty * harga;
+
+                    return (
+                      <tr key={m.id || m.kodeMaterial} className="hover:bg-slate-50/50">
+                        <td className="py-2.5 px-3 font-semibold text-indigo-700">{m.kodeMaterial}</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900">{m.namaBahan}</td>
+                        <td className="py-2.5 px-3">
+                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-semibold">
+                            {m.kategori}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-medium text-slate-600">
+                          <span className="font-semibold text-slate-800">{m.satuan}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-semibold text-slate-900 tabular-nums">
+                          <span>{qty.toLocaleString('id-ID')}</span>
+                          {isYard && (
+                            <span className="block text-[9.5px] text-indigo-600 font-bold mt-0.5 whitespace-nowrap bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">
+                              ≈ {(qty * 0.9144).toLocaleString('id-ID', { maximumFractionDigits: 2 })} m
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-semibold text-slate-900 tabular-nums">
+                          {formatRp(harga)}
+                          {isYard && (
+                            <span className="block text-[9px] text-indigo-600 font-semibold mt-0.5">
+                              ≈ {formatRp(convertYardToMeterPrice(harga))}/m
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-slate-900 tabular-nums">
+                          {formatRp(totalNilai)}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600">{m.supplier || '-'}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <button
+                            onClick={() => onDeleteMaterial(m.id || m.kodeMaterial)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
+                            title="Hapus Material"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

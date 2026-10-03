@@ -33,6 +33,9 @@ import {
   ChevronDown,
   AlertCircle,
   Save,
+  Wallet,
+  TrendingDown,
+  ExternalLink,
 } from 'lucide-react';
 
 const STORAGE_SAVED_REPORTS_KEY = 'konvek_saved_margin_reports';
@@ -51,6 +54,8 @@ export const MarginAnalyticsView: React.FC = () => {
     fobDeposits,
     fobOrders,
     userRole,
+    operationalExpenses,
+    setActiveTab,
   } = useApp();
 
   // Mode View Utama: 'generator' (Penyusun Laporan) atau 'saved_reports' (Arsip Laporan Tersimpan)
@@ -432,8 +437,35 @@ export const MarginAnalyticsView: React.FC = () => {
     const totalFabricCost = checkedRolls.reduce((acc, r) => acc + r.totalNilaiKain, 0);
     const fabricMeters = checkedRolls.reduce((acc, r) => acc + r.meterUsed, 0);
 
-    const netProfit = Math.max(0, totalRevenue - totalCost - totalFabricCost);
+    // Laba Kotor Produksi (Gross Margin Produksi)
+    const productionProfit = Math.max(0, totalRevenue - totalCost - totalFabricCost);
+
+    // Beban Operasional Perusahaan (OPEX) untuk periode terpilih
+    const periodOpexList = (operationalExpenses || []).filter((e) => {
+      if (selectedMonth !== 'ALL') {
+        const itemMonth = e.tanggal ? e.tanggal.substring(0, 7) : '';
+        return itemMonth === selectedMonth;
+      }
+      return true;
+    });
+
+    const totalOpex = periodOpexList
+      .filter((e) => e.jenis === 'KAS_KELUAR')
+      .reduce((acc, e) => acc + (e.nominal || 0), 0);
+
+    const totalOtherIncome = periodOpexList
+      .filter((e) => e.jenis === 'KAS_MASUK')
+      .reduce((acc, e) => acc + (e.nominal || 0), 0);
+
+    const categoryBreakdown: Record<string, number> = {};
+    periodOpexList.filter((e) => e.jenis === 'KAS_KELUAR').forEach((e) => {
+      categoryBreakdown[e.kategori] = (categoryBreakdown[e.kategori] || 0) + (e.nominal || 0);
+    });
+
+    // Laba Bersih Perusahaan Riil (Net Operating Profit)
+    const netProfit = productionProfit - totalOpex + totalOtherIncome;
     const avgMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+    const grossMargin = totalRevenue > 0 ? (productionProfit / totalRevenue) * 100 : 0;
 
     return {
       totalPcs,
@@ -442,10 +474,16 @@ export const MarginAnalyticsView: React.FC = () => {
       grossProfit,
       totalFabricCost,
       fabricMeters,
+      productionProfit,
+      totalOpex,
+      totalOtherIncome,
       netProfit,
       avgMargin,
+      grossMargin,
+      periodOpexList,
+      categoryBreakdown,
     };
-  }, [checkedSjItems, checkedRolls]);
+  }, [checkedSjItems, checkedRolls, operationalExpenses, selectedMonth]);
 
   // Filtered items untuk tabel tampilan (mendukung pencarian teks & filter vendor)
   const displayedItems = useMemo(() => {
@@ -545,6 +583,10 @@ export const MarginAnalyticsView: React.FC = () => {
         netProfit: kpi.netProfit,
         avgMargin: kpi.avgMargin,
         fabricMeters: kpi.fabricMeters,
+        productionProfit: kpi.productionProfit,
+        totalOpex: kpi.totalOpex,
+        totalOtherIncome: kpi.totalOtherIncome,
+        grossMargin: kpi.grossMargin,
       },
       selectedPoNumbers: [...selectedPoNumbers],
       selectedSjRowKeys: [...selectedSjRowKeys],
@@ -986,7 +1028,7 @@ export const MarginAnalyticsView: React.FC = () => {
         <div className="space-y-6">
           
           {/* EXECUTIVE KPI SUMMARY CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             
             {/* 1. Omzet Pengiriman */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-2">
@@ -996,7 +1038,7 @@ export const MarginAnalyticsView: React.FC = () => {
                   <DollarSign className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono">
+              <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono tabular-nums">
                 {formatRp(activeSnapshot ? activeSnapshot.kpi.totalRevenue : kpi.totalRevenue)}
               </div>
               <div className="text-xs text-slate-500 flex items-center justify-between">
@@ -1015,7 +1057,7 @@ export const MarginAnalyticsView: React.FC = () => {
                   <Scissors className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-rose-600 font-mono">
+              <div className="text-xl sm:text-2xl font-black text-rose-600 font-mono tabular-nums">
                 - {formatRp(activeSnapshot ? activeSnapshot.kpi.totalCmtCost : kpi.totalCost)}
               </div>
               <div className="text-xs text-slate-500 flex items-center justify-between">
@@ -1026,7 +1068,7 @@ export const MarginAnalyticsView: React.FC = () => {
               </div>
             </div>
 
-            {/* 3. Beban Modal Kain (Potongan Kain) */}
+            {/* 3. Beban Modal Kain */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-2">
               <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
                 <span>Beban Modal Kain</span>
@@ -1034,7 +1076,7 @@ export const MarginAnalyticsView: React.FC = () => {
                   <Package className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-amber-700 font-mono">
+              <div className="text-xl sm:text-2xl font-black text-amber-700 font-mono tabular-nums">
                 - {formatRp(activeSnapshot ? activeSnapshot.kpi.totalFabricCost : kpi.totalFabricCost)}
               </div>
               <div className="text-xs text-slate-500 flex items-center justify-between">
@@ -1045,30 +1087,94 @@ export const MarginAnalyticsView: React.FC = () => {
               </div>
             </div>
 
-            {/* 4. Laba Bersih Workshop (Net Profit) */}
+            {/* 4. Beban Operasional Perusahaan (OPEX) */}
+            <div className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm space-y-2 bg-purple-50/20">
+              <div className="flex items-center justify-between text-purple-900 text-xs font-bold uppercase tracking-wider">
+                <span>Beban Operasional (OPEX)</span>
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                  <Wallet className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-purple-700 font-mono tabular-nums">
+                - {formatRp(activeSnapshot ? (activeSnapshot.kpi.totalOpex || 0) : kpi.totalOpex)}
+              </div>
+              <div className="text-xs text-purple-700 flex items-center justify-between">
+                <span>Gaji, Server & Rutin:</span>
+                <strong className="text-purple-900 font-bold font-mono">
+                  {activeSnapshot ? '-' : `${kpi.periodOpexList.filter(e => e.jenis === 'KAS_KELUAR').length} Pos Biaya`}
+                </strong>
+              </div>
+            </div>
+
+            {/* 5. Laba Bersih Riil Perusahaan (Real Net Operating Profit) */}
             <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 text-white shadow-md space-y-2">
               <div className="flex items-center justify-between text-emerald-100 text-xs font-bold uppercase tracking-wider">
-                <span>Laba Bersih Workshop (Net)</span>
+                <span>Laba Bersih Riil Perusahaan</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
                   {(activeSnapshot ? activeSnapshot.kpi.avgMargin : kpi.avgMargin).toFixed(1)}% Margin
                 </span>
               </div>
-              <div className="text-xl sm:text-2xl font-black font-mono">
+              <div className="text-xl sm:text-2xl font-black font-mono tabular-nums">
                 {formatRp(activeSnapshot ? activeSnapshot.kpi.netProfit : kpi.netProfit)}
               </div>
               <div className="text-xs text-emerald-100 flex items-center justify-between pt-1 border-t border-white/20">
                 <span>Status Kesehatan:</span>
                 <strong className="text-white font-bold">
-                  {(activeSnapshot ? activeSnapshot.kpi.avgMargin : kpi.avgMargin) >= 30
-                    ? '✓ Sangat Sehat (≥30%)'
-                    : (activeSnapshot ? activeSnapshot.kpi.avgMargin : kpi.avgMargin) >= 15
-                    ? '⚡ Moderat (15-29%)'
-                    : '⚠️ Margin Tipis (<15%)'}
+                  {(activeSnapshot ? activeSnapshot.kpi.avgMargin : kpi.avgMargin) >= 20
+                    ? '✓ Sangat Sehat (≥20%)'
+                    : (activeSnapshot ? activeSnapshot.kpi.avgMargin : kpi.avgMargin) >= 10
+                    ? '⚡ Moderat (10-19%)'
+                    : '⚠️ Margin Tipis (<10%)'}
                 </strong>
               </div>
             </div>
 
           </div>
+
+          {/* OPEX & P&L EXECUTIVE BREAKDOWN BANNER */}
+          {!activeSnapshot && (
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-purple-600" />
+                    Struktur Laba Rugi Operasional & Rincian Beban OPEX ({activeMonthLabel})
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Laba Bersih Perusahaan = Laba Kotor Produksi ({formatRp(kpi.productionProfit)}) dikurangi Beban Operasional ({formatRp(kpi.totalOpex)}).
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('kas-operasional')}
+                  className="px-3.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-purple-200 transition-colors cursor-pointer shrink-0"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Buka Kas Operasional (OPEX)</span>
+                </button>
+              </div>
+
+              {/* Rincian Pos OPEX */}
+              {Object.keys(kpi.categoryBreakdown).length === 0 ? (
+                <div className="p-4 bg-slate-50 rounded-xl text-center text-xs text-slate-400">
+                  Belum ada beban operasional yang dicatat untuk periode {activeMonthLabel}. Klik tombol "Buka Kas Operasional" untuk mencatat gaji, server, atau biaya listrik/sewa.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                  {Object.entries(kpi.categoryBreakdown).map(([catKey, totalNom]) => (
+                    <div key={catKey} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block truncate">{catKey}</span>
+                      <strong className="text-xs font-bold text-slate-900 font-mono block tabular-nums">
+                        {formatRp(totalNom)}
+                      </strong>
+                      <span className="text-[9.5px] text-slate-400 block">
+                        {kpi.totalOpex > 0 ? `${((totalNom / kpi.totalOpex) * 100).toFixed(0)}% dari OPEX` : '0%'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* KONTRIBUSI PER BRAND (Konsolidasi Semua Brand) */}
           {selectedBrand === 'ALL' && !activeSnapshot && brandContributions.length > 1 && (
@@ -1952,8 +2058,12 @@ export const MarginAnalyticsView: React.FC = () => {
                   totalFabricCost: activeSnapshot.kpi.totalFabricCost,
                   fabricMeters: activeSnapshot.kpi.fabricMeters,
                   grossProfit: activeSnapshot.kpi.totalRevenue - activeSnapshot.kpi.totalCmtCost,
+                  productionProfit: activeSnapshot.kpi.productionProfit,
+                  totalOpex: activeSnapshot.kpi.totalOpex,
+                  totalOtherIncome: activeSnapshot.kpi.totalOtherIncome,
                   netProfit: activeSnapshot.kpi.netProfit,
                   avgMargin: activeSnapshot.kpi.avgMargin,
+                  grossMargin: activeSnapshot.kpi.grossMargin,
                 }
               : {
                   totalPcs: kpi.totalPcs,
@@ -1962,12 +2072,17 @@ export const MarginAnalyticsView: React.FC = () => {
                   totalFabricCost: kpi.totalFabricCost,
                   fabricMeters: kpi.fabricMeters,
                   grossProfit: kpi.grossProfit,
+                  productionProfit: kpi.productionProfit,
+                  totalOpex: kpi.totalOpex,
+                  totalOtherIncome: kpi.totalOtherIncome,
                   netProfit: kpi.netProfit,
                   avgMargin: kpi.avgMargin,
+                  grossMargin: kpi.grossMargin,
                 }
           }
           items={activeSnapshot ? activeSnapshot.items : checkedSjItems}
           fabricItems={activeSnapshot ? activeSnapshot.fabricItems : checkedRolls}
+          opexItems={activeSnapshot ? [] : kpi.periodOpexList}
           poNumbers={activeSnapshot ? activeSnapshot.selectedPoNumbers : selectedPoNumbers}
           notes={activeSnapshot?.notes}
           onClose={() => setIsStatementModalOpen(false)}

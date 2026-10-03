@@ -727,6 +727,8 @@ export interface HPPComponentItem {
   wastePercent: number;   // % susut pemotongan (cutting waste)
   subtotal: number;       // pemakaian * hargaSatuan * (1 + waste/100)
   supplier?: string | null;
+  isYardConverted?: boolean;
+  originalYardPrice?: number;
 }
 
 export interface HPPCalculationRecord {
@@ -821,6 +823,7 @@ export interface FOBMaterialMaster {
   namaBahan: string;
   kategori: HPPComponentType | string;
   satuan: string;
+  qty?: number;
   hargaStandar: number;
   supplier?: string | null;
   catatan?: string | null;
@@ -1112,6 +1115,10 @@ export interface SavedNetProfitReport {
     fabricMeters: number;
     cmtProfit?: number;
     fobProfit?: number;
+    productionProfit?: number;
+    totalOpex?: number;
+    totalOtherIncome?: number;
+    grossMargin?: number;
   };
   selectedPoNumbers: string[];
   selectedSjRowKeys: string[];
@@ -1146,4 +1153,52 @@ export interface SavedNetProfitReport {
     hargaModalMeter: number;
     totalNilaiKain: number;
   }>;
+}
+
+export type JenisKasOperasional = 'KAS_KELUAR' | 'KAS_MASUK';
+
+export type OpexCategory =
+  | 'GAJI'
+  | 'SERVER_IT'
+  | 'SEWA_UTILITAS'
+  | 'MAINTENANCE'
+  | 'PERLENGKAPAN'
+  | 'TRANSPORT'
+  | 'KONSUMSI'
+  | 'LAINNYA'
+  | 'MODAL_MASUK';
+
+export interface OperationalExpense {
+  id: string;
+  tanggal: string; // YYYY-MM-DD
+  jenis: JenisKasOperasional;
+  kategori: string;
+  nominal: number;
+  akunKas: string;
+  deskripsi: string;
+  penerimaPenyetor?: string;
+  referensiNomor?: string;
+  lampiranUrl?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface OpexFilterParams {
+  month?: string;
+  startDate?: string;
+  endDate?: string;
+  kategori?: string;
+  jenis?: string;
+  akunKas?: string;
+  search?: string;
+}
+
+export interface OpexSummary {
+  totalKasMasuk: number;
+  totalKasKeluar: number;
+  netCashFlow: number;
+  categoryTotals: Record<string, number>;
+  accountTotals: Record<string, { masuk: number; keluar: number; balance: number }>;
+  count: number;
 }
