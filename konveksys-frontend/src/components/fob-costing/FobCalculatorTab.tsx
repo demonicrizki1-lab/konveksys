@@ -712,7 +712,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Layers className="w-4 h-4 text-indigo-600" />
               Rincian Komponen Bahan, CMT & Finishing
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-mono">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                 {components.length} Item
               </span>
             </h3>
@@ -887,7 +887,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
 
                     {/* Subtotal */}
                     <td className="py-2.5 px-2.5 align-middle">
-                      <div className="h-9 px-2.5 rounded-lg bg-slate-50 border border-slate-200/80 font-bold text-xs text-slate-900 font-mono tabular-nums flex items-center justify-end shadow-2xs">
+                      <div className="h-9 px-2.5 rounded-lg bg-slate-50 border border-slate-200/80 font-bold text-xs text-slate-900 tabular-nums flex items-center justify-end shadow-2xs">
                         {formatRp(item.subtotal)}
                       </div>
                     </td>
@@ -929,11 +929,11 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                       {components.length} item
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-right font-bold text-xs text-slate-800 font-mono tabular-nums">
+                  <td className="py-3 px-2 text-right font-bold text-xs text-slate-800 tabular-nums">
                     {components.reduce((sum, c) => sum + (c.jenisBiaya === 'BAHAN_BAKU' ? (c.pemakaian || 0) : 0), 0).toFixed(2)} m
                   </td>
                   <td colSpan={2}></td>
-                  <td className="py-3 px-2.5 text-right font-black text-sm text-indigo-700 font-mono tabular-nums bg-indigo-50/60 border-x border-indigo-100">
+                  <td className="py-3 px-2.5 text-right font-black text-sm text-indigo-700 tabular-nums bg-indigo-50/60 border-x border-indigo-100">
                     {formatRp(components.reduce((sum, c) => sum + (c.subtotal || 0), 0))}
                   </td>
                   <td colSpan={2}></td>
@@ -1049,7 +1049,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                         <div className="text-right">
                           {isYard ? (
                             <div>
-                              <div className="text-xs font-bold text-indigo-600 font-mono">
+                              <div className="text-xs font-bold text-indigo-600">
                                 {formatRp(hargaPerMeter)} / Meter
                               </div>
                               <div className="text-[10px] text-amber-600 font-medium">
@@ -1057,7 +1057,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                               </div>
                             </div>
                           ) : (
-                            <div className="text-xs font-bold text-slate-800 font-mono">
+                            <div className="text-xs font-bold text-slate-800">
                               {formatRp(m.hargaStandar)} / {m.satuan}
                             </div>
                           )}
