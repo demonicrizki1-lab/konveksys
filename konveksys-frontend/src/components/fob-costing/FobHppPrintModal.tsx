@@ -233,8 +233,22 @@ export const FobHppPrintModal: React.FC<FobHppPrintModalProps> = ({ hpp, onClose
                         </td>
                         {!hideSupplier && <td className="py-1.5 px-2.5 text-slate-600 text-[11px]">{item.supplier || '-'}</td>}
                         <td className="py-1.5 px-2.5 text-center text-slate-600 font-medium text-[11px]">{item.satuan}</td>
-                        <td className="py-1.5 px-2.5 text-right font-medium tabular-nums">{item.pemakaian}</td>
-                        <td className="py-1.5 px-2.5 text-right font-medium tabular-nums">{formatRp(item.hargaSatuan)}</td>
+                        <td className="py-1.5 px-2.5 text-right font-medium tabular-nums">
+                          {item.pemakaian}
+                          {item.satuan?.toLowerCase() === 'yard' && (
+                            <span className="block text-[9.5px] text-slate-400 leading-tight">
+                              ≈ {((item.pemakaian || 0) * 0.9144).toFixed(2)} m
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-2.5 text-right font-medium tabular-nums">
+                          {formatRp(item.hargaSatuan)}
+                          {item.satuan?.toLowerCase() === 'yard' && (
+                            <span className="block text-[9.5px] text-slate-400 leading-tight">
+                              ≈ {formatRp(Math.round((item.hargaSatuan || 0) / 0.9144))}/m
+                            </span>
+                          )}
+                        </td>
                         <td className="py-1.5 px-2.5 text-right text-slate-500 tabular-nums">{item.wastePercent}%</td>
                         <td className="py-1.5 px-2.5 text-right font-bold text-slate-900 tabular-nums">{formatRp(item.subtotal)}</td>
                       </tr>

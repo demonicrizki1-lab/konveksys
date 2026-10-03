@@ -729,6 +729,8 @@ export interface HPPComponentItem {
   supplier?: string | null;
   isYardConverted?: boolean;
   originalYardPrice?: number;
+  meterPemakaian?: number;
+  meterHargaSatuan?: number;
 }
 
 export interface HPPCalculationRecord {

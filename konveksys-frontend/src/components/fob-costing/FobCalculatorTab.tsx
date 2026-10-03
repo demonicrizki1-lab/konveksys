@@ -13,7 +13,6 @@ import {
   Package,
   Layers,
   Percent,
-  ArrowRightLeft,
   Search,
 } from 'lucide-react';
 import {
@@ -114,7 +113,6 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
   // Alert/Banner State
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [yardNotice, setYardNotice] = useState<string | null>(null);
   // Master Material Selection Modal State
   const [isMasterModalOpen, setIsMasterModalOpen] = useState<boolean>(false);
   const [masterModalSearch, setMasterModalSearch] = useState<string>('');
@@ -194,35 +192,32 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
       const updated = [...prev];
       const item = { ...updated[idx], [field]: val };
 
-      // Jika user memilih satuan 'Yard' di tabel kalkulator HPP,
-      // otomatis diconvert ke 'Meter' dengan patokan 1 yard = 91,44 cm (0,9144 m)
-      if (field === 'satuan' && typeof val === 'string' && val.trim().toLowerCase() === 'yard') {
-        item.satuan = 'Meter';
-        item.isYardConverted = true;
-        if (item.hargaSatuan && item.hargaSatuan > 0) {
-          const oldHarga = item.hargaSatuan;
-          item.originalYardPrice = oldHarga;
-          item.hargaSatuan = convertYardToMeterPrice(item.hargaSatuan);
-          setYardNotice(
-            `Komponen #${idx + 1} (${item.namaBahan || 'Bahan'}) diconvert dari Yard ke Meter (1 Yard = 91,44 cm). Harga: ${formatRp(oldHarga)}/yd ➔ ${formatRp(item.hargaSatuan)}/m.`
-          );
-        } else {
-          setYardNotice(
-            `Komponen #${idx + 1} dialihkan ke satuan Meter (standar perhitungan HPP: 1 Yard = 91,44 cm / 0,9144 m).`
-          );
-        }
-      }
-
       if (field === 'supplier' && typeof val === 'string') {
         item.supplier = val.replace(/^\[Asal:.*?\]\s*/, '');
       }
 
-      // Auto hitung subtotal jika pemakaian, harga, atau waste diubah
+      const p = Number(field === 'pemakaian' ? val : item.pemakaian) || 0;
+      const h = Number(field === 'hargaSatuan' ? val : item.hargaSatuan) || 0;
+      const w = Number(field === 'wastePercent' ? val : item.wastePercent) || 0;
+
+      // Auto hitung subtotal jika pemakaian, harga, waste, atau satuan diubah
       if (field === 'pemakaian' || field === 'hargaSatuan' || field === 'wastePercent' || field === 'satuan') {
-        const p = Number(field === 'pemakaian' ? val : item.pemakaian) || 0;
-        const h = Number(field === 'hargaSatuan' ? val : item.hargaSatuan) || 0;
-        const w = Number(field === 'wastePercent' ? val : item.wastePercent) || 0;
         item.subtotal = Math.round(p * h * (1 + w / 100));
+      }
+
+      // Pertahankan pilihan satuan (Yard tetap tampil Yard di Front End)
+      // Logika konversi ke meter dihitung secara internal di latar belakang untuk backend
+      const isYard = (item.satuan || '').trim().toLowerCase() === 'yard';
+      if (isYard) {
+        item.isYardConverted = true;
+        item.originalYardPrice = h;
+        item.meterPemakaian = Number((p * YARD_TO_METER_FACTOR).toFixed(4));
+        item.meterHargaSatuan = convertYardToMeterPrice(h);
+      } else if (field === 'satuan') {
+        item.isYardConverted = false;
+        item.originalYardPrice = undefined;
+        item.meterPemakaian = undefined;
+        item.meterHargaSatuan = undefined;
       }
 
       updated[idx] = item;
@@ -267,19 +262,8 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
     const mat = materials.find(m => m.kodeMaterial === matKode);
     if (mat) {
       const isYard = (mat.satuan || '').trim().toLowerCase() === 'yard';
-      // 1 Yard = 91.44 cm (0.9144 meter) -> Konversi ke Meter
-      const targetSatuan = isYard ? 'Meter' : mat.satuan;
-      const targetHarga = isYard
-        ? convertYardToMeterPrice(Number(mat.hargaStandar) || 0)
-        : Number(mat.hargaStandar) || 0;
-
-      if (isYard) {
-        const qtyYard = Number(mat.qty) || 1;
-        const qtyMeter = (qtyYard * 0.9144).toLocaleString('id-ID', { maximumFractionDigits: 2 });
-        setYardNotice(
-          `Bahan "${mat.namaBahan}" (satuan Yard) otomatis dikonversi ke Meter (1 Yard = 91,44 cm). Kuantitas: ${qtyYard} Yd ➔ ${qtyMeter} m | Harga: ${formatRp(mat.hargaStandar)}/yd ➔ ${formatRp(targetHarga)}/m.`
-        );
-      }
+      const targetSatuan = mat.satuan || 'Meter';
+      const targetHarga = Number(mat.hargaStandar) || 0;
 
       setComponents(prev => {
         const updated = [...prev];
@@ -294,7 +278,9 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
           hargaSatuan: targetHarga,
           supplier: (mat.supplier || '').replace(/^\[Asal:.*?\]\s*/, ''),
           isYardConverted: isYard,
-          originalYardPrice: isYard ? Number(mat.hargaStandar) || 0 : undefined,
+          originalYardPrice: isYard ? targetHarga : undefined,
+          meterPemakaian: isYard ? Number((p * YARD_TO_METER_FACTOR).toFixed(4)) : undefined,
+          meterHargaSatuan: isYard ? convertYardToMeterPrice(targetHarga) : undefined,
           subtotal: Math.round(p * targetHarga * (1 + w / 100)),
         };
         return updated;
@@ -305,18 +291,8 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
   // Quick add new material from Master Modal
   const handleAddFromMasterModal = (mat: FOBMaterialMaster) => {
     const isYard = (mat.satuan || '').trim().toLowerCase() === 'yard';
-    const targetSatuan = isYard ? 'Meter' : mat.satuan;
-    const targetHarga = isYard
-      ? convertYardToMeterPrice(Number(mat.hargaStandar) || 0)
-      : Number(mat.hargaStandar) || 0;
-
-    if (isYard) {
-      const qtyYard = Number(mat.qty) || 1;
-      const qtyMeter = (qtyYard * 0.9144).toLocaleString('id-ID', { maximumFractionDigits: 2 });
-      setYardNotice(
-        `Bahan "${mat.namaBahan}" (satuan Yard) otomatis dikonversi ke Meter (1 Yard = 91,44 cm). Kuantitas: ${qtyYard} Yd ➔ ${qtyMeter} m | Harga: ${formatRp(mat.hargaStandar)}/yd ➔ ${formatRp(targetHarga)}/m.`
-      );
-    }
+    const targetSatuan = mat.satuan || 'Meter';
+    const targetHarga = Number(mat.hargaStandar) || 0;
 
     const isBahan = mat.kategori === 'BAHAN_BAKU' || !mat.kategori;
     const wasteVal = isBahan ? 5 : 0;
@@ -331,7 +307,9 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
       subtotal: Math.round(1 * targetHarga * (1 + wasteVal / 100)),
       supplier: (mat.supplier || '').replace(/^\[Asal:.*?\]\s*/, ''),
       isYardConverted: isYard,
-      originalYardPrice: isYard ? Number(mat.hargaStandar) || 0 : undefined,
+      originalYardPrice: isYard ? targetHarga : undefined,
+      meterPemakaian: isYard ? Number((1 * YARD_TO_METER_FACTOR).toFixed(4)) : undefined,
+      meterHargaSatuan: isYard ? convertYardToMeterPrice(targetHarga) : undefined,
     };
 
     setComponents(prev => [...prev, newItem]);
@@ -387,7 +365,21 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
       totalOmzetBatch,
       totalLabaBatch,
       catatan: catatan.trim() || null,
-      components,
+      components: components.map(c => {
+        const isYard = (c.satuan || '').trim().toLowerCase() === 'yard';
+        const p = Number(c.pemakaian) || 0;
+        const h = Number(c.hargaSatuan) || 0;
+        if (isYard) {
+          return {
+            ...c,
+            isYardConverted: true,
+            originalYardPrice: h,
+            meterPemakaian: Number((p * YARD_TO_METER_FACTOR).toFixed(4)),
+            meterHargaSatuan: convertYardToMeterPrice(h),
+          };
+        }
+        return c;
+      }),
     };
 
     const res = await onSave(payload);
@@ -733,28 +725,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
           </div>
         </div>
 
-        {/* Notifikasi Konversi Yard ke Meter */}
-        {yardNotice && (
-          <div className="bg-amber-50/90 border border-amber-200/90 text-amber-900 rounded-xl px-3.5 py-2 text-xs flex items-center justify-between gap-3 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="p-1 rounded-md bg-amber-200/70 text-amber-800 shrink-0">
-                <ArrowRightLeft className="w-3.5 h-3.5" />
-              </span>
-              <div className="text-[11.5px] leading-tight truncate">
-                <span className="font-bold text-amber-950 mr-1.5">Konversi Yard ke Meter:</span>
-                <span className="text-amber-800">{yardNotice}</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setYardNotice(null)}
-              className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-100/60 transition cursor-pointer shrink-0 font-bold"
-              title="Tutup Notifikasi"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+
 
         {/* TABLE */}
         <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-2xs">
@@ -794,12 +765,14 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                 components.map((item, idx) => (
                   <tr key={item.id} className="hover:bg-slate-50/60 transition-colors border-b border-slate-100 last:border-b-0">
                     {/* Index */}
-                    <td className="py-2.5 px-2 text-center font-bold text-slate-400 text-xs align-middle">
-                      {idx + 1}
+                    <td className="py-2.5 px-2 text-center align-top">
+                      <div className="h-9 flex items-center justify-center font-bold text-slate-400 text-xs">
+                        {idx + 1}
+                      </div>
                     </td>
                     
                     {/* Kategori Biaya */}
-                    <td className="py-2.5 px-2.5 align-middle">
+                    <td className="py-2.5 px-2.5 align-top">
                       <select
                         value={item.jenisBiaya}
                         onChange={e => handleUpdateComponent(idx, 'jenisBiaya', e.target.value)}
@@ -812,7 +785,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                     </td>
 
                     {/* Nama Bahan + Master Material Quick Pick */}
-                    <td className="py-2.5 px-2.5 align-middle">
+                    <td className="py-2.5 px-2.5 align-top">
                       <div className="relative flex items-center">
                         <input
                           type="text"
@@ -838,7 +811,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                     </td>
 
                     {/* Satuan Dropdown */}
-                    <td className="py-2.5 px-1.5 align-middle">
+                    <td className="py-2.5 px-1.5 align-top">
                       <SatuanDropdown
                         value={item.satuan}
                         onChange={(newSat: string) => handleUpdateComponent(idx, 'satuan', newSat)}
@@ -847,7 +820,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                     </td>
 
                     {/* Pemakaian */}
-                    <td className="py-2.5 px-2 align-middle">
+                    <td className="py-2.5 px-2 align-top">
                       <input
                         type="number"
                         step="0.01"
@@ -856,10 +829,18 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                         onChange={e => handleUpdateComponent(idx, 'pemakaian', parseFloat(e.target.value) || 0)}
                         className="w-full h-9 py-1 px-2.5 text-right font-bold text-xs rounded-lg border border-slate-200 text-slate-900 tabular-nums shadow-2xs focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
                       />
+                      {item.satuan?.trim().toLowerCase() === 'yard' && (
+                        <div
+                          className="text-[10.5px] text-slate-400 font-medium text-right mt-1 tabular-nums"
+                          title={`1 Yard = 0,9144 Meter. Pemakaian setara ${((item.pemakaian || 0) * YARD_TO_METER_FACTOR).toFixed(3)} Meter.`}
+                        >
+                          ≈ {((item.pemakaian || 0) * YARD_TO_METER_FACTOR).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m
+                        </div>
+                      )}
                     </td>
 
                     {/* Harga Satuan */}
-                    <td className="py-2.5 px-2 align-middle">
+                    <td className="py-2.5 px-2 align-top">
                       <input
                         type="text"
                         value={formatRupiahInput(item.hargaSatuan)}
@@ -867,10 +848,18 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                         className="w-full h-9 py-1 px-2.5 text-right font-bold text-xs rounded-lg border border-slate-200 text-slate-900 tabular-nums shadow-2xs focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500"
                         placeholder="0"
                       />
+                      {item.satuan?.trim().toLowerCase() === 'yard' && (
+                        <div
+                          className="text-[10.5px] text-slate-400 font-medium text-right mt-1 tabular-nums"
+                          title={`Harga per meter = ${formatRp(convertYardToMeterPrice(item.hargaSatuan || 0))}/m (patokan 1 Yard = 0,9144 m)`}
+                        >
+                          ≈ {formatRp(convertYardToMeterPrice(item.hargaSatuan || 0))} / m
+                        </div>
+                      )}
                     </td>
 
                     {/* Waste % */}
-                    <td className="py-2.5 px-1.5 align-middle">
+                    <td className="py-2.5 px-1.5 align-top">
                       <div className="relative">
                         <input
                           type="number"
@@ -886,14 +875,14 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                     </td>
 
                     {/* Subtotal */}
-                    <td className="py-2.5 px-2.5 align-middle">
+                    <td className="py-2.5 px-2.5 align-top">
                       <div className="h-9 px-2.5 rounded-lg bg-slate-50 border border-slate-200/80 font-bold text-xs text-slate-900 tabular-nums flex items-center justify-end shadow-2xs">
                         {formatRp(item.subtotal)}
                       </div>
                     </td>
 
                     {/* Supplier */}
-                    <td className="py-2.5 px-2 align-middle">
+                    <td className="py-2.5 px-2 align-top">
                       <input
                         type="text"
                         value={(item.supplier || '').replace(/^\[Asal:.*?\]\s*/, '')}
@@ -904,7 +893,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                     </td>
 
                     {/* Delete button */}
-                    <td className="py-2.5 px-2 text-center align-middle">
+                    <td className="py-2.5 px-2 text-center align-top">
                       <button
                         type="button"
                         onClick={() => handleRemoveComponent(idx)}
@@ -929,10 +918,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
                       {components.length} item
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-right font-bold text-xs text-slate-800 tabular-nums">
-                    {components.reduce((sum, c) => sum + (c.jenisBiaya === 'BAHAN_BAKU' ? (c.pemakaian || 0) : 0), 0).toFixed(2)} m
-                  </td>
-                  <td colSpan={2}></td>
+                  <td colSpan={3}></td>
                   <td className="py-3 px-2.5 text-right font-black text-sm text-indigo-700 tabular-nums bg-indigo-50/60 border-x border-indigo-100">
                     {formatRp(components.reduce((sum, c) => sum + (c.subtotal || 0), 0))}
                   </td>
