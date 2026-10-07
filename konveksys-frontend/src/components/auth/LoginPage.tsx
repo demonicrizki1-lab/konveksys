@@ -199,7 +199,10 @@ export const LoginPage: React.FC = () => {
               className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-base btn-press cursor-pointer"
             >
               {isLoading ? (
-                <span>Memverifikasi...</span>
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                  <span>Memverifikasi &amp; Menyinkronkan Data...</span>
+                </span>
               ) : (
                 <>
                   <span>Masuk ke Portal</span>

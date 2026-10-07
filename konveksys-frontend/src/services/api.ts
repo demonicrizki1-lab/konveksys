@@ -7,19 +7,29 @@ import type { FobAiAnalysisApiResponse } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Ambil token dari localStorage
+// Ambil token dari sessionStorage (sesi aktif)
 export function getToken(): string | null {
-  return localStorage.getItem('konvek_token');
+  try {
+    return sessionStorage.getItem('konvek_token');
+  } catch {
+    return null;
+  }
 }
 
-// Simpan token ke localStorage
+// Simpan token ke sessionStorage (otomatis hilang saat browser/tab ditutup atau buka URL baru)
 export function saveToken(token: string): void {
-  localStorage.setItem('konvek_token', token);
+  try {
+    sessionStorage.setItem('konvek_token', token);
+    localStorage.removeItem('konvek_token'); // Pastikan tidak tersisa di persistent storage
+  } catch {}
 }
 
-// Hapus token dari localStorage
+// Hapus token dari sessionStorage & localStorage
 export function clearToken(): void {
-  localStorage.removeItem('konvek_token');
+  try {
+    sessionStorage.removeItem('konvek_token');
+    localStorage.removeItem('konvek_token');
+  } catch {}
 }
 
 // Base fetch wrapper dengan auto-inject Authorization header
@@ -47,6 +57,13 @@ export async function apiFetch<T>(
 
     if (res.status === 401 && !endpoint.startsWith('/api/auth/login')) {
       clearToken();
+      try {
+        sessionStorage.removeItem('konvek_auth_user');
+        localStorage.removeItem('konvek_auth_user');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:expired'));
+        }
+      } catch {}
       return { data: null, error: 'Sesi berakhir, silakan login kembali.' };
     }
 

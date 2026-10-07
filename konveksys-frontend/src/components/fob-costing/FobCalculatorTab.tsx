@@ -10,6 +10,7 @@ import {
   Info,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Package,
   Layers,
   Percent,
@@ -111,7 +112,7 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
   const [components, setComponents] = useState<HPPComponentItem[]>([]);
 
   // Alert/Banner State
-  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   // Master Material Selection Modal State
   const [isMasterModalOpen, setIsMasterModalOpen] = useState<boolean>(false);
@@ -390,12 +391,21 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
       setNoHpp(res.data.noHpp);
       setSaveStatus({
         type: 'success',
-        message: `Kalkulasi HPP ${res.data.noHpp} (${res.data.namaProduk} - Size ${res.data.size}) berhasil disimpan ke database!`,
+        message: recordId
+          ? `Kalkulasi HPP ${res.data.noHpp} (${res.data.namaProduk} - Size ${res.data.size}) berhasil diperbarui di database server!`
+          : `Kalkulasi HPP ${res.data.noHpp} (${res.data.namaProduk} - Size ${res.data.size}) berhasil tersimpan ke database server!`,
+      });
+    } else if ((res as any).isOfflineSaved && res.data) {
+      setRecordId(res.data.id);
+      setNoHpp(res.data.noHpp);
+      setSaveStatus({
+        type: 'warning',
+        message: `PERINGATAN: Database server belum terjangkau (${res.error || 'Server offline'}). Data ${res.data.noHpp} aman tersimpan sebagai Draf Offline Lokal di browser ini dan tidak akan tertimpa. Data akan otomatis disinkronkan saat server kembali online.`,
       });
     } else {
       setSaveStatus({
         type: 'error',
-        message: res.error || 'Gagal menyimpan kalkulasi ke database.',
+        message: res.error || 'Gagal menyimpan kalkulasi ke database server.',
       });
     }
   };
@@ -470,12 +480,16 @@ export const FobCalculatorTab: React.FC<FobCalculatorTabProps> = ({
           className={`p-4 rounded-xl border flex items-center justify-between gap-3 text-xs font-medium animate-fadeIn ${
             saveStatus.type === 'success'
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : saveStatus.type === 'warning'
+              ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-xs'
               : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}
         >
           <div className="flex items-center gap-2">
             {saveStatus.type === 'success' ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : saveStatus.type === 'warning' ? (
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             ) : (
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             )}

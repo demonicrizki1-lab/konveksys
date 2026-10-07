@@ -282,7 +282,7 @@ export const FobDashboardTab: React.FC<FobDashboardTabProps> = ({
                 <tr>
                   <th className="py-2.5 px-3 text-left">No. HPP</th>
                   <th className="py-2.5 px-3 text-left">Nama Produk</th>
-                  <th className="py-2.5 px-3 text-center">Size</th>
+                  <th className="py-2.5 px-3 text-center min-w-[85px] whitespace-nowrap">Size</th>
                   <th className="py-2.5 px-3 text-left">Brand</th>
                   <th className="py-2.5 px-3 text-right">HPP Final / Pcs</th>
                   <th className="py-2.5 px-3 text-right">Rekomendasi Jual</th>
@@ -301,8 +301,8 @@ export const FobDashboardTab: React.FC<FobDashboardTabProps> = ({
                       {item.namaProduk}
                       <span className="block text-[10px] text-slate-400">{item.kategori}</span>
                     </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold text-[11px]">
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold text-[11px] whitespace-nowrap leading-none tracking-wide">
                         {item.size}
                       </span>
                     </td>

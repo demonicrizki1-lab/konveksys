@@ -385,6 +385,12 @@ interface AppContextType {
     kondisiKain?: string;
     catatan?: string;
   }) => Promise<{ success: boolean; message: string; deposit?: VendorFabricDeposit; transferNote?: FabricTransferNote }>;
+  applyVendorDeposit: (
+    depositId: string,
+    poId: string,
+    poNumber: string,
+    usedLength: number
+  ) => Promise<{ success: boolean; message: string }>;
   useVendorDeposit: (
     depositId: string,
     poId: string,
@@ -404,7 +410,8 @@ interface AppContextType {
   fobProducts: FOBProductMaster[];
   fobOrders: FobPurchaseOrder[];
   isLoadingFob: boolean;
-  saveHppRecord: (record: Partial<HPPCalculationRecord>) => Promise<{ success: boolean; data?: HPPCalculationRecord; error?: string }>;
+  saveHppRecord: (record: Partial<HPPCalculationRecord>) => Promise<{ success: boolean; data?: HPPCalculationRecord; error?: string; isOfflineSaved?: boolean }>;
+  syncPendingHppRecords: () => Promise<{ syncedCount: number; remainingCount: number }>;
   updateHppRecord: (id: string, record: Partial<HPPCalculationRecord>) => Promise<{ success: boolean; error?: string }>;
   deleteHppRecord: (id: string) => Promise<{ success: boolean; error?: string }>;
   saveFobQuotation: (quotation: Partial<FOBQuotation>) => Promise<{ success: boolean; data?: FOBQuotation; error?: string }>;
@@ -594,16 +601,21 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Auth State
+  // Auth State - Session-based: saat user masuk ke URL atau buka tab baru, wajib login lagi
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    const saved = localStorage.getItem('konvek_auth_user');
+    // Bersihkan sesi persisten localStorage lama agar tidak auto-login
+    try {
+      localStorage.removeItem('konvek_auth_user');
+      localStorage.removeItem('konvek_token');
+    } catch {}
+    const saved = sessionStorage.getItem('konvek_auth_user');
     return saved ? JSON.parse(saved) : null;
   });
 
   // Navigation & Role State
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [userRole, setUserRole] = useState<UserRole>(() => {
-    const saved = localStorage.getItem('konvek_auth_user');
+    const saved = sessionStorage.getItem('konvek_auth_user');
     if (saved) {
       const parsed: AuthUser = JSON.parse(saved);
       return parsed.role;
@@ -612,7 +624,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [activeBrand, setActiveBrand] = useState<string>(() => {
-    const saved = localStorage.getItem('konvek_auth_user');
+    const saved = sessionStorage.getItem('konvek_auth_user');
     if (saved) {
       const parsed: AuthUser = JSON.parse(saved);
       return parsed.brandName || 'GREYWOLF';
@@ -628,7 +640,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser) {
       const updated = { ...currentUser, brandName };
       setCurrentUser(updated);
-      localStorage.setItem('konvek_auth_user', JSON.stringify(updated));
+      sessionStorage.setItem('konvek_auth_user', JSON.stringify(updated));
     }
   };
 
@@ -1398,9 +1410,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // 17. FOB HPP Records
       if (results[17]?.status === 'fulfilled' && Array.isArray(results[17].value.data)) {
         const rawHpp = results[17].value.data;
-        setHppRecords(rawHpp);
-        setCache('fob_hpp_records', rawHpp);
-        try { localStorage.setItem('hpp_fob_v4', JSON.stringify(rawHpp)); } catch {}
+        setHppRecords(prev => {
+          const unsynced = prev.filter(r => (r.isPendingSync || r.id.startsWith('hpp-') || r.id.startsWith('hpp-local-')) && !rawHpp.some((s: any) => s.noHpp === r.noHpp || s.id === r.id));
+          const merged = [...rawHpp, ...unsynced];
+          setCache('fob_hpp_records', merged);
+          try { localStorage.setItem('hpp_fob_v4', JSON.stringify(merged)); } catch {}
+          return merged;
+        });
       }
 
       // 18. FOB Quotations
@@ -1529,15 +1545,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('konvek_auth_user', JSON.stringify(currentUser));
+      sessionStorage.setItem('konvek_auth_user', JSON.stringify(currentUser));
       setUserRole(currentUser.role);
       if (currentUser.role === 'BRAND' && currentUser.brandName) {
         setActiveBrand(currentUser.brandName);
       }
     } else {
-      localStorage.removeItem('konvek_auth_user');
+      sessionStorage.removeItem('konvek_auth_user');
+      sessionStorage.removeItem('konvek_token');
     }
+    // Pastikan tidak ada data autentikasi tersisa di persistent localStorage
+    try {
+      localStorage.removeItem('konvek_auth_user');
+      localStorage.removeItem('konvek_token');
+    } catch {}
   }, [currentUser]);
+
+  // Listener bila sesi expired dari response 401 API
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setCurrentUser(null);
+      clearToken();
+      clearAllCache();
+    };
+    window.addEventListener('auth:expired', handleAuthExpired);
+    return () => window.removeEventListener('auth:expired', handleAuthExpired);
+  }, []);
 
   // Auth Handlers
   const fetchPendingBrands = useCallback(async () => {
@@ -1942,7 +1975,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         if (poData.usedDepositId) {
-          await useVendorDeposit(poData.usedDepositId, fallbackPO.id, fallbackPO.noPO, 999999);
+          await applyVendorDeposit(poData.usedDepositId, fallbackPO.id, fallbackPO.noPO, 999999);
         }
 
         return { success: true, message: 'Surat PO berhasil disimpan.', data: fallbackPO };
@@ -1955,7 +1988,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return updated;
         });
         if (poData.usedDepositId) {
-          await useVendorDeposit(poData.usedDepositId, data.data.id, data.data.noPO, 999999);
+          await applyVendorDeposit(poData.usedDepositId, data.data.id, data.data.noPO, 999999);
         }
       }
       return { success: true, message: data.message || 'Surat PO berhasil disimpan ke database.', data: data.data };
@@ -2139,7 +2172,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const useVendorDeposit = async (
+  const applyVendorDeposit = async (
     depositId: string,
     poId: string,
     poNumber: string,
@@ -2180,6 +2213,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: err?.message || 'Gagal mengalokasikan kain titipan.' };
     }
   };
+
+  const useVendorDeposit = applyVendorDeposit;
 
   const returnDepositToWarehouse = async (
     depositId: string,
@@ -2241,9 +2276,70 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // FOB COSTING & SPH (Database-backed Handlers)
   // ============================================================
 
+  // Helper sinkronisasi data HPP lokal/offline yang tertunda ke database server
+  const syncPendingHppRecords = async (): Promise<{ syncedCount: number; remainingCount: number }> => {
+    let synced = 0;
+    const current = [...hppRecords];
+    const pending = current.filter(r => r.isPendingSync || r.id.startsWith('hpp-') || r.id.startsWith('hpp-local-'));
+
+    if (pending.length === 0) {
+      return { syncedCount: 0, remainingCount: 0 };
+    }
+
+    let updatedList = [...current];
+    for (const item of pending) {
+      try {
+        const { id: oldId, isPendingSync: _p, syncError: _e, createdAt: _c, updatedAt: _u, ...payload } = item;
+        // Cari apakah ada record resmi di server dengan noHpp yang sama (artinya ini draf hasil edit)
+        const existingServerRecord = current.find(r => r.noHpp === item.noHpp && !r.id.startsWith('hpp-') && !r.id.startsWith('hpp-local-'));
+
+        if (existingServerRecord) {
+          // Update record yang ada di database server
+          const res = await apiUpdateFobHpp(existingServerRecord.id, payload);
+          if (res.data?.data) {
+            const saved: HPPCalculationRecord = { ...res.data.data, isPendingSync: false };
+            // Hapus duplikat draft lokal, ganti server record dengan data terbaru yang sudah diedit
+            updatedList = updatedList.filter(r => r.id !== oldId).map(r => r.id === existingServerRecord.id ? saved : r);
+            synced++;
+          }
+        } else {
+          // Rekam kalkulasi baru
+          const res = await apiCreateFobHpp(payload);
+          if (res.data?.data) {
+            const saved: HPPCalculationRecord = { ...res.data.data, isPendingSync: false };
+            updatedList = updatedList.map(r => r.id === oldId ? saved : r);
+            synced++;
+          }
+        }
+      } catch (err) {
+        console.warn('[HPP-AUTO-SYNC-RETRY-ERROR]', item.noHpp, err);
+      }
+    }
+
+    // Bersihkan duplikat lokal yang memiliki noHpp sama persis dengan server record
+    const serverNoHpps = new Set(updatedList.filter(r => !r.id.startsWith('hpp-') && !r.id.startsWith('hpp-local-')).map(r => r.noHpp));
+    updatedList = updatedList.filter(r => {
+      const isLocal = r.id.startsWith('hpp-') || r.id.startsWith('hpp-local-');
+      if (isLocal && serverNoHpps.has(r.noHpp)) {
+        return false;
+      }
+      return true;
+    });
+
+    setHppRecords(updatedList);
+    setCache('fob_hpp_records', updatedList);
+    try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updatedList)); } catch {}
+
+    const remaining = updatedList.filter(r => r.isPendingSync || r.id.startsWith('hpp-') || r.id.startsWith('hpp-local-')).length;
+    return { syncedCount: synced, remainingCount: remaining };
+  };
+
   const refreshFobData = async () => {
     setIsLoadingFob(true);
     try {
+      // 1. Coba dorong terlebih dahulu data HPP offline yang tertunda jika ada
+      await syncPendingHppRecords();
+
       const [resHpp, resQuo, resMat, resProd, resOrders] = await Promise.all([
         apiGetFobHppList(),
         apiGetFobQuotations(),
@@ -2253,9 +2349,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
 
       if (resHpp.data && Array.isArray(resHpp.data)) {
-        setHppRecords(resHpp.data);
-        setCache('fob_hpp_records', resHpp.data);
-        try { localStorage.setItem('hpp_fob_v4', JSON.stringify(resHpp.data)); } catch {}
+        const serverHpp: HPPCalculationRecord[] = resHpp.data;
+        // PENTING: Jangan timpa total data lokal yang masih berstatus pending offline!
+        setHppRecords(prev => {
+          const unsynced = prev.filter(r => (r.isPendingSync || r.id.startsWith('hpp-') || r.id.startsWith('hpp-local-')) && !serverHpp.some((s: any) => s.noHpp === r.noHpp || s.id === r.id));
+          const merged = [...serverHpp, ...unsynced];
+          setCache('fob_hpp_records', merged);
+          try { localStorage.setItem('hpp_fob_v4', JSON.stringify(merged)); } catch {}
+          return merged;
+        });
       }
       if (resQuo.data && Array.isArray(resQuo.data)) {
         setFobQuotations(resQuo.data);
@@ -2280,13 +2382,114 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const saveHppRecord = async (record: Partial<HPPCalculationRecord>): Promise<{ success: boolean; data?: HPPCalculationRecord; error?: string }> => {
+  const saveHppRecord = async (record: Partial<HPPCalculationRecord>): Promise<{ success: boolean; data?: HPPCalculationRecord; error?: string; isOfflineSaved?: boolean }> => {
     try {
-      const { data, error } = await apiCreateFobHpp(record);
-      if (error || !data) {
+      const isExistingServerRecord = Boolean(record.id && !record.id.startsWith('hpp-') && !record.id.startsWith('hpp-local-'));
+      const isExistingLocalDraft = Boolean(record.id && (record.id.startsWith('hpp-') || record.id.startsWith('hpp-local-')));
+
+      // KASUS 1: EDIT / UPDATE PADA RECORD YANG SUDAH ADA DI SERVER
+      if (isExistingServerRecord && record.id) {
+        const targetId = record.id;
+        const { id: _i, isPendingSync: _p, syncError: _e, createdAt: _c, updatedAt: _u, ...updatePayload } = record;
+        const { data, error } = await apiUpdateFobHpp(targetId, updatePayload);
+
+        if (!error && data?.data) {
+          const updatedRecord: HPPCalculationRecord = { ...data.data, isPendingSync: false };
+          setHppRecords(prev => {
+            // Perbarui in-place dan hapus draft duplikat dengan noHpp yang sama jika ada
+            const updated = prev
+              .filter(r => !( (r.id.startsWith('hpp-') || r.id.startsWith('hpp-local-')) && r.noHpp === updatedRecord.noHpp ))
+              .map(r => r.id === targetId ? updatedRecord : r);
+            setCache('fob_hpp_records', updated);
+            try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+          return { success: true, data: updatedRecord };
+        } else {
+          // Gagal koneksi saat update -> update in-place di lokal dengan status pending sync
+          const fallback: HPPCalculationRecord = {
+            ...(record as HPPCalculationRecord),
+            updatedAt: new Date().toISOString(),
+            isPendingSync: true,
+            syncError: error || 'Database server tidak dapat dihubungi saat memperbarui.',
+          };
+          setHppRecords(prev => {
+            const updated = prev.map(r => r.id === targetId ? fallback : r);
+            setCache('fob_hpp_records', updated);
+            try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+          return {
+            success: false,
+            data: fallback,
+            isOfflineSaved: true,
+            error: error || 'Gagal memperbarui ke database server. Perubahan disimpan sebagai draf offline.',
+          };
+        }
+      }
+
+      // KASUS 2: EDIT PADA DRAF LOKAL (JANGAN BUAT RECORD DUPLIKAT BARU!)
+      if (isExistingLocalDraft && record.id) {
+        const targetId = record.id;
+        const { id: _i, isPendingSync: _p, syncError: _e, createdAt: _c, updatedAt: _u, ...payload } = record;
+
+        // Cek apakah noHpp ini sebenarnya sudah ada di server (misal hasil cloning/edit)
+        const serverMatch = hppRecords.find(r => r.noHpp === record.noHpp && !r.id.startsWith('hpp-') && !r.id.startsWith('hpp-local-'));
+        if (serverMatch) {
+          const res = await apiUpdateFobHpp(serverMatch.id, payload);
+          if (res.data?.data) {
+            const savedRecord: HPPCalculationRecord = { ...res.data.data, isPendingSync: false };
+            setHppRecords(prev => {
+              const updated = prev.filter(r => r.id !== targetId).map(r => r.id === serverMatch.id ? savedRecord : r);
+              setCache('fob_hpp_records', updated);
+              try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+            return { success: true, data: savedRecord };
+          }
+        } else {
+          const res = await apiCreateFobHpp(payload);
+          if (res.data?.data) {
+            const savedRecord: HPPCalculationRecord = { ...res.data.data, isPendingSync: false };
+            setHppRecords(prev => {
+              const updated = prev.map(r => r.id === targetId ? savedRecord : r);
+              setCache('fob_hpp_records', updated);
+              try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+            return { success: true, data: savedRecord };
+          }
+        }
+
+        // Jika push ke server masih gagal, perbarui draf lokal IN-PLACE (ID tetap sama)
+        const fallback: HPPCalculationRecord = {
+          ...(record as HPPCalculationRecord),
+          id: targetId,
+          updatedAt: new Date().toISOString(),
+          isPendingSync: true,
+          syncError: 'Database server tidak dapat dihubungi.',
+        };
+        setHppRecords(prev => {
+          const updated = prev.map(r => r.id === targetId ? fallback : r);
+          setCache('fob_hpp_records', updated);
+          try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        return {
+          success: false,
+          data: fallback,
+          isOfflineSaved: true,
+          error: 'Gagal menghubungi server database. Draf lokal diperbarui.',
+        };
+      }
+
+      // KASUS 3: KALKULASI HPP BARU (CREATE NEW)
+      const { id: _i, isPendingSync: _p, syncError: _e, ...createPayload } = record;
+      const { data, error } = await apiCreateFobHpp(createPayload);
+      if (error || !data || !data.data) {
         // Fallback local save jika backend offline
         const fallback: HPPCalculationRecord = {
-          id: `hpp-${Date.now()}`,
+          id: `hpp-local-${Date.now()}`,
           noHpp: record.noHpp || `HPP/${new Date().getFullYear()}/${String(hppRecords.length + 1).padStart(4, '0')}`,
           tanggal: record.tanggal || new Date().toISOString(),
           namaProduk: record.namaProduk || 'Untitled Product',
@@ -2298,7 +2501,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           batchQty: Number(record.batchQty) || 100,
 
           targetLabaPercent: Number(record.targetLabaPercent) || 30,
+          overheadPercent: Number(record.overheadPercent) || 0,
           rejectPercent: Number(record.rejectPercent) || 3,
+          nilaiOverhead: Number(record.nilaiOverhead) || 0,
           ppnPercent: Number(record.ppnPercent) || 0,
           zakatPercent: Number(record.zakatPercent) || 0,
           affiliatePercent: Number(record.affiliatePercent) || 0,
@@ -2317,48 +2522,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           catatan: record.catatan || null,
           components: record.components || [],
           createdAt: new Date().toISOString(),
+          isPendingSync: true,
+          syncError: error || 'Database server tidak dapat dihubungi.',
         };
 
         setHppRecords(prev => {
-          const updated = [fallback, ...prev];
+          const updated = [fallback, ...prev.filter(r => r.id !== fallback.id)];
           setCache('fob_hpp_records', updated);
           try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
           return updated;
         });
-        return { success: true, data: fallback };
+
+        return {
+          success: false,
+          data: fallback,
+          isOfflineSaved: true,
+          error: error || 'Gagal menyimpan ke database server. Data disimpan sementara sebagai draf offline lokal.',
+        };
       }
 
-      const savedRecord = data.data;
+      const savedRecord = { ...data.data, isPendingSync: false };
       setHppRecords(prev => {
-        const updated = [savedRecord, ...prev.filter(r => r.id !== savedRecord.id)];
+        const updated = [savedRecord, ...prev.filter(r => r.id !== savedRecord.id && r.noHpp !== savedRecord.noHpp)];
         setCache('fob_hpp_records', updated);
         try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
         return updated;
       });
       return { success: true, data: savedRecord };
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Gagal menyimpan kalkulasi HPP.' };
+      return { success: false, error: err?.message || 'Gagal menyimpan kalkulasi HPP ke database server.' };
     }
   };
 
   const updateHppRecord = async (id: string, record: Partial<HPPCalculationRecord>): Promise<{ success: boolean; error?: string }> => {
-    try {
-      await apiUpdateFobHpp(id, record);
-      setHppRecords(prev => {
-        const updated = prev.map(r => r.id === id ? { ...r, ...record, updatedAt: new Date().toISOString() } : r);
-        setCache('fob_hpp_records', updated);
-        try { localStorage.setItem('hpp_fob_v4', JSON.stringify(updated)); } catch {}
-        return updated;
-      });
-      return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err?.message || 'Gagal memperbarui HPP.' };
-    }
+    return saveHppRecord({ ...record, id });
   };
 
   const deleteHppRecord = async (id: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      await apiDeleteFobHpp(id);
+      if (!id.startsWith('hpp-') && !id.startsWith('hpp-local-')) {
+        await apiDeleteFobHpp(id);
+      }
       setHppRecords(prev => {
         const updated = prev.filter(r => r.id !== id);
         setCache('fob_hpp_records', updated);
@@ -2675,7 +2879,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, message: error || 'Login gagal.' };
       }
 
-      // Simpan JWT token
+      // Bersihkan cache lokal lama agar data baru langsung sinkron dari server database
+      clearAllCache();
+
+      // Simpan JWT token ke sessionStorage
       saveToken(data.token);
 
       // Set user dari response API
@@ -2701,6 +2908,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchPendingBrands();
         fetchManagedUsers();
       }
+
+      // Pastikan data langsung tersinkronisasi dari database server
+      await syncFromBackend();
+
       return { success: true };
     } catch {
       return { success: false, message: 'Tidak dapat terhubung ke server.' };
@@ -2733,7 +2944,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setCurrentUser(null);
     clearToken();
-    localStorage.removeItem('konvek_auth_user');
+    try {
+      sessionStorage.removeItem('konvek_auth_user');
+      sessionStorage.removeItem('konvek_token');
+      localStorage.removeItem('konvek_auth_user');
+      localStorage.removeItem('konvek_token');
+    } catch {}
     clearAllCache();
     setActiveTab('dashboard');
   };
@@ -5780,6 +5996,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetchVendorFabricDeposits,
         fetchFabricTransferNotes,
         createFabricTransfer,
+        applyVendorDeposit,
         useVendorDeposit,
         returnDepositToWarehouse,
         deleteFabricDeposit,
@@ -5790,6 +6007,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fobOrders,
         isLoadingFob,
         saveHppRecord,
+        syncPendingHppRecords,
         updateHppRecord,
         deleteHppRecord,
         saveFobQuotation,

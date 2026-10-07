@@ -776,6 +776,8 @@ export interface HPPCalculationRecord {
   components: HPPComponentItem[];
   createdAt: string;
   updatedAt?: string;
+  isPendingSync?: boolean;    // Menandakan data disimpan secara offline/lokal dan belum tersimpan di database server
+  syncError?: string;         // Pesan error terakhir saat sinkronisasi ke server
 }
 
 export interface FOBQuotationItem {

@@ -44,6 +44,7 @@ export const FobCostingView: React.FC = () => {
     vendors,
     isLoadingFob,
     saveHppRecord,
+    syncPendingHppRecords,
     deleteHppRecord,
     saveFobQuotation,
     deleteFobQuotation,
@@ -200,6 +201,7 @@ export const FobCostingView: React.FC = () => {
           onDelete={deleteHppRecord}
           onPrintSingle={setPrintHppRecord}
           onOpenRekapPrint={() => setIsRekapPrintOpen(true)}
+          onSyncPending={syncPendingHppRecords}
         />
       )}
 
