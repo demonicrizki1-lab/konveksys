@@ -180,7 +180,6 @@ import {
   initialFobProducts,
   initialFobOrders,
   initialProductionTimelines,
-  initialFobDeposits,
 } from '../data/initialData';
 import { formatDateIndo } from '../utils/formatters';
 
@@ -3188,7 +3187,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     try {
-      const { data, error } = await apiDeleteInboundRoll(id);
+      const { error } = await apiDeleteInboundRoll(id);
       if (error) {
         return { success: false, message: error };
       }
@@ -3738,7 +3737,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 4. Send PUT to backend
     try {
-      const { data, error } = await apiUpdateSpk(id, {
+      const { error } = await apiUpdateSpk(id, {
         brand: updatedSPK.brand,
         produk: updatedSPK.produk,
         vendor: updatedSPK.vendor,
@@ -3813,7 +3812,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     try {
-      const { data, error } = await apiDeleteSpk(id);
+      const { error } = await apiDeleteSpk(id);
       if (error) {
         return { success: false, message: error };
       }

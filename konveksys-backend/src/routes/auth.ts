@@ -125,17 +125,36 @@ authRoutes.post('/login', async (c) => {
     const body = await c.req.json<{ email: string; password: string }>();
     const emailClean = body.email.toLowerCase().trim();
 
-    // 1. Cari di Database PostgreSQL
-    let user = await prisma.user.findUnique({ where: { email: emailClean } });
+    // 1. Cari di Database PostgreSQL jika terhubung
+    let user: any = null;
+    try {
+      user = await prisma.user.findUnique({ where: { email: emailClean } });
+    } catch (dbErr: any) {
+      console.warn('[DB Warning] PostgreSQL tidak dapat dihubungi saat /login:', dbErr.message);
+    }
 
-    // 2. Fallback jika ada di DEMO_USERS dan belum di database
+    // 2. Fallback jika ada di DEMO_USERS dan belum di database / offline
     if (!user) {
       const demo = DEMO_USERS.find(u => u.email.toLowerCase() === emailClean);
       if (demo && demo.password === body.password) {
-        user = await prisma.user.upsert({
-          where: { email: emailClean },
-          update: {},
-          create: {
+        try {
+          user = await prisma.user.upsert({
+            where: { email: emailClean },
+            update: {},
+            create: {
+              id: demo.id,
+              name: demo.name,
+              email: demo.email,
+              password: demo.password,
+              role: demo.role,
+              status: 'ACTIVE',
+              accessibleBrands: demo.accessibleBrands,
+              brandName: demo.brandName || null,
+            }
+          });
+        } catch {
+          // Fallback object ketika database belum terhubung
+          user = {
             id: demo.id,
             name: demo.name,
             email: demo.email,
@@ -144,8 +163,8 @@ authRoutes.post('/login', async (c) => {
             status: 'ACTIVE',
             accessibleBrands: demo.accessibleBrands,
             brandName: demo.brandName || null,
-          }
-        });
+          };
+        }
       }
     }
 
@@ -231,16 +250,16 @@ authRoutes.get('/pending-brands', authMiddleware, adminOnly, async (c) => {
       }
     });
 
-    const sanitizedPending = pendingList.map(item => {
+    const sanitizedPending = pendingList.map((item: any) => {
       const raw = [
         ...(Array.isArray(item.accessibleBrands) ? item.accessibleBrands : []),
         ...(item.brandName ? [item.brandName] : []),
       ];
       const brands = Array.from(new Set(
         raw
-          .flatMap(b => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
-          .map(b => b.trim().toUpperCase())
-          .filter(b => b && b !== 'UNASSIGNED')
+          .flatMap((b: any) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+          .map((b: any) => b.trim().toUpperCase())
+          .filter((b: any) => b && b !== 'UNASSIGNED')
       ));
       return {
         ...item,
@@ -342,16 +361,16 @@ authRoutes.get('/users', authMiddleware, adminOnly, async (c) => {
       },
     });
 
-    const sanitized = users.map(u => {
+    const sanitized = users.map((u: any) => {
       const raw = [
         ...(Array.isArray(u.accessibleBrands) ? u.accessibleBrands : []),
         ...(u.brandName ? [u.brandName] : []),
       ];
       const brands = Array.from(new Set(
         raw
-          .flatMap(b => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
-          .map(b => b.trim().toUpperCase())
-          .filter(b => b && b !== 'UNASSIGNED')
+          .flatMap((b: any) => (typeof b === 'string' ? b.split(/[,;\n]+/) : []))
+          .map((b: any) => b.trim().toUpperCase())
+          .filter((b: any) => b && b !== 'UNASSIGNED')
       ));
       return {
         ...u,

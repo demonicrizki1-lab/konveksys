@@ -73,10 +73,23 @@ async function main() {
     { brand: 'JENAKA KIDS', produk: 'QANITA', rateSML: 0, rateXL: 0, rateAnak4_10: 42500, rateAnak12_16: 45000 },
   ];
   for (const h of hargaBuyer) {
+    const data = {
+      brand: h.brand,
+      produk: h.produk,
+      rateSML: h.rateSML,
+      rateXL: h.rateXL,
+      rateAnak4: h.rateAnak4_10,
+      rateAnak6: h.rateAnak4_10,
+      rateAnak8: h.rateAnak4_10,
+      rateAnak10: h.rateAnak4_10,
+      rateAnak12: h.rateAnak12_16,
+      rateAnak14: h.rateAnak12_16,
+      rateAnak16: h.rateAnak12_16,
+    };
     await prisma.hargaBuyer.upsert({
       where: { brand_produk: { brand: h.brand, produk: h.produk } },
-      update: h,
-      create: h,
+      update: data,
+      create: data,
     });
   }
   console.log('Harga Buyer seeded');

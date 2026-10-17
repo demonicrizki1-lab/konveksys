@@ -431,7 +431,7 @@ fobRoutes.post('/ai-analysis', async (c) => {
       if (record && typeof record.components === 'string') {
         try {
           record.components = JSON.parse(record.components);
-        } catch (_) {}
+        } catch {}
       }
     }
 
@@ -517,7 +517,7 @@ ${componentsList}`;
         const data: any = await response.json();
         const content = data.choices?.[0]?.message?.content;
         if (content) {
-          const cleanJson = content.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim();
+          const cleanJson = content.replace(/```json/gi, '').replace(/```/g, '').trim();
           aiResult = JSON.parse(cleanJson);
           isAiLive = true;
         }
