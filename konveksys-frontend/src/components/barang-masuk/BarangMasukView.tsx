@@ -32,6 +32,7 @@ const emptySizeBreakdown = (): SizeBreakdown => ({
   l: 0,
   xl: 0,
   xxl: 0,
+  anak2: 0,
   anak4: 0,
   anak6: 0,
   anak8: 0,
@@ -49,6 +50,7 @@ const calculateTotalPcs = (sz?: SizeBreakdown): number => {
     (sz.l || 0) +
     (sz.xl || 0) +
     (sz.xxl || 0) +
+    (sz.anak2 || 0) +
     (sz.anak4 || 0) +
     (sz.anak6 || 0) +
     (sz.anak8 || 0) +
@@ -65,6 +67,7 @@ const SIZE_DISPLAY_ORDER: { key: keyof SizeBreakdown; label: string }[] = [
   { key: 'l', label: 'L' },
   { key: 'xl', label: 'XL' },
   { key: 'xxl', label: '2XL' },
+  { key: 'anak2', label: 'Anak 2' },
   { key: 'anak4', label: 'Anak 4' },
   { key: 'anak6', label: 'Anak 6' },
   { key: 'anak8', label: 'Anak 8' },
@@ -340,6 +343,7 @@ export const BarangMasukView: React.FC = () => {
               l: 0,
               xl: 0,
               xxl: 0,
+              anak2: 0,
               anak4: 0,
               anak6: 0,
               anak8: 0,
@@ -397,6 +401,7 @@ export const BarangMasukView: React.FC = () => {
       l: 0,
       xl: 0,
       xxl: 0,
+      anak2: 0,
       anak4: 0,
       anak6: 0,
       anak8: 0,

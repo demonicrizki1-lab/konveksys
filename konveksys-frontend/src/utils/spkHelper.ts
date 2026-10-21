@@ -6,6 +6,7 @@ export const emptySizeBreakdown: SizeBreakdown = {
   l: 0,
   xl: 0,
   xxl: 0,
+  anak2: 0,
   anak4: 0,
   anak6: 0,
   anak8: 0,
@@ -17,7 +18,7 @@ export const emptySizeBreakdown: SizeBreakdown = {
 
 export const SIZE_KEYS = [
   's', 'm', 'l', 'xl', 'xxl',
-  'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16',
+  'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16',
 ] as (keyof SizeBreakdown)[];
 
 /**
@@ -51,7 +52,8 @@ export function convertFobItemsToSizeBreakdown(items: any[] = []): SizeBreakdown
     else if (rawSize === '2XL' || rawSize === 'XXL') sb.xxl += qty;
     else if (rawSize === '3XL' || rawSize === 'XXXL' || rawSize === '4XL' || rawSize === 'XXXXL') {
       sb.xxl += qty;
-    } else if (rawSize === '4' || rawSize === 'ANAK 4' || rawSize === 'ANAK4') sb.anak4 += qty;
+    } else if (rawSize === '2' || rawSize === 'ANAK 2' || rawSize === 'ANAK2') sb.anak2 += qty;
+    else if (rawSize === '4' || rawSize === 'ANAK 4' || rawSize === 'ANAK4') sb.anak4 += qty;
     else if (rawSize === '6' || rawSize === 'ANAK 6' || rawSize === 'ANAK6') sb.anak6 += qty;
     else if (rawSize === '8' || rawSize === 'ANAK 8' || rawSize === 'ANAK8') sb.anak8 += qty;
     else if (rawSize === '10' || rawSize === 'ANAK 10' || rawSize === 'ANAK10') sb.anak10 += qty;

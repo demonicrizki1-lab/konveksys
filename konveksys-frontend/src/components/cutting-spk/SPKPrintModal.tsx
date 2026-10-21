@@ -16,6 +16,7 @@ const ALL_SIZES: { key: keyof SizeBreakdown; label: string }[] = [
   { key: 'l', label: 'L' },
   { key: 'xl', label: 'XL' },
   { key: 'xxl', label: '2XL' },
+  { key: 'anak2', label: 'A-2' },
   { key: 'anak4', label: 'A-4' },
   { key: 'anak6', label: 'A-6' },
   { key: 'anak8', label: 'A-8' },

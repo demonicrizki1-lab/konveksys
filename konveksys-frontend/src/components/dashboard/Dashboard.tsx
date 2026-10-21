@@ -47,6 +47,7 @@ export const Dashboard: React.FC = () => {
         (item.qtyDelivered?.xl || 0) * (rates.rateXL || 0) +
         (item.qtyDelivered?.xxl || 0) * (rates.rateXXL || rates.rateXL || 0);
       const subAnak =
+        (item.qtyDelivered?.anak2 || 0) * (rates.rateAnak2 || rates.rateAnak4 || 0) +
         (item.qtyDelivered?.anak4 || 0) * (rates.rateAnak4 || 0) +
         (item.qtyDelivered?.anak6 || 0) * (rates.rateAnak6 || 0) +
         (item.qtyDelivered?.anak8 || 0) * (rates.rateAnak8 || 0) +

@@ -245,6 +245,7 @@ export const MarginAnalyticsView: React.FC = () => {
         const qtyXXL = it.qtyDelivered?.xxl || 0;
         const qtySML = (it.qtyDelivered as any)?.sml || 0;
 
+        const qtyAnak2 = it.qtyDelivered?.anak2 || 0;
         const qtyAnak4 = it.qtyDelivered?.anak4 || 0;
         const qtyAnak6 = it.qtyDelivered?.anak6 || 0;
         const qtyAnak8 = it.qtyDelivered?.anak8 || 0;
@@ -262,6 +263,7 @@ export const MarginAnalyticsView: React.FC = () => {
           (qtySML > 0 && !qtyS && !qtyM && !qtyL ? qtySML * (buyerRates.rateSML || 0) : 0);
 
         const subAnak =
+          qtyAnak2 * (buyerRates.rateAnak2 || buyerRates.rateAnak4 || 0) +
           qtyAnak4 * (buyerRates.rateAnak4 || 0) +
           qtyAnak6 * (buyerRates.rateAnak6 || 0) +
           qtyAnak8 * (buyerRates.rateAnak8 || 0) +

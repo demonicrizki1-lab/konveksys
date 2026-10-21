@@ -215,6 +215,7 @@ export const SuratPOProduksiView: React.FC = () => {
     }
 
     const sizeMapping: { key: keyof SizeBreakdown; label: string }[] = [
+      { key: 'anak2', label: '2' },
       { key: 'anak4', label: '4' },
       { key: 'anak6', label: '6' },
       { key: 'anak8', label: '8' },

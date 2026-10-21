@@ -78,6 +78,7 @@ async function main() {
       produk: h.produk,
       rateSML: h.rateSML,
       rateXL: h.rateXL,
+      rateAnak2: h.rateAnak4_10,
       rateAnak4: h.rateAnak4_10,
       rateAnak6: h.rateAnak4_10,
       rateAnak8: h.rateAnak4_10,

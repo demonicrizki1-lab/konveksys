@@ -161,6 +161,7 @@ spkRoutes.put('/:id', async (c) => {
     const targetL = spkData.targetL !== undefined ? Number(spkData.targetL) : existingSpk.targetL;
     const targetXL = spkData.targetXL !== undefined ? Number(spkData.targetXL) : existingSpk.targetXL;
     const targetXXL = spkData.targetXXL !== undefined ? Number(spkData.targetXXL) : existingSpk.targetXXL;
+    const targetAnak2 = spkData.targetAnak2 !== undefined ? Number(spkData.targetAnak2) : existingSpk.targetAnak2;
     const targetAnak4 = spkData.targetAnak4 !== undefined ? Number(spkData.targetAnak4) : existingSpk.targetAnak4;
     const targetAnak6 = spkData.targetAnak6 !== undefined ? Number(spkData.targetAnak6) : existingSpk.targetAnak6;
     const targetAnak8 = spkData.targetAnak8 !== undefined ? Number(spkData.targetAnak8) : existingSpk.targetAnak8;
@@ -172,12 +173,12 @@ spkRoutes.put('/:id', async (c) => {
     // Calculate total target vs total delivered to auto-adjust status
     const targetTotal =
       targetS + targetM + targetL + targetXL + targetXXL +
-      targetAnak4 + targetAnak6 + targetAnak8 + targetAnak10 + targetAnak12 + targetAnak14 + targetAnak16;
+      targetAnak2 + targetAnak4 + targetAnak6 + targetAnak8 + targetAnak10 + targetAnak12 + targetAnak14 + targetAnak16;
 
     const deliveredTotal =
       (existingSpk.deliveredS || 0) + (existingSpk.deliveredM || 0) + (existingSpk.deliveredL || 0) +
       (existingSpk.deliveredXL || 0) + (existingSpk.deliveredXXL || 0) +
-      (existingSpk.deliveredAnak4 || 0) + (existingSpk.deliveredAnak6 || 0) + (existingSpk.deliveredAnak8 || 0) +
+      (existingSpk.deliveredAnak2 || 0) + (existingSpk.deliveredAnak4 || 0) + (existingSpk.deliveredAnak6 || 0) + (existingSpk.deliveredAnak8 || 0) +
       (existingSpk.deliveredAnak10 || 0) + (existingSpk.deliveredAnak12 || 0) + (existingSpk.deliveredAnak14 || 0) +
       (existingSpk.deliveredAnak16 || 0);
 
@@ -246,6 +247,7 @@ spkRoutes.put('/:id', async (c) => {
         targetL,
         targetXL,
         targetXXL,
+        targetAnak2,
         targetAnak4,
         targetAnak6,
         targetAnak8,

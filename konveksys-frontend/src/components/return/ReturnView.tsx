@@ -65,6 +65,7 @@ export const ReturnView: React.FC = () => {
     l: 0,
     xl: 0,
     xxl: 0,
+    anak2: 0,
     anak4: 0,
     anak6: 0,
     anak8: 0,
@@ -89,6 +90,7 @@ export const ReturnView: React.FC = () => {
     qtyBreakdown.l +
     qtyBreakdown.xl +
     qtyBreakdown.xxl +
+    qtyBreakdown.anak2 +
     qtyBreakdown.anak4 +
     qtyBreakdown.anak6 +
     qtyBreakdown.anak8 +
@@ -165,7 +167,7 @@ export const ReturnView: React.FC = () => {
     setKategoriCacat('JAHITAN');
     setAlasanCacat('');
     setCatatan('');
-    setQtyBreakdown({ s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 });
+    setQtyBreakdown({ s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 });
     setIsCreateModalOpen(true);
   };
 
@@ -795,6 +797,18 @@ export const ReturnView: React.FC = () => {
                       min="0"
                       value={qtyBreakdown.xxl}
                       onChange={(e) => setQtyBreakdown({ ...qtyBreakdown, xxl: parseInt(e.target.value) || 0 })}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 2</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qtyBreakdown.anak2}
+                      onChange={(e) =>
+                        setQtyBreakdown({ ...qtyBreakdown, anak2: parseInt(e.target.value) || 0 })
+                      }
                       className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
                     />
                   </div>

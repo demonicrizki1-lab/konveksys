@@ -562,6 +562,7 @@ interface AppContextType {
     rateXL: number;
     rateXXL: number;
     rateSML: number;
+    rateAnak2: number;
     rateAnak4: number;
     rateAnak6: number;
     rateAnak8: number;
@@ -1046,6 +1047,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           rateXL: Number(hb.rateXL ?? 0),
           rateXXL: Number(hb.rateXXL ?? hb.rateXL ?? 0),
           rateSML: Number(hb.rateSML ?? hb.rateS ?? 0),
+          rateAnak2: Number(hb.rateAnak2 || 0),
           rateAnak4: Number(hb.rateAnak4 || 0),
           rateAnak6: Number(hb.rateAnak6 || 0),
           rateAnak8: Number(hb.rateAnak8 || 0),
@@ -1101,6 +1103,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: s.targetL || 0,
             xl: s.targetXL || 0,
             xxl: s.targetXXL || 0,
+            anak2: s.targetAnak2 || 0,
             anak4: s.targetAnak4 || 0,
             anak6: s.targetAnak6 || 0,
             anak8: s.targetAnak8 || 0,
@@ -1115,6 +1118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: s.deliveredL || 0,
             xl: s.deliveredXL || 0,
             xxl: s.deliveredXXL || 0,
+            anak2: s.deliveredAnak2 || 0,
             anak4: s.deliveredAnak4 || 0,
             anak6: s.deliveredAnak6 || 0,
             anak8: s.deliveredAnak8 || 0,
@@ -1180,7 +1184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : deliveredQty;
           const targetTotal = Object.values(targetCutQty).reduce((a, b) => a + b, 0);
           const effectiveDelivTotal = Math.max(dynamicDeliveredTotal, rawDeliveredTotal);
-          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
           const hasUnfulfilled = SIZES_CHECK.some(sz => (targetCutQty[sz] || 0) > (finalDeliveredQty[sz] || 0));
 
           const computedStatus: SPKCutting['status'] =
@@ -1246,6 +1250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: sj.qtyL || 0,
             xl: sj.qtyXL || 0,
             xxl: sj.qtyXXL || 0,
+            anak2: sj.qtyAnak2 || 0,
             anak4: sj.qtyAnak4 || 0,
             anak6: sj.qtyAnak6 || 0,
             anak8: sj.qtyAnak8 || 0,
@@ -1297,6 +1302,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: r.qtyL || 0,
             xl: r.qtyXL || 0,
             xxl: r.qtyXXL || 0,
+            anak2: r.qtyAnak2 || 0,
             anak4: r.qtyAnak4 || 0,
             anak6: r.qtyAnak6 || 0,
             anak8: r.qtyAnak8 || 0,
@@ -3082,6 +3088,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           rateXL: Number(data.rateXL ?? item.rateXL),
           rateXXL: Number(data.rateXXL ?? item.rateXXL),
           rateSML: Number(data.rateSML ?? item.rateSML ?? item.rateS),
+          rateAnak2: Number(data.rateAnak2 ?? item.rateAnak2),
           rateAnak4: Number(data.rateAnak4 ?? item.rateAnak4),
           rateAnak6: Number(data.rateAnak6 ?? item.rateAnak6),
           rateAnak8: Number(data.rateAnak8 ?? item.rateAnak8),
@@ -3423,7 +3430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       items = spkData.items.map((it, idx) => ({
         ...it,
         id: it.id || `item-${Date.now()}-${idx + 1}`,
-        deliveredQty: it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+        deliveredQty: it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
       }));
     } else {
       items = [
@@ -3432,7 +3439,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           produk: spkData.produk,
           vendor: spkData.vendor,
           targetCutQty: { ...spkData.targetCutQty },
-          deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+          deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
         },
       ];
     }
@@ -3442,7 +3449,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: tempId,
       spkNumber,
       items,
-      deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+      deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
       status: 'IN_PRODUCTION',
     };
 
@@ -3535,6 +3542,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetL: spkData.targetCutQty.l || 0,
         targetXL: spkData.targetCutQty.xl || 0,
         targetXXL: spkData.targetCutQty.xxl || 0,
+        targetAnak2: spkData.targetCutQty.anak2 || 0,
         targetAnak4: spkData.targetCutQty.anak4 || 0,
         targetAnak6: spkData.targetCutQty.anak6 || 0,
         targetAnak8: spkData.targetCutQty.anak8 || 0,
@@ -3750,6 +3758,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetL: updatedTargetCutQty.l || 0,
         targetXL: updatedTargetCutQty.xl || 0,
         targetXXL: updatedTargetCutQty.xxl || 0,
+        targetAnak2: updatedTargetCutQty.anak2 || 0,
         targetAnak4: updatedTargetCutQty.anak4 || 0,
         targetAnak6: updatedTargetCutQty.anak6 || 0,
         targetAnak8: updatedTargetCutQty.anak8 || 0,
@@ -3896,7 +3905,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const parts = sj.produk.split(/[,+]/).map(p => p.trim()).filter(Boolean);
       if (parts.length > 1) {
         const numParts = parts.length;
-        const baseQty = sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+        const baseQty = sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
         return parts.map((partName, idx) => {
           const partQty: SizeBreakdown = {
             s: Math.floor((baseQty.s || 0) / numParts) + (idx === 0 ? (baseQty.s || 0) % numParts : 0),
@@ -3904,6 +3913,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: Math.floor((baseQty.l || 0) / numParts) + (idx === 0 ? (baseQty.l || 0) % numParts : 0),
             xl: Math.floor((baseQty.xl || 0) / numParts) + (idx === 0 ? (baseQty.xl || 0) % numParts : 0),
             xxl: Math.floor((baseQty.xxl || 0) / numParts) + (idx === 0 ? (baseQty.xxl || 0) % numParts : 0),
+            anak2: Math.floor((baseQty.anak2 || 0) / numParts) + (idx === 0 ? (baseQty.anak2 || 0) % numParts : 0),
             anak4: Math.floor((baseQty.anak4 || 0) / numParts) + (idx === 0 ? (baseQty.anak4 || 0) % numParts : 0),
             anak6: Math.floor((baseQty.anak6 || 0) / numParts) + (idx === 0 ? (baseQty.anak6 || 0) % numParts : 0),
             anak8: Math.floor((baseQty.anak8 || 0) / numParts) + (idx === 0 ? (baseQty.anak8 || 0) % numParts : 0),
@@ -3941,7 +3951,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         produk: sj.produk || '',
         vendor: sj.vendor || '',
         jenisKain: jenisKain || 'Kain Standar',
-        qtyDelivered: sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+        qtyDelivered: sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
         totalPcs: sj.totalPcs || 0,
         catatan: sj.catatan,
       },
@@ -4012,7 +4022,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             produk: p,
             vendor: targetSPK.vendor,
             targetCutQty: { ...targetSPK.targetCutQty },
-            deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+            deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
           }));
         }
 
@@ -4023,7 +4033,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
 
             if (isTargetItem) {
-              const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+              const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
               return {
                 ...it,
                 deliveredQty: {
@@ -4032,6 +4042,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   l: itemDeliv.l + deliv.l,
                   xl: itemDeliv.xl + deliv.xl,
                   xxl: itemDeliv.xxl + deliv.xxl,
+                  anak2: itemDeliv.anak2 + deliv.anak2,
                   anak4: itemDeliv.anak4 + deliv.anak4,
                   anak6: itemDeliv.anak6 + deliv.anak6,
                   anak8: itemDeliv.anak8 + deliv.anak8,
@@ -4052,6 +4063,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           l: targetSPK.deliveredQty.l + deliv.l,
           xl: targetSPK.deliveredQty.xl + deliv.xl,
           xxl: targetSPK.deliveredQty.xxl + deliv.xxl,
+          anak2: targetSPK.deliveredQty.anak2 + deliv.anak2,
           anak4: targetSPK.deliveredQty.anak4 + deliv.anak4,
           anak6: targetSPK.deliveredQty.anak6 + deliv.anak6,
           anak8: targetSPK.deliveredQty.anak8 + deliv.anak8,
@@ -4063,7 +4075,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const targetTotal = Object.values(targetSPK.targetCutQty).reduce((a, b) => a + b, 0);
         const newTotalDelivered = Object.values(updatedDelivered).reduce((a, b) => a + b, 0);
-        const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+        const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
         const hasUnfulfilledSize = SIZES_CHECK.some(sz => (targetSPK.targetCutQty[sz] || 0) > (updatedDelivered[sz] || 0));
 
         const newStatus: SPKCutting['status'] =
@@ -4156,6 +4168,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qtyL: firstItem.qtyDelivered.l || 0,
         qtyXL: firstItem.qtyDelivered.xl || 0,
         qtyXXL: firstItem.qtyDelivered.xxl || 0,
+        qtyAnak2: firstItem.qtyDelivered.anak2 || 0,
         qtyAnak4: firstItem.qtyDelivered.anak4 || 0,
         qtyAnak6: firstItem.qtyDelivered.anak6 || 0,
         qtyAnak8: firstItem.qtyDelivered.anak8 || 0,
@@ -4267,6 +4280,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const deltaL = (newDeliv?.l || 0) - (oldDeliv?.l || 0);
         const deltaXL = (newDeliv?.xl || 0) - (oldDeliv?.xl || 0);
         const deltaXXL = (newDeliv?.xxl || 0) - (oldDeliv?.xxl || 0);
+        const deltaAnak2 = (newDeliv?.anak2 || 0) - (oldDeliv?.anak2 || 0);
         const deltaAnak4 = (newDeliv?.anak4 || 0) - (oldDeliv?.anak4 || 0);
         const deltaAnak6 = (newDeliv?.anak6 || 0) - (oldDeliv?.anak6 || 0);
         const deltaAnak8 = (newDeliv?.anak8 || 0) - (oldDeliv?.anak8 || 0);
@@ -4291,6 +4305,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   l: Math.max(0, it.deliveredQty.l + deltaL),
                   xl: Math.max(0, it.deliveredQty.xl + deltaXL),
                   xxl: Math.max(0, it.deliveredQty.xxl + deltaXXL),
+                  anak2: Math.max(0, it.deliveredQty.anak2 + deltaAnak2),
                   anak4: Math.max(0, it.deliveredQty.anak4 + deltaAnak4),
                   anak6: Math.max(0, it.deliveredQty.anak6 + deltaAnak6),
                   anak8: Math.max(0, it.deliveredQty.anak8 + deltaAnak8),
@@ -4311,6 +4326,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           l: Math.max(0, (spk.deliveredQty?.l || 0) + deltaL),
           xl: Math.max(0, (spk.deliveredQty?.xl || 0) + deltaXL),
           xxl: Math.max(0, (spk.deliveredQty?.xxl || 0) + deltaXXL),
+          anak2: Math.max(0, (spk.deliveredQty?.anak2 || 0) + deltaAnak2),
           anak4: Math.max(0, (spk.deliveredQty?.anak4 || 0) + deltaAnak4),
           anak6: Math.max(0, (spk.deliveredQty?.anak6 || 0) + deltaAnak6),
           anak8: Math.max(0, (spk.deliveredQty?.anak8 || 0) + deltaAnak8),
@@ -4435,6 +4451,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     l: Math.max(0, it.deliveredQty.l - item.qtyDelivered.l),
                     xl: Math.max(0, it.deliveredQty.xl - item.qtyDelivered.xl),
                     xxl: Math.max(0, it.deliveredQty.xxl - item.qtyDelivered.xxl),
+                    anak2: Math.max(0, it.deliveredQty.anak2 - item.qtyDelivered.anak2),
                     anak4: Math.max(0, it.deliveredQty.anak4 - item.qtyDelivered.anak4),
                     anak6: Math.max(0, it.deliveredQty.anak6 - item.qtyDelivered.anak6),
                     anak8: Math.max(0, it.deliveredQty.anak8 - item.qtyDelivered.anak8),
@@ -4455,6 +4472,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: Math.max(0, spk.deliveredQty.l - item.qtyDelivered.l),
             xl: Math.max(0, spk.deliveredQty.xl - item.qtyDelivered.xl),
             xxl: Math.max(0, spk.deliveredQty.xxl - item.qtyDelivered.xxl),
+            anak2: Math.max(0, spk.deliveredQty.anak2 - item.qtyDelivered.anak2),
             anak4: Math.max(0, spk.deliveredQty.anak4 - item.qtyDelivered.anak4),
             anak6: Math.max(0, spk.deliveredQty.anak6 - item.qtyDelivered.anak6),
             anak8: Math.max(0, spk.deliveredQty.anak8 - item.qtyDelivered.anak8),
@@ -4465,7 +4483,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
           const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
           const totalDelivered = Object.values(newDelivered).reduce((a, b) => a + b, 0);
-          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
           const hasUnfulfilledSize = SIZES_CHECK.some(sz => (spk.targetCutQty[sz] || 0) > (newDelivered[sz] || 0));
 
           const newStatus: SPKCutting['status'] =
@@ -4506,7 +4524,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Surat Jalan tidak ditemukan.' };
     }
 
-    const SIZES: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+    const SIZES: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
 
     // 1. Dapatkan items lama sebelum diedit
     const oldItems: SuratJalanItem[] = getSuratJalanItems(targetSJ);
@@ -4544,6 +4562,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     l: Math.max(0, it.deliveredQty.l - (item.qtyDelivered?.l || 0)),
                     xl: Math.max(0, it.deliveredQty.xl - (item.qtyDelivered?.xl || 0)),
                     xxl: Math.max(0, it.deliveredQty.xxl - (item.qtyDelivered?.xxl || 0)),
+                    anak2: Math.max(0, it.deliveredQty.anak2 - (item.qtyDelivered?.anak2 || 0)),
                     anak4: Math.max(0, it.deliveredQty.anak4 - (item.qtyDelivered?.anak4 || 0)),
                     anak6: Math.max(0, it.deliveredQty.anak6 - (item.qtyDelivered?.anak6 || 0)),
                     anak8: Math.max(0, it.deliveredQty.anak8 - (item.qtyDelivered?.anak8 || 0)),
@@ -4564,6 +4583,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: Math.max(0, spk.deliveredQty.l - (item.qtyDelivered?.l || 0)),
             xl: Math.max(0, spk.deliveredQty.xl - (item.qtyDelivered?.xl || 0)),
             xxl: Math.max(0, spk.deliveredQty.xxl - (item.qtyDelivered?.xxl || 0)),
+            anak2: Math.max(0, spk.deliveredQty.anak2 - (item.qtyDelivered?.anak2 || 0)),
             anak4: Math.max(0, spk.deliveredQty.anak4 - (item.qtyDelivered?.anak4 || 0)),
             anak6: Math.max(0, spk.deliveredQty.anak6 - (item.qtyDelivered?.anak6 || 0)),
             anak8: Math.max(0, spk.deliveredQty.anak8 - (item.qtyDelivered?.anak8 || 0)),
@@ -4587,7 +4607,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const spkIdx = updatedList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
         if (spkIdx !== -1) {
           const spk = updatedList[spkIdx];
-          const deliv = item.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+          const deliv = item.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
           let updatedItems = spk.items;
           if (updatedItems && updatedItems.length > 0) {
             updatedItems = updatedItems.map(it => {
@@ -4596,7 +4616,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
 
               if (isTargetItem) {
-                const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+                const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
                 return {
                   ...it,
                   deliveredQty: {
@@ -4605,6 +4625,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     l: itemDeliv.l + (deliv.l || 0),
                     xl: itemDeliv.xl + (deliv.xl || 0),
                     xxl: itemDeliv.xxl + (deliv.xxl || 0),
+                    anak2: itemDeliv.anak2 + (deliv.anak2 || 0),
                     anak4: itemDeliv.anak4 + (deliv.anak4 || 0),
                     anak6: itemDeliv.anak6 + (deliv.anak6 || 0),
                     anak8: itemDeliv.anak8 + (deliv.anak8 || 0),
@@ -4625,6 +4646,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             l: spk.deliveredQty.l + (deliv.l || 0),
             xl: spk.deliveredQty.xl + (deliv.xl || 0),
             xxl: spk.deliveredQty.xxl + (deliv.xxl || 0),
+            anak2: spk.deliveredQty.anak2 + (deliv.anak2 || 0),
             anak4: spk.deliveredQty.anak4 + (deliv.anak4 || 0),
             anak6: spk.deliveredQty.anak6 + (deliv.anak6 || 0),
             anak8: spk.deliveredQty.anak8 + (deliv.anak8 || 0),
@@ -4720,6 +4742,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qtyL: firstItem.qtyDelivered?.l || 0,
         qtyXL: firstItem.qtyDelivered?.xl || 0,
         qtyXXL: firstItem.qtyDelivered?.xxl || 0,
+        qtyAnak2: firstItem.qtyDelivered?.anak2 || 0,
         qtyAnak4: firstItem.qtyDelivered?.anak4 || 0,
         qtyAnak6: firstItem.qtyDelivered?.anak6 || 0,
         qtyAnak8: firstItem.qtyDelivered?.anak8 || 0,
@@ -4808,6 +4831,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rateXL: rXL,
         rateXXL: rXXL,
         rateSML: matched.rateSML ?? rS,
+        rateAnak2: matched.rateAnak2 || 0,
         rateAnak4: matched.rateAnak4 || 0,
         rateAnak6: matched.rateAnak6 || 0,
         rateAnak8: matched.rateAnak8 || 0,
@@ -4824,6 +4848,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       rateXL: 50000,
       rateXXL: 52000,
       rateSML: 45000,
+      rateAnak2: 35000,
       rateAnak4: 35000,
       rateAnak6: 37000,
       rateAnak8: 39000,
@@ -4836,7 +4861,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const getSPKRemainingQty = (spk: SPKCutting, spkItemId?: string): SizeBreakdown & { totalRemaining: number } => {
     let target: SizeBreakdown = spk.targetCutQty;
-    let deliv: SizeBreakdown = { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+    let deliv: SizeBreakdown = { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
 
     const matchedItem = spkItemId && spk.items && spk.items.length > 0
       ? spk.items.find(it => it.id === spkItemId || it.produk.trim().toUpperCase() === spkItemId.trim().toUpperCase())
@@ -4951,6 +4976,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   deliv.l += Number(qDeliv?.l) || 0;
                   deliv.xl += Number(qDeliv?.xl) || 0;
                   deliv.xxl += Number(qDeliv?.xxl) || 0;
+                  deliv.anak2 += Number(qDeliv?.anak2) || 0;
                   deliv.anak4 += Number(qDeliv?.anak4) || 0;
                   deliv.anak6 += Number(qDeliv?.anak6) || 0;
                   deliv.anak8 += Number(qDeliv?.anak8) || 0;
@@ -4966,6 +4992,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   deliv.l += Number(qDeliv?.l) || 0;
                   deliv.xl += Number(qDeliv?.xl) || 0;
                   deliv.xxl += Number(qDeliv?.xxl) || 0;
+                  deliv.anak2 += Number(qDeliv?.anak2) || 0;
                   deliv.anak4 += Number(qDeliv?.anak4) || 0;
                   deliv.anak6 += Number(qDeliv?.anak6) || 0;
                   deliv.anak8 += Number(qDeliv?.anak8) || 0;
@@ -4995,6 +5022,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const l = Math.max(0, target.l - deliv.l);
     const xl = Math.max(0, target.xl - deliv.xl);
     const xxl = Math.max(0, target.xxl - deliv.xxl);
+    const anak2 = Math.max(0, target.anak2 - deliv.anak2);
     const anak4 = Math.max(0, target.anak4 - deliv.anak4);
     const anak6 = Math.max(0, target.anak6 - deliv.anak6);
     const anak8 = Math.max(0, target.anak8 - deliv.anak8);
@@ -5002,9 +5030,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const anak12 = Math.max(0, target.anak12 - deliv.anak12);
     const anak14 = Math.max(0, target.anak14 - deliv.anak14);
     const anak16 = Math.max(0, target.anak16 - deliv.anak16);
-    const totalRemaining = s + m + l + xl + xxl + anak4 + anak6 + anak8 + anak10 + anak12 + anak14 + anak16;
+    const totalRemaining = s + m + l + xl + xxl + anak2 + anak4 + anak6 + anak8 + anak10 + anak12 + anak14 + anak16;
 
-    return { s, m, l, xl, xxl, anak4, anak6, anak8, anak10, anak12, anak14, anak16, totalRemaining };
+    return { s, m, l, xl, xxl, anak2, anak4, anak6, anak8, anak10, anak12, anak14, anak16, totalRemaining };
   };
 
   // Payroll Calculation Engine (Support Payment by Completed PO)
@@ -5236,6 +5264,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const qtyXL = it.qtyDelivered?.xl || 0;
         const qtyXXL = it.qtyDelivered?.xxl || 0;
         const qtySML = qtyS + qtyM + qtyL;
+        const qtyAnak2 = it.qtyDelivered?.anak2 || 0;
         const qtyAnak4 = it.qtyDelivered?.anak4 || 0;
         const qtyAnak6 = it.qtyDelivered?.anak6 || 0;
         const qtyAnak8 = it.qtyDelivered?.anak8 || 0;
@@ -5249,6 +5278,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const subL = qtyL * rates.rateL;
         const subXL = qtyXL * rates.rateXL;
         const subXXL = qtyXXL * rates.rateXXL;
+        const subAnak2 = qtyAnak2 * rates.rateAnak2;
         const subAnak4 = qtyAnak4 * rates.rateAnak4;
         const subAnak6 = qtyAnak6 * rates.rateAnak6;
         const subAnak8 = qtyAnak8 * rates.rateAnak8;
@@ -5257,7 +5287,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const subAnak14 = qtyAnak14 * rates.rateAnak14;
         const subAnak16 = qtyAnak16 * rates.rateAnak16;
 
-        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak2 + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
         grandTotal += totalAmount;
         totalPcs += it.totalPcs;
 
@@ -5278,6 +5308,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           rateXXL: rates.rateXXL,
           qtySML,
           rateSML: rates.rateSML,
+          qtyAnak2,
+          rateAnak2: rates.rateAnak2,
           qtyAnak4,
           rateAnak4: rates.rateAnak4,
           qtyAnak6,
@@ -5562,6 +5594,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       data.qtyBreakdown.l +
       data.qtyBreakdown.xl +
       data.qtyBreakdown.xxl +
+      data.qtyBreakdown.anak2 +
       data.qtyBreakdown.anak4 +
       data.qtyBreakdown.anak6 +
       data.qtyBreakdown.anak8 +
@@ -5623,6 +5656,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qtyL: data.qtyBreakdown.l,
         qtyXL: data.qtyBreakdown.xl,
         qtyXXL: data.qtyBreakdown.xxl,
+        qtyAnak2: data.qtyBreakdown.anak2,
         qtyAnak4: data.qtyBreakdown.anak4,
         qtyAnak6: data.qtyBreakdown.anak6,
         qtyAnak8: data.qtyBreakdown.anak8,

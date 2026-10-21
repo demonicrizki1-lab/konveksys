@@ -314,6 +314,7 @@ export interface ApiHargaBuyer {
   rateXL?: number | string;
   rateXXL?: number | string;
   rateSML?: number | string;
+  rateAnak2?: number | string;
   rateAnak4: number | string;
   rateAnak6: number | string;
   rateAnak8: number | string;
@@ -539,6 +540,7 @@ export interface ApiReturnItem {
   qtyL: number;
   qtyXL: number;
   qtyXXL: number;
+  qtyAnak2: number;
   qtyAnak4: number;
   qtyAnak6: number;
   qtyAnak8: number;
@@ -573,6 +575,7 @@ export async function apiCreateReturn(data: {
   qtyL: number;
   qtyXL: number;
   qtyXXL: number;
+  qtyAnak2: number;
   qtyAnak4: number;
   qtyAnak6: number;
   qtyAnak8: number;

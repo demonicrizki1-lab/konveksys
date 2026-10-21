@@ -72,6 +72,7 @@ export interface HargaBuyer {
   rateXL: number;        // Anak Seri Huruf: XL
   rateXXL: number;       // Anak Seri Huruf: 2XL
   rateSML?: number;      // Legacy fallback
+  rateAnak2: number;     // Anak Seri Angka: 2
   rateAnak4: number;     // Anak Seri Angka: 4
   rateAnak6: number;     // Anak Seri Angka: 6
   rateAnak8: number;     // Anak Seri Angka: 8
@@ -106,6 +107,7 @@ export interface SizeBreakdown {
   l: number;
   xl: number;
   xxl: number;
+  anak2: number;
   anak4: number;
   anak6: number;
   anak8: number;
@@ -433,6 +435,8 @@ export interface BuyerInvoiceSummary {
     rateXXL: number;
     qtySML?: number;
     rateSML?: number;
+    qtyAnak2: number;
+    rateAnak2: number;
     qtyAnak4: number;
     rateAnak4: number;
     qtyAnak6: number;

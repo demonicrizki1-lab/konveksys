@@ -66,6 +66,7 @@ const emptySizeBreakdown = (): SizeBreakdown => ({
   l: 0,
   xl: 0,
   xxl: 0,
+  anak2: 0,
   anak4: 0,
   anak6: 0,
   anak8: 0,
@@ -82,6 +83,7 @@ const calculateTotalPcs = (sz: SizeBreakdown): number => {
     (sz.l || 0) +
     (sz.xl || 0) +
     (sz.xxl || 0) +
+    (sz.anak2 || 0) +
     (sz.anak4 || 0) +
     (sz.anak6 || 0) +
     (sz.anak8 || 0) +
@@ -98,6 +100,7 @@ const SIZE_DISPLAY_ORDER: { key: keyof SizeBreakdown; label: string }[] = [
   { key: 'l', label: 'L' },
   { key: 'xl', label: 'XL' },
   { key: 'xxl', label: '2XL' },
+  { key: 'anak2', label: 'Anak 2' },
   { key: 'anak4', label: 'Anak 4' },
   { key: 'anak6', label: 'Anak 6' },
   { key: 'anak8', label: 'Anak 8' },
@@ -279,7 +282,7 @@ export const OutboundView: React.FC = () => {
   )?.targetCutQty || currentSPK?.targetCutQty || null;
 
   const currentDelivered: SizeBreakdown | null = currentTargetCut && currentRemaining
-    ? (['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).reduce<SizeBreakdown>(
+    ? (['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).reduce<SizeBreakdown>(
         (acc, sz) => {
           acc[sz] = Math.max(0, (currentTargetCut[sz] || 0) - (currentRemaining[sz] || 0));
           return acc;
@@ -1031,6 +1034,7 @@ export const OutboundView: React.FC = () => {
       qtySend.l > currentRemaining.l ||
       qtySend.xl > currentRemaining.xl ||
       qtySend.xxl > currentRemaining.xxl ||
+      qtySend.anak2 > currentRemaining.anak2 ||
       qtySend.anak4 > currentRemaining.anak4 ||
       qtySend.anak6 > currentRemaining.anak6 ||
       qtySend.anak8 > currentRemaining.anak8 ||
@@ -1780,10 +1784,10 @@ export const OutboundView: React.FC = () => {
                           {/* Ukuran Seri Angka */}
                           <div className="pt-2 border-t border-slate-100">
                             <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                              Ukuran Anak - Seri Angka (4 - 16)
+                              Ukuran Anak - Seri Angka (2 - 16)
                             </div>
-                            <div className="grid grid-cols-7 gap-1.5">
-                              {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                              {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
                                 const val = qtySend[sz] || 0;
                                 return (
                                   <div key={sz} className="space-y-1">
@@ -1963,10 +1967,10 @@ export const OutboundView: React.FC = () => {
                       {/* Ukuran Seri Angka */}
                       <div className="pt-2 border-t border-slate-100">
                         <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                          Ukuran Anak - Seri Angka (4 - 16)
+                          Ukuran Anak - Seri Angka (2 - 16)
                         </div>
-                        <div className="grid grid-cols-7 gap-1.5">
-                          {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                          {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
                             const val = qtySend[sz] || 0;
                             return (
                               <div key={sz} className="space-y-1">
@@ -2235,10 +2239,10 @@ export const OutboundView: React.FC = () => {
                       {/* Ukuran Anak Seri Angka */}
                       <div className="pt-2 border-t border-slate-100">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                          Ukuran Anak - Seri Angka (4 - 16)
+                          Ukuran Anak - Seri Angka (2 - 16)
                         </div>
-                        <div className="grid grid-cols-7 gap-1.5">
-                          {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                          {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
                             const rem = currentRemaining?.[sz] || 0;
                             const val = qtySend[sz] || 0;
                             const isSizeOver = val > rem;

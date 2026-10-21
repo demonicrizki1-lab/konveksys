@@ -62,6 +62,7 @@ const emptySizeBreakdown: SizeBreakdown = {
   l: 0,
   xl: 0,
   xxl: 0,
+  anak2: 0,
   anak4: 0,
   anak6: 0,
   anak8: 0,
@@ -75,6 +76,7 @@ const parseSizeKey = (ukuranStr?: string | null): keyof SizeBreakdown | null => 
   if (!ukuranStr) return null;
   const cleaned = ukuranStr.toLowerCase().trim().replace(/[\s-_]/g, '');
   if (['s', 'm', 'l', 'xl', 'xxl'].includes(cleaned)) return cleaned as keyof SizeBreakdown;
+  if (cleaned === 'anak2' || cleaned === '2' || cleaned === 'a2') return 'anak2';
   if (cleaned === 'anak4' || cleaned === '4' || cleaned === 'a4') return 'anak4';
   if (cleaned === 'anak6' || cleaned === '6' || cleaned === 'a6') return 'anak6';
   if (cleaned === 'anak8' || cleaned === '8' || cleaned === 'a8') return 'anak8';
@@ -244,6 +246,7 @@ export const SPKView: React.FC = () => {
     (cut.l || 0) +
     (cut.xl || 0) +
     (cut.xxl || 0) +
+    (cut.anak2 || 0) +
     (cut.anak4 || 0) +
     (cut.anak6 || 0) +
     (cut.anak8 || 0) +
@@ -303,6 +306,7 @@ export const SPKView: React.FC = () => {
     { key: 'l', label: 'L' },
     { key: 'xl', label: 'XL' },
     { key: 'xxl', label: 'XXL' },
+    { key: 'anak2', label: 'Anak 2' },
     { key: 'anak4', label: 'Anak 4' },
     { key: 'anak6', label: 'Anak 6' },
     { key: 'anak8', label: 'Anak 8' },
@@ -2676,10 +2680,10 @@ export const SPKView: React.FC = () => {
                     {/* Ukuran Anak Seri Angka */}
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                        Ukuran Anak - Seri Angka (Size 4 - 16):
+                        Ukuran Anak - Seri Angka (Size 2 - 16):
                       </span>
-                      <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-                        {(['anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                        {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
                           (sz) => {
                             const delivQty = currentActiveProduct.deliveredQty?.[sz] || 0;
                             return (
@@ -2993,7 +2997,7 @@ export const SPKView: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                            {(['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                            {(['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
                               (sz) => {
                                 const target = currentDetailItem.targetCutQty[sz] || 0;
                                 const deliv = currentDetailItem.deliveredQty?.[sz] || 0;
@@ -3031,7 +3035,7 @@ export const SPKView: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {(['s', 'm', 'l', 'xl', 'xxl', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                        {(['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
                           (sz) => {
                             const target = selectedSPKDetail.targetCutQty[sz] || 0;
                             const deliv = selectedSPKDetail.deliveredQty[sz] || 0;

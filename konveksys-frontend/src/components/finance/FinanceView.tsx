@@ -366,6 +366,7 @@ export const FinanceView: React.FC = () => {
         const qtyXL = it.qtyDelivered?.xl || 0;
         const qtyXXL = it.qtyDelivered?.xxl || 0;
         const qtySML = qtyS + qtyM + qtyL;
+        const qtyAnak2 = it.qtyDelivered?.anak2 || 0;
         const qtyAnak4 = it.qtyDelivered?.anak4 || 0;
         const qtyAnak6 = it.qtyDelivered?.anak6 || 0;
         const qtyAnak8 = it.qtyDelivered?.anak8 || 0;
@@ -379,6 +380,7 @@ export const FinanceView: React.FC = () => {
         const subL = qtyL * rates.rateL;
         const subXL = qtyXL * rates.rateXL;
         const subXXL = qtyXXL * rates.rateXXL;
+        const subAnak2 = qtyAnak2 * (rates.rateAnak2 || rates.rateAnak4 || 0);
         const subAnak4 = qtyAnak4 * rates.rateAnak4;
         const subAnak6 = qtyAnak6 * rates.rateAnak6;
         const subAnak8 = qtyAnak8 * rates.rateAnak8;
@@ -387,7 +389,7 @@ export const FinanceView: React.FC = () => {
         const subAnak14 = qtyAnak14 * rates.rateAnak14;
         const subAnak16 = qtyAnak16 * rates.rateAnak16;
 
-        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak2 + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
         const rowKey = `${sj.id || sj.noSuratJalan}_${itIdx}_${it.produk}`;
 
         list.push({
@@ -411,6 +413,8 @@ export const FinanceView: React.FC = () => {
           rateXXL: rates.rateXXL,
           qtySML,
           rateSML: rates.rateSML,
+          qtyAnak2,
+          rateAnak2: rates.rateAnak2 || rates.rateAnak4 || 0,
           qtyAnak4,
           rateAnak4: rates.rateAnak4,
           qtyAnak6,
@@ -571,6 +575,8 @@ export const FinanceView: React.FC = () => {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyXL || 0), 0);
           } else if (rawUkuran === 'xxl' || rawUkuran === '2xl' || rawUkuran === 'size 2xl' || rawUkuran === 'size xxl') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyXXL || 0), 0);
+          } else if (digitsOnly === '2') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak2 || 0), 0);
           } else if (digitsOnly === '4') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak4 || 0), 0);
           } else if (digitsOnly === '6') {
@@ -2192,6 +2198,7 @@ export const FinanceView: React.FC = () => {
                                 {!item.qtyS && !item.qtyM && !item.qtyL && (item.qtySML || 0) > 0 && (
                                   <div className="text-slate-600">Size Huruf: <strong>{item.qtySML} pcs</strong> @ {formatRp(item.rateSML || 0)}</div>
                                 )}
+                                {item.qtyAnak2 > 0 && <div className="text-slate-600">Anak 2: <strong>{item.qtyAnak2} pcs</strong> @ {formatRp(item.rateAnak2)}</div>}
                                 {item.qtyAnak4 > 0 && <div className="text-slate-600">Anak 4: <strong>{item.qtyAnak4} pcs</strong> @ {formatRp(item.rateAnak4)}</div>}
                                 {item.qtyAnak6 > 0 && <div className="text-slate-600">Anak 6: <strong>{item.qtyAnak6} pcs</strong> @ {formatRp(item.rateAnak6)}</div>}
                                 {item.qtyAnak8 > 0 && <div className="text-slate-600">Anak 8: <strong>{item.qtyAnak8} pcs</strong> @ {formatRp(item.rateAnak8)}</div>}

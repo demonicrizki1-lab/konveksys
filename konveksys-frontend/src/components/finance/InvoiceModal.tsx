@@ -368,6 +368,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                             {!item.qtyS && !item.qtyM && !item.qtyL && (item.qtySML || 0) > 0 && (
                               <div>Size Huruf: {item.qtySML} pcs @ {formatRp(item.rateSML || 0)}</div>
                             )}
+                            {item.qtyAnak2 > 0 && <div>Anak 2: {item.qtyAnak2} pcs @ {formatRp(item.rateAnak2)}</div>}
                             {item.qtyAnak4 > 0 && <div>Anak 4: {item.qtyAnak4} pcs @ {formatRp(item.rateAnak4)}</div>}
                             {item.qtyAnak6 > 0 && <div>Anak 6: {item.qtyAnak6} pcs @ {formatRp(item.rateAnak6)}</div>}
                             {item.qtyAnak8 > 0 && <div>Anak 8: {item.qtyAnak8} pcs @ {formatRp(item.rateAnak8)}</div>}

@@ -62,6 +62,7 @@ returnRoutes.post('/', async (c) => {
     (body.qtyL || 0) +
     (body.qtyXL || 0) +
     (body.qtyXXL || 0) +
+    (body.qtyAnak2 || 0) +
     (body.qtyAnak4 || 0) +
     (body.qtyAnak6 || 0) +
     (body.qtyAnak8 || 0) +
@@ -104,6 +105,7 @@ returnRoutes.post('/', async (c) => {
       qtyL: body.qtyL || 0,
       qtyXL: body.qtyXL || 0,
       qtyXXL: body.qtyXXL || 0,
+      qtyAnak2: body.qtyAnak2 || 0,
       qtyAnak4: body.qtyAnak4 || 0,
       qtyAnak6: body.qtyAnak6 || 0,
       qtyAnak8: body.qtyAnak8 || 0,

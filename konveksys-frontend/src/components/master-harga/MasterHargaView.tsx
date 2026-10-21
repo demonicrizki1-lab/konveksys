@@ -69,6 +69,7 @@ export const MasterHargaView: React.FC = () => {
     rateL: 30000,
     rateXL: 34000,
     rateXXL: 36000,
+    rateAnak2: 0,
     rateAnak4: 0,
     rateAnak6: 0,
     rateAnak8: 0,
@@ -241,6 +242,7 @@ export const MasterHargaView: React.FC = () => {
       rateL: 30000,
       rateXL: 34000,
       rateXXL: 36000,
+      rateAnak2: 0,
       rateAnak4: 0,
       rateAnak6: 0,
       rateAnak8: 0,
@@ -262,6 +264,7 @@ export const MasterHargaView: React.FC = () => {
       rateL: item.rateL ?? item.rateSML ?? 30000,
       rateXL: item.rateXL ?? 34000,
       rateXXL: item.rateXXL ?? item.rateXL ?? 36000,
+      rateAnak2: item.rateAnak2 || 0,
       rateAnak4: item.rateAnak4 || 0,
       rateAnak6: item.rateAnak6 || 0,
       rateAnak8: item.rateAnak8 || 0,
@@ -686,7 +689,7 @@ export const MasterHargaView: React.FC = () => {
                   <th colSpan={5} className="p-2 text-center bg-indigo-50 border-r border-slate-200 text-indigo-700 text-[9px] tracking-normal font-bold">
                     Ukuran Anak (Seri Huruf)
                   </th>
-                  <th colSpan={7} className="p-2 text-center bg-slate-100 border-r border-slate-200 text-slate-700 text-[9px] tracking-normal font-bold">
+                  <th colSpan={8} className="p-2 text-center bg-slate-100 border-r border-slate-200 text-slate-700 text-[9px] tracking-normal font-bold">
                     Ukuran Anak (Seri Angka)
                   </th>
                   <th rowSpan={2} className="p-3 text-right">Aksi</th>
@@ -697,6 +700,7 @@ export const MasterHargaView: React.FC = () => {
                   <th className="p-2 text-center bg-indigo-50/70 text-indigo-700 border-r border-slate-200">L</th>
                   <th className="p-2 text-center bg-indigo-50/70 text-indigo-700 border-r border-slate-200">XL</th>
                   <th className="p-2 text-center bg-indigo-50/70 text-indigo-700 border-r border-slate-200">2XL</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">2</th>
                   <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">4</th>
                   <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">6</th>
                   <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">8</th>
@@ -709,7 +713,7 @@ export const MasterHargaView: React.FC = () => {
               <tbody className="divide-y divide-slate-100 bg-white">
                 {paginatedBuyer.length === 0 ? (
                   <tr>
-                    <td colSpan={15} className="p-8 text-center text-slate-400">
+                    <td colSpan={16} className="p-8 text-center text-slate-400">
                       Tidak ada data tarif buyer yang sesuai dengan filter.
                     </td>
                   </tr>
@@ -736,6 +740,9 @@ export const MasterHargaView: React.FC = () => {
                       </td>
                       <td className="p-2 text-center font-bold text-indigo-600 bg-indigo-50/30 border-r border-slate-100">
                         {formatRp(row.rateXXL ?? row.rateXL)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak2)}
                       </td>
                       <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
                         {formatRp(row.rateAnak4)}
@@ -1127,13 +1134,24 @@ export const MasterHargaView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Ukuran Anak Seri Angka (4 - 16) */}
+              {/* Ukuran Anak Seri Angka (2 - 16) */}
               <div className="bg-blue-50/50 p-3.5 rounded-xl border border-blue-100 space-y-2.5">
                 <span className="font-bold text-blue-900 block border-b border-blue-100 pb-1">
-                  Pengaturan Tarif Ukuran Anak (Seri Angka 4 - 16) (Rp):
+                  Pengaturan Tarif Ukuran Anak (Seri Angka 2 - 16) (Rp):
                 </span>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div>
+                    <label className="block font-semibold text-slate-600 mb-1 text-center">Size 2:</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak2)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak2: parseRupiahInput(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none text-center focus:border-indigo-400"
+                    />
+                  </div>
                   <div>
                     <label className="block font-semibold text-slate-600 mb-1 text-center">Size 4:</label>
                     <input

@@ -112,7 +112,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
       restData.totalPcs ||
       (restData.qtySML || 0) + (restData.qtyM || 0) + (restData.qtyL || 0) +
       (restData.qtyXL || 0) + (restData.qtyXXL || 0) +
-      (restData.qtyAnak4 || 0) + (restData.qtyAnak6 || 0) + (restData.qtyAnak8 || 0) +
+      (restData.qtyAnak2 || 0) + (restData.qtyAnak4 || 0) + (restData.qtyAnak6 || 0) + (restData.qtyAnak8 || 0) +
       (restData.qtyAnak10 || 0) + (restData.qtyAnak12 || 0) + (restData.qtyAnak14 || 0) + (restData.qtyAnak16 || 0);
 
     let sj: any = null;
@@ -138,6 +138,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
             qtyL: restData.qtyL || 0,
             qtyXL: restData.qtyXL || 0,
             qtyXXL: restData.qtyXXL || 0,
+            qtyAnak2: restData.qtyAnak2 || 0,
             qtyAnak4: restData.qtyAnak4 || 0,
             qtyAnak6: restData.qtyAnak6 || 0,
             qtyAnak8: restData.qtyAnak8 || 0,
@@ -171,6 +172,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
               l: restData.qtyL || 0,
               xl: restData.qtyXL || 0,
               xxl: restData.qtyXXL || 0,
+              anak2: restData.qtyAnak2 || 0,
               anak4: restData.qtyAnak4 || 0,
               anak6: restData.qtyAnak6 || 0,
               anak8: restData.qtyAnak8 || 0,
@@ -198,6 +200,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
           deliveredL: { increment: deliv.l || 0 },
           deliveredXL: { increment: deliv.xl || 0 },
           deliveredXXL: { increment: deliv.xxl || 0 },
+          deliveredAnak2: { increment: deliv.anak2 || 0 },
           deliveredAnak4: { increment: deliv.anak4 || 0 },
           deliveredAnak6: { increment: deliv.anak6 || 0 },
           deliveredAnak8: { increment: deliv.anak8 || 0 },
@@ -217,13 +220,13 @@ outboundRoutes.post('/', adminOnly, async (c) => {
       const targetTotal =
         (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
         (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
-        (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
+        (updatedSpk.targetAnak2 || 0) + (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
         (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
 
       const deliveredTotal =
         (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
         (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
-        (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
+        (updatedSpk.deliveredAnak2 || 0) + (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
         (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
 
       const newStatus =
@@ -298,6 +301,7 @@ outboundRoutes.put('/:id', async (c) => {
       l: oldItem.qtyL || sj.qtyL || 0,
       xl: oldItem.qtyXL || sj.qtyXL || 0,
       xxl: oldItem.qtyXXL || sj.qtyXXL || 0,
+      anak2: oldItem.qtyAnak2 || sj.qtyAnak2 || 0,
       anak4: oldItem.qtyAnak4 || sj.qtyAnak4 || 0,
       anak6: oldItem.qtyAnak6 || sj.qtyAnak6 || 0,
       anak8: oldItem.qtyAnak8 || sj.qtyAnak8 || 0,
@@ -312,6 +316,7 @@ outboundRoutes.put('/:id', async (c) => {
     const deltaL = (newDeliv.l || 0) - (oldDeliv.l || 0);
     const deltaXL = (newDeliv.xl || 0) - (oldDeliv.xl || 0);
     const deltaXXL = (newDeliv.xxl || 0) - (oldDeliv.xxl || 0);
+    const deltaAnak2 = (newDeliv.anak2 || 0) - (oldDeliv.anak2 || 0);
     const deltaAnak4 = (newDeliv.anak4 || 0) - (oldDeliv.anak4 || 0);
     const deltaAnak6 = (newDeliv.anak6 || 0) - (oldDeliv.anak6 || 0);
     const deltaAnak8 = (newDeliv.anak8 || 0) - (oldDeliv.anak8 || 0);
@@ -328,6 +333,7 @@ outboundRoutes.put('/:id', async (c) => {
         deliveredL: { increment: deltaL },
         deliveredXL: { increment: deltaXL },
         deliveredXXL: { increment: deltaXXL },
+        deliveredAnak2: { increment: deltaAnak2 },
         deliveredAnak4: { increment: deltaAnak4 },
         deliveredAnak6: { increment: deltaAnak6 },
         deliveredAnak8: { increment: deltaAnak8 },
@@ -347,13 +353,13 @@ outboundRoutes.put('/:id', async (c) => {
     const targetTotal =
       (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
       (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
-      (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
+      (updatedSpk.targetAnak2 || 0) + (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
       (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
 
     const deliveredTotal =
       (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
       (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
-      (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
+      (updatedSpk.deliveredAnak2 || 0) + (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
       (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
 
     const newStatus =
@@ -390,6 +396,7 @@ outboundRoutes.put('/:id', async (c) => {
       qtyL: firstDeliv.l || 0,
       qtyXL: firstDeliv.xl || 0,
       qtyXXL: firstDeliv.xxl || 0,
+      qtyAnak2: firstDeliv.anak2 || 0,
       qtyAnak4: firstDeliv.anak4 || 0,
       qtyAnak6: firstDeliv.anak6 || 0,
       qtyAnak8: firstDeliv.anak8 || 0,
@@ -456,6 +463,7 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
             l: sj.qtyL || 0,
             xl: sj.qtyXL || 0,
             xxl: sj.qtyXXL || 0,
+            anak2: sj.qtyAnak2 || 0,
             anak4: sj.qtyAnak4 || 0,
             anak6: sj.qtyAnak6 || 0,
             anak8: sj.qtyAnak8 || 0,
@@ -491,6 +499,7 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
         deliveredL: Math.max(0, (targetSpk.deliveredL || 0) - (deliv.l || 0)),
         deliveredXL: Math.max(0, (targetSpk.deliveredXL || 0) - (deliv.xl || 0)),
         deliveredXXL: Math.max(0, (targetSpk.deliveredXXL || 0) - (deliv.xxl || 0)),
+        deliveredAnak2: Math.max(0, (targetSpk.deliveredAnak2 || 0) - (deliv.anak2 || 0)),
         deliveredAnak4: Math.max(0, (targetSpk.deliveredAnak4 || 0) - (deliv.anak4 || 0)),
         deliveredAnak6: Math.max(0, (targetSpk.deliveredAnak6 || 0) - (deliv.anak6 || 0)),
         deliveredAnak8: Math.max(0, (targetSpk.deliveredAnak8 || 0) - (deliv.anak8 || 0)),
@@ -510,13 +519,13 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
     const targetTotal =
       (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
       (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
-      (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
+      (updatedSpk.targetAnak2 || 0) + (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
       (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
 
     const deliveredTotal =
       (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
       (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
-      (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
+      (updatedSpk.deliveredAnak2 || 0) + (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
       (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
 
     const newStatus =
