@@ -22,6 +22,7 @@ import {
   Printer,
   Download,
   ShoppingBag,
+  ArrowUpDown,
 } from 'lucide-react';
 import { FobDepositTab } from './FobDepositTab';
 import { FabricStockPrintModal } from './FabricStockPrintModal';
@@ -69,22 +70,34 @@ export const InboundView: React.FC = () => {
 
   const formatRp = (num: number) => 'Rp ' + num.toLocaleString('id-ID');
 
-  const filteredRolls = inboundRolls.filter((roll) => {
-    // If brand user, strictly only see their own rolls
-    const effectiveBrand = userRole === 'BRAND' ? activeBrand : brandFilter;
-    const matchBrand = effectiveBrand === 'ALL' || roll.brand === effectiveBrand;
-    const matchStatus = statusFilter === 'ALL' || roll.status === statusFilter;
-    const matchSource =
-      sourceFilter === 'ALL' ||
-      (sourceFilter === 'FOB' ? roll.sourceType === 'FOB' : roll.sourceType !== 'FOB');
-    const matchSearch =
-      roll.rollCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      roll.jenisKain.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      roll.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (roll.sourcePONumber && roll.sourcePONumber.toLowerCase().includes(searchTerm.toLowerCase()));
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-    return matchBrand && matchStatus && matchSource && matchSearch;
-  });
+  const filteredRolls = useMemo(() => {
+    const list = inboundRolls.filter((roll) => {
+      // If brand user, strictly only see their own rolls
+      const effectiveBrand = userRole === 'BRAND' ? activeBrand : brandFilter;
+      const matchBrand = effectiveBrand === 'ALL' || roll.brand === effectiveBrand;
+      const matchStatus = statusFilter === 'ALL' || roll.status === statusFilter;
+      const matchSource =
+        sourceFilter === 'ALL' ||
+        (sourceFilter === 'FOB' ? roll.sourceType === 'FOB' : roll.sourceType !== 'FOB');
+      const matchSearch =
+        roll.rollCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        roll.jenisKain.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        roll.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (roll.sourcePONumber && roll.sourcePONumber.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      return matchBrand && matchStatus && matchSource && matchSearch;
+    });
+
+    // Urutkan kode rol secara berurutan alami (natural numeric: ROL-CRE-001 < ROL-CRE-087)
+    return list.sort((a, b) => {
+      const codeA = a.rollCode || '';
+      const codeB = b.rollCode || '';
+      const comp = codeA.localeCompare(codeB, 'id', { numeric: true, sensitivity: 'base' });
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+  }, [inboundRolls, userRole, activeBrand, brandFilter, statusFilter, sourceFilter, searchTerm, sortOrder]);
 
   // Pagination State (Default 10 per halaman)
   const [currentPage, setCurrentPage] = useState(1);
@@ -93,7 +106,7 @@ export const InboundView: React.FC = () => {
   // Reset pagination on filter or page size changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, brandFilter, statusFilter, sourceFilter, itemsPerPage, activeSubTab]);
+  }, [searchTerm, brandFilter, statusFilter, sourceFilter, itemsPerPage, activeSubTab, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRolls.length / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -561,10 +574,20 @@ export const InboundView: React.FC = () => {
                         title={isAllPageSelected ? 'Batalkan pilih halaman ini' : 'Pilih semua rol di halaman ini'}
                       />
                     </th>
-                    <th className="p-3.5">Kode Rol & Sumber</th>
+                    <th
+                      className="p-3.5 cursor-pointer hover:bg-slate-100/80 transition select-none group"
+                      onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                      title={`Klik untuk ubah urutan kode rol (Saat ini: ${sortOrder === 'asc' ? 'A-Z Menanjak' : 'Z-A Menurun'})`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Kode Rol &amp; Sumber</span>
+                        <ArrowUpDown className={`w-3.5 h-3.5 transition ${sortOrder === 'asc' ? 'text-indigo-600' : 'text-amber-600'}`} />
+                      </div>
+                    </th>
                     <th className="p-3.5 text-center whitespace-nowrap">Pemilik (Brand)</th>
                     <th className="p-3.5">Jenis Kain</th>
                     <th className="p-3.5">Panjang Kain</th>
+                    <th className="p-3.5 text-right whitespace-nowrap">Harga Satuan</th>
                     <th className="p-3.5">Status Fisik</th>
                     <th className="p-3.5">Tgl Masuk</th>
                     <th className="p-3.5">Keterangan</th>
@@ -574,7 +597,7 @@ export const InboundView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {paginatedRolls.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-slate-400">
+                      <td colSpan={10} className="p-8 text-center text-slate-400">
                         Tidak ada data rol kain yang sesuai dengan filter.
                       </td>
                     </tr>
@@ -604,7 +627,7 @@ export const InboundView: React.FC = () => {
                             />
                           </td>
                           <td className="p-3.5">
-                            <div className="font-semibold text-indigo-600 font-mono">{roll.rollCode}</div>
+                            <div className="font-bold text-indigo-600 tracking-tight tabular-nums">{roll.rollCode}</div>
                             {roll.sourceType === 'FOB' ? (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 mt-1 bg-indigo-50 text-indigo-700 font-sans font-bold rounded text-[9px] border border-indigo-200">
                                 FOB: {roll.sourcePONumber || 'Order'}
@@ -621,12 +644,24 @@ export const InboundView: React.FC = () => {
                             </span>
                           </td>
                           <td className="p-3.5 font-semibold text-slate-900">{roll.jenisKain}</td>
-                          <td className="p-3.5 font-bold">
+                          <td className="p-3.5 font-bold tabular-nums">
                             {roll.meterLength} m
                             {roll.meterUsed > 0 && (
                               <span className="text-[10px] text-slate-400 block font-normal">
                                 Terpakai: {roll.meterUsed} m
                               </span>
+                            )}
+                          </td>
+                          <td className="p-3.5 text-right whitespace-nowrap">
+                            {roll.hargaModalMeter > 0 ? (
+                              <div>
+                                <span className="font-semibold text-slate-800 tabular-nums">
+                                  {formatRp(roll.hargaModalMeter)}
+                                </span>
+                                <span className="text-[10px] text-slate-400 block font-normal">/ meter</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-xs">-</span>
                             )}
                           </td>
                           <td className="p-3.5">{getStatusBadge(roll.status)}</td>
