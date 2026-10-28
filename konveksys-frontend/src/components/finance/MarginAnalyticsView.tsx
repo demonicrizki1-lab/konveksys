@@ -253,6 +253,7 @@ export const MarginAnalyticsView: React.FC = () => {
         const qtyAnak12 = it.qtyDelivered?.anak12 || 0;
         const qtyAnak14 = it.qtyDelivered?.anak14 || 0;
         const qtyAnak16 = it.qtyDelivered?.anak16 || 0;
+        const qtyAnak18 = it.qtyDelivered?.anak18 || 0;
 
         const subHuruf =
           qtyS * (buyerRates.rateS || buyerRates.rateSML || 0) +
@@ -270,7 +271,8 @@ export const MarginAnalyticsView: React.FC = () => {
           qtyAnak10 * (buyerRates.rateAnak10 || 0) +
           qtyAnak12 * (buyerRates.rateAnak12 || 0) +
           qtyAnak14 * (buyerRates.rateAnak14 || 0) +
-          qtyAnak16 * (buyerRates.rateAnak16 || 0);
+          qtyAnak16 * (buyerRates.rateAnak16 || 0) +
+          qtyAnak18 * (buyerRates.rateAnak18 || buyerRates.rateAnak16 || 0);
 
         const itemOmzet = subHuruf + subAnak;
         const vendorRate = getVendorRate(it.vendor, it.produk, itBrand);

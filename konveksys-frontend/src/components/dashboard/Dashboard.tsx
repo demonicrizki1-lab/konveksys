@@ -54,7 +54,8 @@ export const Dashboard: React.FC = () => {
         (item.qtyDelivered?.anak10 || 0) * (rates.rateAnak10 || 0) +
         (item.qtyDelivered?.anak12 || 0) * (rates.rateAnak12 || 0) +
         (item.qtyDelivered?.anak14 || 0) * (rates.rateAnak14 || 0) +
-        (item.qtyDelivered?.anak16 || 0) * (rates.rateAnak16 || 0);
+        (item.qtyDelivered?.anak16 || 0) * (rates.rateAnak16 || 0) +
+        (item.qtyDelivered?.anak18 || 0) * (rates.rateAnak18 || rates.rateAnak16 || 0);
 
       return sAcc + (subHuruf + subAnak);
     }, 0);

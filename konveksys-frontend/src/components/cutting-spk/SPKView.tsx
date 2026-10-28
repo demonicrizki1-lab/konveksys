@@ -70,6 +70,7 @@ const emptySizeBreakdown: SizeBreakdown = {
   anak12: 0,
   anak14: 0,
   anak16: 0,
+  anak18: 0,
 };
 
 const parseSizeKey = (ukuranStr?: string | null): keyof SizeBreakdown | null => {
@@ -84,6 +85,7 @@ const parseSizeKey = (ukuranStr?: string | null): keyof SizeBreakdown | null => 
   if (cleaned === 'anak12' || cleaned === '12' || cleaned === 'a12') return 'anak12';
   if (cleaned === 'anak14' || cleaned === '14' || cleaned === 'a14') return 'anak14';
   if (cleaned === 'anak16' || cleaned === '16' || cleaned === 'a16') return 'anak16';
+  if (cleaned === 'anak18' || cleaned === '18' || cleaned === 'a18') return 'anak18';
   return null;
 };
 
@@ -253,7 +255,8 @@ export const SPKView: React.FC = () => {
     (cut.anak10 || 0) +
     (cut.anak12 || 0) +
     (cut.anak14 || 0) +
-    (cut.anak16 || 0);
+    (cut.anak16 || 0) +
+    (cut.anak18 || 0);
 
   // Grand Total of all products
   const grandTotalPcs = productItems.reduce(
@@ -314,6 +317,7 @@ export const SPKView: React.FC = () => {
     { key: 'anak12', label: 'Anak 12' },
     { key: 'anak14', label: 'Anak 14' },
     { key: 'anak16', label: 'Anak 16' },
+    { key: 'anak18', label: 'Anak 18' },
   ];
 
   const getDeadlineBadge = (targetDateStr: string) => {
@@ -623,11 +627,18 @@ export const SPKView: React.FC = () => {
       }
     }
 
+    const freshSplitItems = editingSpk ? getSpkItems(editingSpk) : [];
+
     // Validasi setiap produk item
     for (let i = 0; i < productItems.length; i++) {
       const item = productItems[i];
       if (!item.produk.trim()) {
         alert(`Nama Produk #${i + 1} wajib diisi!`);
+        setActiveProductTab(i);
+        return;
+      }
+      if (!item.vendor || !item.vendor.trim()) {
+        alert(`Mitra Konveksi (Vendor) untuk Produk #${i + 1} wajib dipilih!`);
         setActiveProductTab(i);
         return;
       }
@@ -640,15 +651,36 @@ export const SPKView: React.FC = () => {
 
       // Guardrail kuantiti terkirim jika sedang mode edit
       if (editingSpk) {
+        const freshItem = freshSplitItems.find(
+          (ex) => ex.id === item.id || ex.produk.trim().toUpperCase() === item.produk.trim().toUpperCase()
+        );
         const existingItem = editingSpk.items?.find(
           (ex) => ex.id === item.id || ex.produk.trim().toUpperCase() === item.produk.trim().toUpperCase()
         );
-        const deliv = item.deliveredQty || existingItem?.deliveredQty || (editingSpk.items && editingSpk.items.length > 1 ? emptySizeBreakdown : (editingSpk.deliveredQty || emptySizeBreakdown));
+
+        let deliv: SizeBreakdown = emptySizeBreakdown;
+        if (item.deliveredQty) {
+          deliv = item.deliveredQty;
+        } else if (freshItem?.deliveredQty) {
+          deliv = freshItem.deliveredQty;
+        } else if (existingItem?.deliveredQty) {
+          deliv = existingItem.deliveredQty;
+        } else if (
+          (!editingSpk.items || editingSpk.items.length <= 1) &&
+          editingSpk.produk.trim().toUpperCase() === item.produk.trim().toUpperCase()
+        ) {
+          // Hanya jika nama produk persis sama dengan produk SPK tunggal lama
+          deliv = editingSpk.deliveredQty || emptySizeBreakdown;
+        } else {
+          // Produk baru yang baru ditambahkan: belum ada pengiriman
+          deliv = emptySizeBreakdown;
+        }
+
         for (const sz of Object.keys(emptySizeBreakdown) as (keyof SizeBreakdown)[]) {
           const alreadyDelivered = deliv[sz] || 0;
           if (item.targetCut[sz] < alreadyDelivered) {
             alert(
-              `Target potong ukuran ${sz.toUpperCase()} untuk produk "${item.produk}" tidak boleh kurang dari kuantiti yang sudah dikirim via Surat Jalan (${alreadyDelivered} Pcs)!`
+              `Target potong ukuran ${sz.toUpperCase().replace('ANAK', 'A')} untuk produk "${item.produk}" tidak boleh kurang dari kuantiti yang sudah dikirim via Surat Jalan (${alreadyDelivered} Pcs)!`
             );
             setActiveProductTab(i);
             return;
@@ -669,11 +701,8 @@ export const SPKView: React.FC = () => {
       .map((it) => it.produk.trim().toUpperCase())
       .join(' + ');
 
-    const vendorSummary = Array.from(
-      new Set(productItems.map((it) => it.vendor))
-    ).join(', ');
-
-    const freshSplitItems = editingSpk ? getSpkItems(editingSpk) : [];
+    // Primary vendor untuk relasi foreign key tabel SpkCutting di database (wajib single valid vendor)
+    const primaryVendor = productItems[0]?.vendor?.trim() || vendors[0]?.name || 'SAHIRA';
 
     const effectiveDepIds = Array.from(
       new Set([selectedDepositId, ...selectedDepositIds].filter(Boolean))
@@ -775,7 +804,7 @@ export const SPKView: React.FC = () => {
     const payload = {
       brand: primaryDep ? primaryDep.brand : selectedBrand,
       produk: produkSummary,
-      vendor: vendorSummary,
+      vendor: primaryVendor,
       rollIds: fabricSourceType === 'ROLL_GUDANG' ? [...selectedRollIds] : [],
       targetCutQty: combinedTargetCut,
       tanggalSPK: new Date().toISOString().split('T')[0],
@@ -1778,7 +1807,11 @@ export const SPKView: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                     <div>
                       <span className="text-[10px] text-slate-400 block font-semibold">Vendor:</span>
-                      <strong className="text-slate-800 truncate block">{spk.vendor}</strong>
+                      <strong className="text-slate-800 truncate block">
+                        {spk.items && spk.items.length > 1
+                          ? Array.from(new Set(spk.items.map((i) => i.vendor).filter(Boolean))).join(', ') || spk.vendor
+                          : spk.vendor}
+                      </strong>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 block font-semibold">Deadline:</span>
@@ -2680,10 +2713,10 @@ export const SPKView: React.FC = () => {
                     {/* Ukuran Anak Seri Angka */}
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                        Ukuran Anak - Seri Angka (Size 2 - 16):
+                        Ukuran Anak - Seri Angka (Size 2 - 18):
                       </span>
-                      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                        {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                      <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5">
+                        {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'] as (keyof SizeBreakdown)[]).map(
                           (sz) => {
                             const delivQty = currentActiveProduct.deliveredQty?.[sz] || 0;
                             return (
@@ -2997,7 +3030,7 @@ export const SPKView: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                            {(['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                            {(['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'] as (keyof SizeBreakdown)[]).map(
                               (sz) => {
                                 const target = currentDetailItem.targetCutQty[sz] || 0;
                                 const deliv = currentDetailItem.deliveredQty?.[sz] || 0;
@@ -3035,7 +3068,7 @@ export const SPKView: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {(['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map(
+                        {(['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'] as (keyof SizeBreakdown)[]).map(
                           (sz) => {
                             const target = selectedSPKDetail.targetCutQty[sz] || 0;
                             const deliv = selectedSPKDetail.deliveredQty[sz] || 0;

@@ -376,6 +376,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                             {item.qtyAnak12 > 0 && <div>Anak 12: {item.qtyAnak12} pcs @ {formatRp(item.rateAnak12)}</div>}
                             {item.qtyAnak14 > 0 && <div>Anak 14: {item.qtyAnak14} pcs @ {formatRp(item.rateAnak14)}</div>}
                             {item.qtyAnak16 > 0 && <div>Anak 16: {item.qtyAnak16} pcs @ {formatRp(item.rateAnak16)}</div>}
+                            {item.qtyAnak18 > 0 && <div>Anak 18: {item.qtyAnak18} pcs @ {formatRp(item.rateAnak18)}</div>}
                           </td>
                           <td className="p-2 text-center font-bold text-slate-800 whitespace-nowrap">
                             {item.totalPcs.toLocaleString('id-ID')} Pcs

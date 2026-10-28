@@ -322,6 +322,7 @@ export interface ApiHargaBuyer {
   rateAnak12: number | string;
   rateAnak14: number | string;
   rateAnak16: number | string;
+  rateAnak18?: number | string;
 }
 
 export async function apiGetHargaBuyer() {
@@ -548,6 +549,7 @@ export interface ApiReturnItem {
   qtyAnak12: number;
   qtyAnak14: number;
   qtyAnak16: number;
+  qtyAnak18: number;
   totalPcs: number;
   qtyReworked: number;
   qtyRejectTotal: number;
@@ -583,6 +585,7 @@ export async function apiCreateReturn(data: {
   qtyAnak12: number;
   qtyAnak14: number;
   qtyAnak16: number;
+  qtyAnak18: number;
 }) {
   return apiFetch<ApiReturnItem>('/api/returns', {
     method: 'POST',

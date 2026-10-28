@@ -74,6 +74,7 @@ const emptySizeBreakdown = (): SizeBreakdown => ({
   anak12: 0,
   anak14: 0,
   anak16: 0,
+  anak18: 0,
 });
 
 const calculateTotalPcs = (sz: SizeBreakdown): number => {
@@ -90,7 +91,8 @@ const calculateTotalPcs = (sz: SizeBreakdown): number => {
     (sz.anak10 || 0) +
     (sz.anak12 || 0) +
     (sz.anak14 || 0) +
-    (sz.anak16 || 0)
+    (sz.anak16 || 0) +
+    (sz.anak18 || 0)
   );
 };
 
@@ -108,6 +110,7 @@ const SIZE_DISPLAY_ORDER: { key: keyof SizeBreakdown; label: string }[] = [
   { key: 'anak12', label: 'Anak 12' },
   { key: 'anak14', label: 'Anak 14' },
   { key: 'anak16', label: 'Anak 16' },
+  { key: 'anak18', label: 'Anak 18' },
 ];
 
 export const OutboundView: React.FC = () => {
@@ -282,7 +285,7 @@ export const OutboundView: React.FC = () => {
   )?.targetCutQty || currentSPK?.targetCutQty || null;
 
   const currentDelivered: SizeBreakdown | null = currentTargetCut && currentRemaining
-    ? (['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).reduce<SizeBreakdown>(
+    ? (['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'] as (keyof SizeBreakdown)[]).reduce<SizeBreakdown>(
         (acc, sz) => {
           acc[sz] = Math.max(0, (currentTargetCut[sz] || 0) - (currentRemaining[sz] || 0));
           return acc;
@@ -952,10 +955,11 @@ export const OutboundView: React.FC = () => {
 
     const firstItem = finalItems[0];
     const distinctBrands = Array.from(new Set(finalItems.map((i) => i.brand).filter(Boolean)));
-    const sjBrand = distinctBrands.length === 1 ? distinctBrands[0] : distinctBrands.join(', ');
+    // Untuk foreign key database SuratJalan_brand_fkey, gunakan brand tunggal valid
+    const primaryBrand = distinctBrands[0] || selectedBrand || brands[0]?.name || 'GREYWOLF';
 
     const payload = {
-      brand: sjBrand,
+      brand: primaryBrand,
       produk: finalItems.map((i) => i.produk).join(', '),
       vendor: Array.from(new Set(finalItems.map((i) => i.vendor))).join(', '),
       tanggal: tanggalKirim,
@@ -1041,7 +1045,8 @@ export const OutboundView: React.FC = () => {
       qtySend.anak10 > currentRemaining.anak10 ||
       qtySend.anak12 > currentRemaining.anak12 ||
       qtySend.anak14 > currentRemaining.anak14 ||
-      qtySend.anak16 > currentRemaining.anak16);
+      qtySend.anak16 > currentRemaining.anak16 ||
+      (qtySend.anak18 || 0) > (currentRemaining.anak18 || 0));
 
   return (
     <div className="space-y-6">
@@ -1168,11 +1173,17 @@ export const OutboundView: React.FC = () => {
                       </td>
                       <td className="p-3.5 align-top text-center">
                         <div className="flex flex-wrap gap-1 justify-center max-w-[140px]">
-                          {sj.brand.split(',').map((b, bIdx) => (
-                            <span key={bIdx} className="inline-flex items-center justify-center px-2 py-0.5 bg-slate-100 text-slate-800 font-bold rounded text-[10px] uppercase border border-slate-200 whitespace-nowrap">
-                              {b.trim()}
-                            </span>
-                          ))}
+                          {(() => {
+                            const itemBrands = items.map((it) => it.brand).filter(Boolean);
+                            const allBrands = Array.from(
+                              new Set([sj.brand, ...itemBrands].flatMap((b) => (b ? b.split(',').map((x) => x.trim()) : [])).filter(Boolean))
+                            );
+                            return allBrands.map((b, bIdx) => (
+                              <span key={bIdx} className="inline-flex items-center justify-center px-2 py-0.5 bg-slate-100 text-slate-800 font-bold rounded text-[10px] uppercase border border-slate-200 whitespace-nowrap">
+                                {b}
+                              </span>
+                            ));
+                          })()}
                         </div>
                       </td>
                       <td className="p-3.5 align-top space-y-1.5 min-w-[240px]">
@@ -1784,10 +1795,10 @@ export const OutboundView: React.FC = () => {
                           {/* Ukuran Seri Angka */}
                           <div className="pt-2 border-t border-slate-100">
                             <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                              Ukuran Anak - Seri Angka (2 - 16)
+                              Ukuran Anak - Seri Angka (2 - 18)
                             </div>
-                            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                              {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                            <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5">
+                              {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'] as (keyof SizeBreakdown)[]).map((sz) => {
                                 const val = qtySend[sz] || 0;
                                 return (
                                   <div key={sz} className="space-y-1">
@@ -1967,10 +1978,10 @@ export const OutboundView: React.FC = () => {
                       {/* Ukuran Seri Angka */}
                       <div className="pt-2 border-t border-slate-100">
                         <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                          Ukuran Anak - Seri Angka (2 - 16)
+                          Ukuran Anak - Seri Angka (2 - 18)
                         </div>
-                        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                          {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                        <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5">
+                          {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'] as (keyof SizeBreakdown)[]).map((sz) => {
                             const val = qtySend[sz] || 0;
                             return (
                               <div key={sz} className="space-y-1">
@@ -2239,10 +2250,10 @@ export const OutboundView: React.FC = () => {
                       {/* Ukuran Anak Seri Angka */}
                       <div className="pt-2 border-t border-slate-100">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                          Ukuran Anak - Seri Angka (2 - 16)
+                          Ukuran Anak - Seri Angka (2 - 18)
                         </div>
-                        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                          {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'] as (keyof SizeBreakdown)[]).map((sz) => {
+                        <div className="grid grid-cols-3 sm:grid-cols-9 gap-1.5">
+                          {(['anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'] as (keyof SizeBreakdown)[]).map((sz) => {
                             const rem = currentRemaining?.[sz] || 0;
                             const val = qtySend[sz] || 0;
                             const isSizeOver = val > rem;
@@ -2381,7 +2392,15 @@ export const OutboundView: React.FC = () => {
                   <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                     <span>Surat Jalan Pengiriman Resmi</span>
                     <span className="text-slate-400">•</span>
-                    <span className="text-indigo-600">{selectedSJDetail.brand}</span>
+                    <span className="text-indigo-600">
+                      {(() => {
+                        const detailItems = getSuratJalanItems(selectedSJDetail);
+                        const allBrands = Array.from(
+                          new Set([selectedSJDetail.brand, ...detailItems.map((i) => i.brand)].flatMap((b) => (b ? b.split(',').map((x) => x.trim()) : [])).filter(Boolean))
+                        );
+                        return allBrands.join(' & ') || selectedSJDetail.brand;
+                      })()}
+                    </span>
                   </div>
                   <div className="text-[11px] font-mono text-slate-500">{selectedSJDetail.noSuratJalan}</div>
                 </div>
@@ -2453,7 +2472,15 @@ export const OutboundView: React.FC = () => {
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Brand Tujuan:</span>
-                      <strong className="text-slate-900 text-sm font-bold">{selectedSJDetail.brand}</strong>
+                      <strong className="text-slate-900 text-sm font-bold">
+                        {(() => {
+                          const detailItems = getSuratJalanItems(selectedSJDetail);
+                          const allBrands = Array.from(
+                            new Set([selectedSJDetail.brand, ...detailItems.map((i) => i.brand)].flatMap((b) => (b ? b.split(',').map((x) => x.trim()) : [])).filter(Boolean))
+                          );
+                          return allBrands.join(' & ') || selectedSJDetail.brand;
+                        })()}
+                      </strong>
                       <div className="text-slate-500 text-[11px] mt-0.5">Partner Brand Makloon</div>
                     </div>
 

@@ -374,6 +374,7 @@ export const FinanceView: React.FC = () => {
         const qtyAnak12 = it.qtyDelivered?.anak12 || 0;
         const qtyAnak14 = it.qtyDelivered?.anak14 || 0;
         const qtyAnak16 = it.qtyDelivered?.anak16 || 0;
+        const qtyAnak18 = it.qtyDelivered?.anak18 || 0;
 
         const subS = qtyS * rates.rateS;
         const subM = qtyM * rates.rateM;
@@ -388,8 +389,9 @@ export const FinanceView: React.FC = () => {
         const subAnak12 = qtyAnak12 * rates.rateAnak12;
         const subAnak14 = qtyAnak14 * rates.rateAnak14;
         const subAnak16 = qtyAnak16 * rates.rateAnak16;
+        const subAnak18 = qtyAnak18 * (rates.rateAnak18 || rates.rateAnak16);
 
-        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak2 + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak2 + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16 + subAnak18;
         const rowKey = `${sj.id || sj.noSuratJalan}_${itIdx}_${it.produk}`;
 
         list.push({
@@ -429,6 +431,8 @@ export const FinanceView: React.FC = () => {
           rateAnak14: rates.rateAnak14,
           qtyAnak16,
           rateAnak16: rates.rateAnak16,
+          qtyAnak18,
+          rateAnak18: rates.rateAnak18 || rates.rateAnak16,
           totalPcs: it.totalPcs,
           totalAmount,
           itemPo: resolveItemPONumber(it, spkList, sj, productionPOs) || undefined,
@@ -591,6 +595,8 @@ export const FinanceView: React.FC = () => {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak14 || 0), 0);
           } else if (digitsOnly === '16') {
             deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak16 || 0), 0);
+          } else if (digitsOnly === '18') {
+            deliveredQty = matchingSjs.reduce((s, it) => s + (it.qtyAnak18 || 0), 0);
           } else {
             const sameProductCount = po.items.filter(
               i => i.namaProduk.trim().toLowerCase() === poItem.namaProduk.trim().toLowerCase()
@@ -2206,6 +2212,7 @@ export const FinanceView: React.FC = () => {
                                 {item.qtyAnak12 > 0 && <div className="text-slate-600">Anak 12: <strong>{item.qtyAnak12} pcs</strong> @ {formatRp(item.rateAnak12)}</div>}
                                 {item.qtyAnak14 > 0 && <div className="text-slate-600">Anak 14: <strong>{item.qtyAnak14} pcs</strong> @ {formatRp(item.rateAnak14)}</div>}
                                 {item.qtyAnak16 > 0 && <div className="text-slate-600">Anak 16: <strong>{item.qtyAnak16} pcs</strong> @ {formatRp(item.rateAnak16)}</div>}
+                                {item.qtyAnak18 > 0 && <div className="text-slate-600">Anak 18: <strong>{item.qtyAnak18} pcs</strong> @ {formatRp(item.rateAnak18)}</div>}
                               </td>
                               <td className="p-3 text-center font-bold text-slate-800 font-mono">{item.totalPcs}</td>
                               <td className="p-3 text-right font-bold text-slate-900 font-mono">{formatRp(item.totalAmount)}</td>

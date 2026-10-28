@@ -83,6 +83,29 @@ spkRoutes.post('/', async (c) => {
       ? new Date(spkData.targetSelesai)
       : null;
 
+    // Sanitize vendor (bisa berupa multiple vendor jika combo SPK, misal "SAHIRA, BU NIKEN")
+    let resolvedVendor = spkData.vendor ? String(spkData.vendor).trim() : '';
+    if (resolvedVendor.includes(',')) {
+      resolvedVendor = resolvedVendor.split(',')[0].trim();
+    }
+    let vendorRecord = resolvedVendor
+      ? await prisma.vendor.findUnique({ where: { name: resolvedVendor } })
+      : null;
+    if (!vendorRecord && resolvedVendor) {
+      vendorRecord = await prisma.vendor.findFirst({
+        where: { name: { equals: resolvedVendor, mode: 'insensitive' } },
+      });
+    }
+    if (!vendorRecord) {
+      vendorRecord = await prisma.vendor.findFirst({ orderBy: { name: 'asc' } });
+      if (!vendorRecord) {
+        return c.json({ error: 'Belum ada data Vendor yang terdaftar di database.' }, 400);
+      }
+      resolvedVendor = vendorRecord.name;
+    } else {
+      resolvedVendor = vendorRecord.name;
+    }
+
     let spk: any = null;
     let attempts = 0;
     while (attempts < 3) {
@@ -91,6 +114,7 @@ spkRoutes.post('/', async (c) => {
         spk = await prisma.spkCutting.create({
           data: {
             ...spkData,
+            vendor: resolvedVendor,
             spkNumber: finalSpkNumber,
             tanggalSPK: tanggalSPKDate,
             targetSelesai: targetSelesaiDate,
@@ -121,6 +145,11 @@ spkRoutes.post('/', async (c) => {
     return c.json(spk, 201);
   } catch (error: any) {
     console.error('Error creating SPK:', error);
+    if (error?.code === 'P2003') {
+      return c.json({
+        error: `Gagal membuat SPK: Relasi data (${error.meta?.field_name || 'Vendor/Brand'}) tidak valid di database. Pastikan Mitra Konveksi dan Brand terdaftar di Master Data.`,
+      }, 400);
+    }
     return c.json({ error: error?.message || 'Terjadi kesalahan saat membuat SPK.' }, 500);
   }
 });
@@ -169,18 +198,20 @@ spkRoutes.put('/:id', async (c) => {
     const targetAnak12 = spkData.targetAnak12 !== undefined ? Number(spkData.targetAnak12) : existingSpk.targetAnak12;
     const targetAnak14 = spkData.targetAnak14 !== undefined ? Number(spkData.targetAnak14) : existingSpk.targetAnak14;
     const targetAnak16 = spkData.targetAnak16 !== undefined ? Number(spkData.targetAnak16) : existingSpk.targetAnak16;
+    const targetAnak18 = spkData.targetAnak18 !== undefined ? Number(spkData.targetAnak18) : existingSpk.targetAnak18;
 
     // Calculate total target vs total delivered to auto-adjust status
     const targetTotal =
       targetS + targetM + targetL + targetXL + targetXXL +
-      targetAnak2 + targetAnak4 + targetAnak6 + targetAnak8 + targetAnak10 + targetAnak12 + targetAnak14 + targetAnak16;
+      targetAnak2 + targetAnak4 + targetAnak6 + targetAnak8 + targetAnak10 + targetAnak12 + targetAnak14 + targetAnak16 + targetAnak18;
 
     const deliveredTotal =
       (existingSpk.deliveredS || 0) + (existingSpk.deliveredM || 0) + (existingSpk.deliveredL || 0) +
       (existingSpk.deliveredXL || 0) + (existingSpk.deliveredXXL || 0) +
       (existingSpk.deliveredAnak2 || 0) + (existingSpk.deliveredAnak4 || 0) + (existingSpk.deliveredAnak6 || 0) + (existingSpk.deliveredAnak8 || 0) +
       (existingSpk.deliveredAnak10 || 0) + (existingSpk.deliveredAnak12 || 0) + (existingSpk.deliveredAnak14 || 0) +
-      (existingSpk.deliveredAnak16 || 0);
+      (existingSpk.deliveredAnak16 || 0) +
+      (existingSpk.deliveredAnak18 || 0);
 
     let status = existingSpk.status;
     if (deliveredTotal > 0) {
@@ -233,12 +264,30 @@ spkRoutes.put('/:id', async (c) => {
       }
     }
 
+    let resolvedVendor = spkData.vendor ? String(spkData.vendor).trim() : existingSpk.vendor;
+    if (resolvedVendor && resolvedVendor.includes(',')) {
+      resolvedVendor = resolvedVendor.split(',')[0].trim();
+    }
+    let vendorRecord = resolvedVendor
+      ? await prisma.vendor.findUnique({ where: { name: resolvedVendor } })
+      : null;
+    if (!vendorRecord && resolvedVendor) {
+      vendorRecord = await prisma.vendor.findFirst({
+        where: { name: { equals: resolvedVendor, mode: 'insensitive' } },
+      });
+    }
+    if (vendorRecord) {
+      resolvedVendor = vendorRecord.name;
+    } else {
+      resolvedVendor = existingSpk.vendor;
+    }
+
     const updatedSpk = await prisma.spkCutting.update({
       where: { id },
       data: {
         brand: spkData.brand ? String(spkData.brand).trim() : existingSpk.brand,
         produk: spkData.produk ? String(spkData.produk).trim() : existingSpk.produk,
-        vendor: spkData.vendor ? String(spkData.vendor).trim() : existingSpk.vendor,
+        vendor: resolvedVendor,
         tanggalSPK: tanggalSPKDate,
         targetSelesai: targetSelesaiDate,
         catatan: spkData.catatan !== undefined ? spkData.catatan : existingSpk.catatan,
@@ -255,6 +304,7 @@ spkRoutes.put('/:id', async (c) => {
         targetAnak12,
         targetAnak14,
         targetAnak16,
+        targetAnak18,
         status,
         ...(spkData.sourcePONumber !== undefined ? { sourcePONumber: spkData.sourcePONumber } : {}),
         ...(spkData.items !== undefined ? { items: spkData.items } : {}),
@@ -265,6 +315,11 @@ spkRoutes.put('/:id', async (c) => {
     return c.json(updatedSpk);
   } catch (error: any) {
     console.error('Error updating SPK:', error);
+    if (error?.code === 'P2003') {
+      return c.json({
+        error: `Gagal memperbarui SPK: Relasi data (${error.meta?.field_name || 'Vendor/Brand'}) tidak valid di database. Pastikan Mitra Konveksi dan Brand terdaftar di Master Data.`,
+      }, 400);
+    }
     return c.json({ error: error?.message || 'Terjadi kesalahan saat memperbarui SPK.' }, 500);
   }
 });

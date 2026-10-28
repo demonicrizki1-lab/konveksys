@@ -158,6 +158,7 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
         const qtyAnak12 = it.qtyDelivered?.anak12 || 0;
         const qtyAnak14 = it.qtyDelivered?.anak14 || 0;
         const qtyAnak16 = it.qtyDelivered?.anak16 || 0;
+        const qtyAnak18 = it.qtyDelivered?.anak18 || 0;
 
         const subS = qtyS * rates.rateS;
         const subM = qtyM * rates.rateM;
@@ -172,9 +173,10 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
         const subAnak12 = qtyAnak12 * rates.rateAnak12;
         const subAnak14 = qtyAnak14 * rates.rateAnak14;
         const subAnak16 = qtyAnak16 * rates.rateAnak16;
+        const subAnak18 = qtyAnak18 * (rates.rateAnak18 || rates.rateAnak16);
 
         const totalAmount =
-          subS + subM + subL + subXL + subXXL + subAnak2 + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+          subS + subM + subL + subXL + subXXL + subAnak2 + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16 + subAnak18;
 
         list.push({
           suratJalanNo: sj.noSuratJalan,
@@ -209,6 +211,8 @@ export const BrandInvoicePortal: React.FC<BrandInvoicePortalProps> = ({
           rateAnak14: rates.rateAnak14,
           qtyAnak16,
           rateAnak16: rates.rateAnak16,
+          qtyAnak18,
+          rateAnak18: rates.rateAnak18 || rates.rateAnak16,
           totalPcs: it.totalPcs,
           totalAmount,
           itemPo: resolveItemPONumber(it, spkList, sj, productionPOs) || undefined,

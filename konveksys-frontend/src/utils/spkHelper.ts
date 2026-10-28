@@ -14,11 +14,12 @@ export const emptySizeBreakdown: SizeBreakdown = {
   anak12: 0,
   anak14: 0,
   anak16: 0,
+  anak18: 0,
 };
 
 export const SIZE_KEYS = [
   's', 'm', 'l', 'xl', 'xxl',
-  'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16',
+  'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18',
 ] as (keyof SizeBreakdown)[];
 
 /**
@@ -60,6 +61,7 @@ export function convertFobItemsToSizeBreakdown(items: any[] = []): SizeBreakdown
     else if (rawSize === '12' || rawSize === 'ANAK 12' || rawSize === 'ANAK12') sb.anak12 += qty;
     else if (rawSize === '14' || rawSize === 'ANAK 14' || rawSize === 'ANAK14') sb.anak14 += qty;
     else if (rawSize === '16' || rawSize === 'ANAK 16' || rawSize === 'ANAK16') sb.anak16 += qty;
+    else if (rawSize === '18' || rawSize === 'ANAK 18' || rawSize === 'ANAK18') sb.anak18 += qty;
     else {
       sb.l += qty;
     }

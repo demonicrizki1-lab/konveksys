@@ -123,6 +123,7 @@ model HargaBuyer {
   rateAnak12   Decimal @db.Decimal(12, 2) @default(0)
   rateAnak14   Decimal @db.Decimal(12, 2) @default(0)
   rateAnak16   Decimal @db.Decimal(12, 2) @default(0)
+  rateAnak18   Decimal @db.Decimal(12, 2) @default(0)
 
   brandRef Brand @relation(fields: [brand], references: [name], onDelete: Cascade)
 
@@ -177,6 +178,7 @@ model SpkCutting {
   targetAnak12  Int @default(0)
   targetAnak14  Int @default(0)
   targetAnak16  Int @default(0)
+  targetAnak18  Int @default(0)
 
   deliveredS       Int @default(0)
   deliveredM       Int @default(0)
@@ -191,6 +193,7 @@ model SpkCutting {
   deliveredAnak12  Int @default(0)
   deliveredAnak14  Int @default(0)
   deliveredAnak16  Int @default(0)
+  deliveredAnak18  Int @default(0)
 
   brandRef       Brand        @relation(fields: [brand], references: [name])
   vendorRef      Vendor       @relation(fields: [vendor], references: [name])
@@ -240,6 +243,7 @@ model SuratJalan {
   qtyAnak12     Int @default(0)
   qtyAnak14     Int @default(0)
   qtyAnak16     Int @default(0)
+  qtyAnak18     Int @default(0)
   totalPcs      Int @default(0)
 
   spk        SpkCutting?  @relation(fields: [spkId], references: [id])
@@ -279,6 +283,7 @@ model ReturnItem {
   qtyAnak12      Int          @default(0)
   qtyAnak14      Int          @default(0)
   qtyAnak16      Int          @default(0)
+  qtyAnak18      Int          @default(0)
   totalPcs       Int          @default(0)
 
   qtyReworked    Int          @default(0)

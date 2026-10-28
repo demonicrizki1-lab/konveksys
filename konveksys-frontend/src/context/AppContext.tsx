@@ -570,6 +570,7 @@ interface AppContextType {
     rateAnak12: number;
     rateAnak14: number;
     rateAnak16: number;
+    rateAnak18: number;
   };
   getSPKRemainingQty: (spk: SPKCutting, spkItemId?: string) => SizeBreakdown & { totalRemaining: number };
   vendorSettlements: VendorPayrollSettlement[];
@@ -1055,6 +1056,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           rateAnak12: Number(hb.rateAnak12 || 0),
           rateAnak14: Number(hb.rateAnak14 || 0),
           rateAnak16: Number(hb.rateAnak16 || 0),
+          rateAnak18: Number(hb.rateAnak18 || 0),
         }));
         setHargaBuyer(mapped);
         setCache('harga_buyer', mapped);
@@ -1111,6 +1113,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak12: s.targetAnak12 || 0,
             anak14: s.targetAnak14 || 0,
             anak16: s.targetAnak16 || 0,
+            anak18: s.targetAnak18 || 0,
           };
           const deliveredQty = {
             s: s.deliveredS || 0,
@@ -1126,6 +1129,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak12: s.deliveredAnak12 || 0,
             anak14: s.deliveredAnak14 || 0,
             anak16: s.deliveredAnak16 || 0,
+            anak18: s.deliveredAnak18 || 0,
           };
 
           const mappedPONumbers = Array.isArray(s.sourcePONumbers)
@@ -1184,7 +1188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : deliveredQty;
           const targetTotal = Object.values(targetCutQty).reduce((a, b) => a + b, 0);
           const effectiveDelivTotal = Math.max(dynamicDeliveredTotal, rawDeliveredTotal);
-          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'];
           const hasUnfulfilled = SIZES_CHECK.some(sz => (targetCutQty[sz] || 0) > (finalDeliveredQty[sz] || 0));
 
           const computedStatus: SPKCutting['status'] =
@@ -1258,6 +1262,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak12: sj.qtyAnak12 || 0,
             anak14: sj.qtyAnak14 || 0,
             anak16: sj.qtyAnak16 || 0,
+            anak18: sj.qtyAnak18 || 0,
           },
         }));
         setSuratJalanList(mapped);
@@ -1310,6 +1315,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak12: r.qtyAnak12 || 0,
             anak14: r.qtyAnak14 || 0,
             anak16: r.qtyAnak16 || 0,
+            anak18: r.qtyAnak18 || 0,
           },
           totalPcs: r.totalPcs || 0,
           qtyReworked: r.qtyReworked || 0,
@@ -3096,6 +3102,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           rateAnak12: Number(data.rateAnak12 ?? item.rateAnak12),
           rateAnak14: Number(data.rateAnak14 ?? item.rateAnak14),
           rateAnak16: Number(data.rateAnak16 ?? item.rateAnak16),
+          rateAnak18: Number(data.rateAnak18 ?? item.rateAnak18),
         } : hb)));
       }
     } catch (err) {
@@ -3430,7 +3437,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       items = spkData.items.map((it, idx) => ({
         ...it,
         id: it.id || `item-${Date.now()}-${idx + 1}`,
-        deliveredQty: it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+        deliveredQty: it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 },
       }));
     } else {
       items = [
@@ -3439,7 +3446,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           produk: spkData.produk,
           vendor: spkData.vendor,
           targetCutQty: { ...spkData.targetCutQty },
-          deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+          deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 },
         },
       ];
     }
@@ -3449,7 +3456,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: tempId,
       spkNumber,
       items,
-      deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+      deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 },
       status: 'IN_PRODUCTION',
     };
 
@@ -3550,6 +3557,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetAnak12: spkData.targetCutQty.anak12 || 0,
         targetAnak14: spkData.targetCutQty.anak14 || 0,
         targetAnak16: spkData.targetCutQty.anak16 || 0,
+        targetAnak18: spkData.targetCutQty.anak18 || 0,
         rollIds: spkData.rollIds || [],
         sourcePONumber: spkData.sourcePONumber || null,
         items: items || null,
@@ -3766,6 +3774,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetAnak12: updatedTargetCutQty.anak12 || 0,
         targetAnak14: updatedTargetCutQty.anak14 || 0,
         targetAnak16: updatedTargetCutQty.anak16 || 0,
+        targetAnak18: updatedTargetCutQty.anak18 || 0,
         rollIds: newRollIds,
         sourcePONumber: updatedSPK.sourcePONumber || null,
         items: updatedSPK.items || null,
@@ -3905,7 +3914,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const parts = sj.produk.split(/[,+]/).map(p => p.trim()).filter(Boolean);
       if (parts.length > 1) {
         const numParts = parts.length;
-        const baseQty = sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+        const baseQty = sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 };
         return parts.map((partName, idx) => {
           const partQty: SizeBreakdown = {
             s: Math.floor((baseQty.s || 0) / numParts) + (idx === 0 ? (baseQty.s || 0) % numParts : 0),
@@ -3921,6 +3930,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak12: Math.floor((baseQty.anak12 || 0) / numParts) + (idx === 0 ? (baseQty.anak12 || 0) % numParts : 0),
             anak14: Math.floor((baseQty.anak14 || 0) / numParts) + (idx === 0 ? (baseQty.anak14 || 0) % numParts : 0),
             anak16: Math.floor((baseQty.anak16 || 0) / numParts) + (idx === 0 ? (baseQty.anak16 || 0) % numParts : 0),
+            anak18: Math.floor((baseQty.anak18 || 0) / numParts) + (idx === 0 ? (baseQty.anak18 || 0) % numParts : 0),
           };
           const partTotal = Object.values(partQty).reduce((a, b) => a + b, 0);
 
@@ -3951,7 +3961,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         produk: sj.produk || '',
         vendor: sj.vendor || '',
         jenisKain: jenisKain || 'Kain Standar',
-        qtyDelivered: sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+        qtyDelivered: sj.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 },
         totalPcs: sj.totalPcs || 0,
         catatan: sj.catatan,
       },
@@ -4022,7 +4032,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             produk: p,
             vendor: targetSPK.vendor,
             targetCutQty: { ...targetSPK.targetCutQty },
-            deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 },
+            deliveredQty: { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 },
           }));
         }
 
@@ -4033,7 +4043,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
 
             if (isTargetItem) {
-              const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+              const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 };
               return {
                 ...it,
                 deliveredQty: {
@@ -4050,6 +4060,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   anak12: itemDeliv.anak12 + deliv.anak12,
                   anak14: itemDeliv.anak14 + deliv.anak14,
                   anak16: itemDeliv.anak16 + deliv.anak16,
+                  anak18: itemDeliv.anak18 + (deliv.anak18 || 0),
                 },
               };
             }
@@ -4071,11 +4082,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           anak12: targetSPK.deliveredQty.anak12 + deliv.anak12,
           anak14: targetSPK.deliveredQty.anak14 + deliv.anak14,
           anak16: targetSPK.deliveredQty.anak16 + deliv.anak16,
+          anak18: (targetSPK.deliveredQty.anak18 || 0) + (deliv.anak18 || 0),
         };
 
         const targetTotal = Object.values(targetSPK.targetCutQty).reduce((a, b) => a + b, 0);
         const newTotalDelivered = Object.values(updatedDelivered).reduce((a, b) => a + b, 0);
-        const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+        const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'];
         const hasUnfulfilledSize = SIZES_CHECK.some(sz => (targetSPK.targetCutQty[sz] || 0) > (updatedDelivered[sz] || 0));
 
         const newStatus: SPKCutting['status'] =
@@ -4176,6 +4188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qtyAnak12: firstItem.qtyDelivered.anak12 || 0,
         qtyAnak14: firstItem.qtyDelivered.anak14 || 0,
         qtyAnak16: firstItem.qtyDelivered.anak16 || 0,
+        qtyAnak18: firstItem.qtyDelivered.anak18 || 0,
       });
 
       if (error) {
@@ -4288,6 +4301,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const deltaAnak12 = (newDeliv?.anak12 || 0) - (oldDeliv?.anak12 || 0);
         const deltaAnak14 = (newDeliv?.anak14 || 0) - (oldDeliv?.anak14 || 0);
         const deltaAnak16 = (newDeliv?.anak16 || 0) - (oldDeliv?.anak16 || 0);
+        const deltaAnak18 = (newDeliv?.anak18 || 0) - (oldDeliv?.anak18 || 0);
 
         let updatedItems = spk.items;
         if (updatedItems && updatedItems.length > 0) {
@@ -4313,6 +4327,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   anak12: Math.max(0, it.deliveredQty.anak12 + deltaAnak12),
                   anak14: Math.max(0, it.deliveredQty.anak14 + deltaAnak14),
                   anak16: Math.max(0, it.deliveredQty.anak16 + deltaAnak16),
+                  anak18: Math.max(0, (it.deliveredQty.anak18 || 0) + deltaAnak18),
                 },
               };
             }
@@ -4334,6 +4349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           anak12: Math.max(0, (spk.deliveredQty?.anak12 || 0) + deltaAnak12),
           anak14: Math.max(0, (spk.deliveredQty?.anak14 || 0) + deltaAnak14),
           anak16: Math.max(0, (spk.deliveredQty?.anak16 || 0) + deltaAnak16),
+          anak18: Math.max(0, (spk.deliveredQty?.anak18 || 0) + deltaAnak18),
         };
 
         const targetTotal = Object.values(spk.targetCutQty || {}).reduce((a, b) => a + b, 0);
@@ -4459,6 +4475,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     anak12: Math.max(0, it.deliveredQty.anak12 - item.qtyDelivered.anak12),
                     anak14: Math.max(0, it.deliveredQty.anak14 - item.qtyDelivered.anak14),
                     anak16: Math.max(0, it.deliveredQty.anak16 - item.qtyDelivered.anak16),
+                    anak18: Math.max(0, (it.deliveredQty.anak18 || 0) - (item.qtyDelivered.anak18 || 0)),
                   },
                 };
               }
@@ -4480,10 +4497,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak12: Math.max(0, spk.deliveredQty.anak12 - item.qtyDelivered.anak12),
             anak14: Math.max(0, spk.deliveredQty.anak14 - item.qtyDelivered.anak14),
             anak16: Math.max(0, spk.deliveredQty.anak16 - item.qtyDelivered.anak16),
+            anak18: Math.max(0, (spk.deliveredQty.anak18 || 0) - (item.qtyDelivered.anak18 || 0)),
           };
           const targetTotal = Object.values(spk.targetCutQty).reduce((a, b) => a + b, 0);
           const totalDelivered = Object.values(newDelivered).reduce((a, b) => a + b, 0);
-          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+          const SIZES_CHECK: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'];
           const hasUnfulfilledSize = SIZES_CHECK.some(sz => (spk.targetCutQty[sz] || 0) > (newDelivered[sz] || 0));
 
           const newStatus: SPKCutting['status'] =
@@ -4524,7 +4542,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Surat Jalan tidak ditemukan.' };
     }
 
-    const SIZES: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16'];
+    const SIZES: (keyof SizeBreakdown)[] = ['s', 'm', 'l', 'xl', 'xxl', 'anak2', 'anak4', 'anak6', 'anak8', 'anak10', 'anak12', 'anak14', 'anak16', 'anak18'];
 
     // 1. Dapatkan items lama sebelum diedit
     const oldItems: SuratJalanItem[] = getSuratJalanItems(targetSJ);
@@ -4570,6 +4588,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     anak12: Math.max(0, it.deliveredQty.anak12 - (item.qtyDelivered?.anak12 || 0)),
                     anak14: Math.max(0, it.deliveredQty.anak14 - (item.qtyDelivered?.anak14 || 0)),
                     anak16: Math.max(0, it.deliveredQty.anak16 - (item.qtyDelivered?.anak16 || 0)),
+                    anak18: Math.max(0, (it.deliveredQty.anak18 || 0) - (item.qtyDelivered?.anak18 || 0)),
                   },
                 };
               }
@@ -4591,6 +4610,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak12: Math.max(0, spk.deliveredQty.anak12 - (item.qtyDelivered?.anak12 || 0)),
             anak14: Math.max(0, spk.deliveredQty.anak14 - (item.qtyDelivered?.anak14 || 0)),
             anak16: Math.max(0, spk.deliveredQty.anak16 - (item.qtyDelivered?.anak16 || 0)),
+            anak18: Math.max(0, (spk.deliveredQty.anak18 || 0) - (item.qtyDelivered?.anak18 || 0)),
           };
 
           updatedList[spkIdx] = {
@@ -4607,7 +4627,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const spkIdx = updatedList.findIndex(s => s.id === item.spkId || s.spkNumber === item.spkId);
         if (spkIdx !== -1) {
           const spk = updatedList[spkIdx];
-          const deliv = item.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+          const deliv = item.qtyDelivered || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 };
           let updatedItems = spk.items;
           if (updatedItems && updatedItems.length > 0) {
             updatedItems = updatedItems.map(it => {
@@ -4616,7 +4636,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 : it.produk.trim().toUpperCase() === item.produk.trim().toUpperCase();
 
               if (isTargetItem) {
-                const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+                const itemDeliv = it.deliveredQty || { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 };
                 return {
                   ...it,
                   deliveredQty: {
@@ -4633,6 +4653,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     anak12: itemDeliv.anak12 + (deliv.anak12 || 0),
                     anak14: itemDeliv.anak14 + (deliv.anak14 || 0),
                     anak16: itemDeliv.anak16 + (deliv.anak16 || 0),
+                    anak18: (itemDeliv.anak18 || 0) + (deliv.anak18 || 0),
                   },
                 };
               }
@@ -4654,6 +4675,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             anak12: spk.deliveredQty.anak12 + (deliv.anak12 || 0),
             anak14: spk.deliveredQty.anak14 + (deliv.anak14 || 0),
             anak16: spk.deliveredQty.anak16 + (deliv.anak16 || 0),
+            anak18: (spk.deliveredQty.anak18 || 0) + (deliv.anak18 || 0),
           };
 
           updatedList[spkIdx] = {
@@ -4750,6 +4772,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qtyAnak12: firstItem.qtyDelivered?.anak12 || 0,
         qtyAnak14: firstItem.qtyDelivered?.anak14 || 0,
         qtyAnak16: firstItem.qtyDelivered?.anak16 || 0,
+        qtyAnak18: firstItem.qtyDelivered?.anak18 || 0,
       });
     } catch (err) {
       console.warn('Backend update Surat Jalan failed, updated locally:', err);
@@ -4839,6 +4862,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rateAnak12: matched.rateAnak12 || 0,
         rateAnak14: matched.rateAnak14 || 0,
         rateAnak16: matched.rateAnak16 || 0,
+        rateAnak18: matched.rateAnak18 || 0,
       };
     }
     return {
@@ -4856,12 +4880,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       rateAnak12: 43000,
       rateAnak14: 45000,
       rateAnak16: 47000,
+      rateAnak18: 49000,
     };
   };
 
   const getSPKRemainingQty = (spk: SPKCutting, spkItemId?: string): SizeBreakdown & { totalRemaining: number } => {
     let target: SizeBreakdown = spk.targetCutQty;
-    let deliv: SizeBreakdown = { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 };
+    let deliv: SizeBreakdown = { s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 };
 
     const matchedItem = spkItemId && spk.items && spk.items.length > 0
       ? spk.items.find(it => it.id === spkItemId || it.produk.trim().toUpperCase() === spkItemId.trim().toUpperCase())
@@ -4984,6 +5009,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   deliv.anak12 += Number(qDeliv?.anak12) || 0;
                   deliv.anak14 += Number(qDeliv?.anak14) || 0;
                   deliv.anak16 += Number(qDeliv?.anak16) || 0;
+                  deliv.anak18 += Number(qDeliv?.anak18) || 0;
                 }
               } else {
                 if (directMatch || itemIdMatch || fabricMatch) {
@@ -5000,6 +5026,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   deliv.anak12 += Number(qDeliv?.anak12) || 0;
                   deliv.anak14 += Number(qDeliv?.anak14) || 0;
                   deliv.anak16 += Number(qDeliv?.anak16) || 0;
+                  deliv.anak18 += Number(qDeliv?.anak18) || 0;
                 }
               }
             }
@@ -5030,9 +5057,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const anak12 = Math.max(0, target.anak12 - deliv.anak12);
     const anak14 = Math.max(0, target.anak14 - deliv.anak14);
     const anak16 = Math.max(0, target.anak16 - deliv.anak16);
-    const totalRemaining = s + m + l + xl + xxl + anak2 + anak4 + anak6 + anak8 + anak10 + anak12 + anak14 + anak16;
+    const anak18 = Math.max(0, (target.anak18 || 0) - (deliv.anak18 || 0));
+    const totalRemaining = s + m + l + xl + xxl + anak2 + anak4 + anak6 + anak8 + anak10 + anak12 + anak14 + anak16 + anak18;
 
-    return { s, m, l, xl, xxl, anak2, anak4, anak6, anak8, anak10, anak12, anak14, anak16, totalRemaining };
+    return { s, m, l, xl, xxl, anak2, anak4, anak6, anak8, anak10, anak12, anak14, anak16, anak18, totalRemaining };
   };
 
   // Payroll Calculation Engine (Support Payment by Completed PO)
@@ -5272,6 +5300,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const qtyAnak12 = it.qtyDelivered?.anak12 || 0;
         const qtyAnak14 = it.qtyDelivered?.anak14 || 0;
         const qtyAnak16 = it.qtyDelivered?.anak16 || 0;
+        const qtyAnak18 = it.qtyDelivered?.anak18 || 0;
 
         const subS = qtyS * rates.rateS;
         const subM = qtyM * rates.rateM;
@@ -5286,8 +5315,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const subAnak12 = qtyAnak12 * rates.rateAnak12;
         const subAnak14 = qtyAnak14 * rates.rateAnak14;
         const subAnak16 = qtyAnak16 * rates.rateAnak16;
+        const subAnak18 = qtyAnak18 * (rates.rateAnak18 || rates.rateAnak16);
 
-        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak2 + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16;
+        const totalAmount = subS + subM + subL + subXL + subXXL + subAnak2 + subAnak4 + subAnak6 + subAnak8 + subAnak10 + subAnak12 + subAnak14 + subAnak16 + subAnak18;
         grandTotal += totalAmount;
         totalPcs += it.totalPcs;
 
@@ -5324,6 +5354,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           rateAnak14: rates.rateAnak14,
           qtyAnak16,
           rateAnak16: rates.rateAnak16,
+          qtyAnak18,
+          rateAnak18: rates.rateAnak18 || rates.rateAnak16,
           totalPcs: it.totalPcs,
           totalAmount,
         });
@@ -5601,7 +5633,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       data.qtyBreakdown.anak10 +
       data.qtyBreakdown.anak12 +
       data.qtyBreakdown.anak14 +
-      data.qtyBreakdown.anak16;
+      data.qtyBreakdown.anak16 +
+      (data.qtyBreakdown.anak18 || 0);
 
     if (totalPcs <= 0) {
       return { success: false, message: 'Jumlah barang retur harus lebih dari 0 pcs.' };
@@ -5664,6 +5697,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         qtyAnak12: data.qtyBreakdown.anak12,
         qtyAnak14: data.qtyBreakdown.anak14,
         qtyAnak16: data.qtyBreakdown.anak16,
+        qtyAnak18: data.qtyBreakdown.anak18 || 0,
       });
 
       if (error) {

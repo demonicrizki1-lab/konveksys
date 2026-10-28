@@ -75,7 +75,8 @@ financeRoutes.get('/invoice/:brandName', async (c) => {
       sj.qtyAnak10 * Number(rates?.rateAnak10 || 0) +
       sj.qtyAnak12 * Number(rates?.rateAnak12 || 0) +
       sj.qtyAnak14 * Number(rates?.rateAnak14 || 0) +
-      sj.qtyAnak16 * Number(rates?.rateAnak16 || 0);
+      sj.qtyAnak16 * Number(rates?.rateAnak16 || 0) +
+      sj.qtyAnak18 * Number(rates?.rateAnak18 || rates?.rateAnak16 || 0);
     return { suratJalanNo: sj.noSuratJalan, tanggal: sj.tanggal, produk: sj.produk, totalPcs: sj.totalPcs, totalAmount };
   });
 

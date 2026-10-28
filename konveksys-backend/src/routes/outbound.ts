@@ -113,7 +113,30 @@ outboundRoutes.post('/', adminOnly, async (c) => {
       (restData.qtySML || 0) + (restData.qtyM || 0) + (restData.qtyL || 0) +
       (restData.qtyXL || 0) + (restData.qtyXXL || 0) +
       (restData.qtyAnak2 || 0) + (restData.qtyAnak4 || 0) + (restData.qtyAnak6 || 0) + (restData.qtyAnak8 || 0) +
-      (restData.qtyAnak10 || 0) + (restData.qtyAnak12 || 0) + (restData.qtyAnak14 || 0) + (restData.qtyAnak16 || 0);
+      (restData.qtyAnak10 || 0) + (restData.qtyAnak12 || 0) + (restData.qtyAnak14 || 0) + (restData.qtyAnak16 || 0) + (restData.qtyAnak18 || 0);
+
+    // Sanitize and validate brand (bisa berupa multiple brand jika muatan multi-brand, misal "CITA-CITA, GREYWOLF")
+    let resolvedBrand = restData.brand ? String(restData.brand).trim() : '';
+    if (resolvedBrand.includes(',')) {
+      resolvedBrand = resolvedBrand.split(',')[0].trim();
+    }
+    let brandRecord = resolvedBrand
+      ? await prisma.brand.findUnique({ where: { name: resolvedBrand } })
+      : null;
+    if (!brandRecord && resolvedBrand) {
+      brandRecord = await prisma.brand.findFirst({
+        where: { name: { equals: resolvedBrand, mode: 'insensitive' } },
+      });
+    }
+    if (!brandRecord) {
+      brandRecord = await prisma.brand.findFirst({ orderBy: { name: 'asc' } });
+      if (!brandRecord) {
+        return c.json({ error: 'Belum ada data Brand yang terdaftar di database.' }, 400);
+      }
+      resolvedBrand = brandRecord.name;
+    } else {
+      resolvedBrand = brandRecord.name;
+    }
 
     let sj: any = null;
     let attempts = 0;
@@ -124,7 +147,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
           data: {
             noSuratJalan: finalNoSj,
             spkId: validSpkId,
-            brand: restData.brand,
+            brand: resolvedBrand,
             produk: restData.produk,
             vendor: restData.vendor,
             tanggal: restData.tanggal ? new Date(restData.tanggal) : new Date(),
@@ -146,6 +169,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
             qtyAnak12: restData.qtyAnak12 || 0,
             qtyAnak14: restData.qtyAnak14 || 0,
             qtyAnak16: restData.qtyAnak16 || 0,
+            qtyAnak18: restData.qtyAnak18 || 0,
             totalPcs,
           },
         });
@@ -180,6 +204,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
               anak12: restData.qtyAnak12 || 0,
               anak14: restData.qtyAnak14 || 0,
               anak16: restData.qtyAnak16 || 0,
+              anak18: restData.qtyAnak18 || 0,
             },
           },
         ]
@@ -208,6 +233,7 @@ outboundRoutes.post('/', adminOnly, async (c) => {
           deliveredAnak12: { increment: deliv.anak12 || 0 },
           deliveredAnak14: { increment: deliv.anak14 || 0 },
           deliveredAnak16: { increment: deliv.anak16 || 0 },
+          deliveredAnak18: { increment: deliv.anak18 || 0 },
         },
       }).catch((err: any) => console.warn(`Failed updating SPK ${it.spkId}:`, err));
     }
@@ -221,13 +247,13 @@ outboundRoutes.post('/', adminOnly, async (c) => {
         (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
         (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
         (updatedSpk.targetAnak2 || 0) + (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
-        (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
+        (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0) + (updatedSpk.targetAnak18 || 0);
 
       const deliveredTotal =
         (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
         (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
         (updatedSpk.deliveredAnak2 || 0) + (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
-        (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
+        (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0) + (updatedSpk.deliveredAnak18 || 0);
 
       const newStatus =
         deliveredTotal <= 0
@@ -247,6 +273,11 @@ outboundRoutes.post('/', adminOnly, async (c) => {
     return c.json(sj, 201);
   } catch (error: any) {
     console.error('Error creating Surat Jalan:', error);
+    if (error?.code === 'P2003') {
+      return c.json({
+        error: `Gagal membuat Surat Jalan: Relasi data (${error.meta?.field_name || 'Brand/SPK'}) tidak valid di database. Pastikan Brand dan SPK terdaftar di sistem.`,
+      }, 400);
+    }
     return c.json({ error: error?.message || 'Terjadi kesalahan saat membuat Surat Jalan.' }, 500);
   }
 });
@@ -309,6 +340,7 @@ outboundRoutes.put('/:id', async (c) => {
       anak12: oldItem.qtyAnak12 || sj.qtyAnak12 || 0,
       anak14: oldItem.qtyAnak14 || sj.qtyAnak14 || 0,
       anak16: oldItem.qtyAnak16 || sj.qtyAnak16 || 0,
+      anak18: oldItem.qtyAnak18 || sj.qtyAnak18 || 0,
     };
 
     const deltaS = (newDeliv.s || 0) - (oldDeliv.s || 0);
@@ -324,6 +356,7 @@ outboundRoutes.put('/:id', async (c) => {
     const deltaAnak12 = (newDeliv.anak12 || 0) - (oldDeliv.anak12 || 0);
     const deltaAnak14 = (newDeliv.anak14 || 0) - (oldDeliv.anak14 || 0);
     const deltaAnak16 = (newDeliv.anak16 || 0) - (oldDeliv.anak16 || 0);
+    const deltaAnak18 = (newDeliv.anak18 || 0) - (oldDeliv.anak18 || 0);
 
     await prisma.spkCutting.update({
       where: { id: spkId },
@@ -341,6 +374,7 @@ outboundRoutes.put('/:id', async (c) => {
         deliveredAnak12: { increment: deltaAnak12 },
         deliveredAnak14: { increment: deltaAnak14 },
         deliveredAnak16: { increment: deltaAnak16 },
+        deliveredAnak18: { increment: deltaAnak18 },
       },
     }).catch((err: any) => console.warn(`Failed adjusting SPK ${spkId}:`, err));
   }
@@ -354,13 +388,13 @@ outboundRoutes.put('/:id', async (c) => {
       (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
       (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
       (updatedSpk.targetAnak2 || 0) + (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
-      (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
+      (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0) + (updatedSpk.targetAnak18 || 0);
 
     const deliveredTotal =
       (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
       (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
       (updatedSpk.deliveredAnak2 || 0) + (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
-      (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
+      (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0) + (updatedSpk.deliveredAnak18 || 0);
 
     const newStatus =
       deliveredTotal <= 0
@@ -404,6 +438,7 @@ outboundRoutes.put('/:id', async (c) => {
       qtyAnak12: firstDeliv.anak12 || 0,
       qtyAnak14: firstDeliv.anak14 || 0,
       qtyAnak16: firstDeliv.anak16 || 0,
+      qtyAnak18: firstDeliv.anak18 || 0,
     },
   });
 
@@ -471,6 +506,7 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
             anak12: sj.qtyAnak12 || 0,
             anak14: sj.qtyAnak14 || 0,
             anak16: sj.qtyAnak16 || 0,
+            anak18: sj.qtyAnak18 || 0,
           },
         },
       ];
@@ -507,6 +543,7 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
         deliveredAnak12: Math.max(0, (targetSpk.deliveredAnak12 || 0) - (deliv.anak12 || 0)),
         deliveredAnak14: Math.max(0, (targetSpk.deliveredAnak14 || 0) - (deliv.anak14 || 0)),
         deliveredAnak16: Math.max(0, (targetSpk.deliveredAnak16 || 0) - (deliv.anak16 || 0)),
+        deliveredAnak18: Math.max(0, (targetSpk.deliveredAnak18 || 0) - (deliv.anak18 || 0)),
       },
     }).catch((err: any) => console.warn(`Failed reverting SPK ${targetSpk.id}:`, err));
   }
@@ -520,13 +557,13 @@ outboundRoutes.delete('/:id', adminOnly, async (c) => {
       (updatedSpk.targetS || 0) + (updatedSpk.targetM || 0) + (updatedSpk.targetL || 0) +
       (updatedSpk.targetXL || 0) + (updatedSpk.targetXXL || 0) +
       (updatedSpk.targetAnak2 || 0) + (updatedSpk.targetAnak4 || 0) + (updatedSpk.targetAnak6 || 0) + (updatedSpk.targetAnak8 || 0) +
-      (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0);
+      (updatedSpk.targetAnak10 || 0) + (updatedSpk.targetAnak12 || 0) + (updatedSpk.targetAnak14 || 0) + (updatedSpk.targetAnak16 || 0) + (updatedSpk.targetAnak18 || 0);
 
     const deliveredTotal =
       (updatedSpk.deliveredS || 0) + (updatedSpk.deliveredM || 0) + (updatedSpk.deliveredL || 0) +
       (updatedSpk.deliveredXL || 0) + (updatedSpk.deliveredXXL || 0) +
       (updatedSpk.deliveredAnak2 || 0) + (updatedSpk.deliveredAnak4 || 0) + (updatedSpk.deliveredAnak6 || 0) + (updatedSpk.deliveredAnak8 || 0) +
-      (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0);
+      (updatedSpk.deliveredAnak10 || 0) + (updatedSpk.deliveredAnak12 || 0) + (updatedSpk.deliveredAnak14 || 0) + (updatedSpk.deliveredAnak16 || 0) + (updatedSpk.deliveredAnak18 || 0);
 
     const newStatus =
       deliveredTotal <= 0

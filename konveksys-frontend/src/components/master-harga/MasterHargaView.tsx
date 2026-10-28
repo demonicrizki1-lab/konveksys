@@ -77,6 +77,7 @@ export const MasterHargaView: React.FC = () => {
     rateAnak12: 0,
     rateAnak14: 0,
     rateAnak16: 0,
+    rateAnak18: 0,
   });
 
   const formatRp = (num: number) => {
@@ -250,6 +251,7 @@ export const MasterHargaView: React.FC = () => {
       rateAnak12: 0,
       rateAnak14: 0,
       rateAnak16: 0,
+      rateAnak18: 0,
     });
     setIsBuyerModalOpen(true);
   };
@@ -272,6 +274,7 @@ export const MasterHargaView: React.FC = () => {
       rateAnak12: item.rateAnak12 || 0,
       rateAnak14: item.rateAnak14 || 0,
       rateAnak16: item.rateAnak16 || 0,
+      rateAnak18: item.rateAnak18 || 0,
     });
     setIsBuyerModalOpen(true);
   };
@@ -689,7 +692,7 @@ export const MasterHargaView: React.FC = () => {
                   <th colSpan={5} className="p-2 text-center bg-indigo-50 border-r border-slate-200 text-indigo-700 text-[9px] tracking-normal font-bold">
                     Ukuran Anak (Seri Huruf)
                   </th>
-                  <th colSpan={8} className="p-2 text-center bg-slate-100 border-r border-slate-200 text-slate-700 text-[9px] tracking-normal font-bold">
+                  <th colSpan={9} className="p-2 text-center bg-slate-100 border-r border-slate-200 text-slate-700 text-[9px] tracking-normal font-bold">
                     Ukuran Anak (Seri Angka)
                   </th>
                   <th rowSpan={2} className="p-3 text-right">Aksi</th>
@@ -708,12 +711,13 @@ export const MasterHargaView: React.FC = () => {
                   <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">12</th>
                   <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">14</th>
                   <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">16</th>
+                  <th className="p-2 text-center bg-slate-100/70 text-slate-700 border-r border-slate-200">18</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {paginatedBuyer.length === 0 ? (
                   <tr>
-                    <td colSpan={16} className="p-8 text-center text-slate-400">
+                    <td colSpan={17} className="p-8 text-center text-slate-400">
                       Tidak ada data tarif buyer yang sesuai dengan filter.
                     </td>
                   </tr>
@@ -764,6 +768,9 @@ export const MasterHargaView: React.FC = () => {
                       </td>
                       <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
                         {formatRp(row.rateAnak16)}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-600 border-r border-slate-100">
+                        {formatRp(row.rateAnak18)}
                       </td>
                       <td className="p-3 text-right space-x-1">
                         <button
@@ -1137,10 +1144,10 @@ export const MasterHargaView: React.FC = () => {
               {/* Ukuran Anak Seri Angka (2 - 16) */}
               <div className="bg-blue-50/50 p-3.5 rounded-xl border border-blue-100 space-y-2.5">
                 <span className="font-bold text-blue-900 block border-b border-blue-100 pb-1">
-                  Pengaturan Tarif Ukuran Anak (Seri Angka 2 - 16) (Rp):
+                  Pengaturan Tarif Ukuran Anak (Seri Angka 2 - 18) (Rp):
                 </span>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
                   <div>
                     <label className="block font-semibold text-slate-600 mb-1 text-center">Size 2:</label>
                     <input
@@ -1226,6 +1233,17 @@ export const MasterHargaView: React.FC = () => {
                       placeholder="0"
                       value={formatRupiahInput(buyerForm.rateAnak16)}
                       onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak16: parseRupiahInput(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none text-center focus:border-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-600 mb-1 text-center">Size 18:</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={formatRupiahInput(buyerForm.rateAnak18)}
+                      onChange={(e) => setBuyerForm({ ...buyerForm, rateAnak18: parseRupiahInput(e.target.value) })}
                       className="w-full p-2 bg-white border border-slate-300 rounded-xl font-bold outline-none text-center focus:border-indigo-400"
                     />
                   </div>

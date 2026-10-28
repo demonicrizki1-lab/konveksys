@@ -223,6 +223,7 @@ export const SuratPOProduksiView: React.FC = () => {
       { key: 'anak12', label: '12' },
       { key: 'anak14', label: '14' },
       { key: 'anak16', label: '16' },
+      { key: 'anak18', label: '18' },
       { key: 's', label: 'S' },
       { key: 'm', label: 'M' },
       { key: 'l', label: 'L' },

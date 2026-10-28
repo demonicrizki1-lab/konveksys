@@ -73,6 +73,7 @@ export const ReturnView: React.FC = () => {
     anak12: 0,
     anak14: 0,
     anak16: 0,
+    anak18: 0,
   });
 
   // Modal State: Detail & Rework Completion & Print
@@ -97,7 +98,8 @@ export const ReturnView: React.FC = () => {
     qtyBreakdown.anak10 +
     qtyBreakdown.anak12 +
     qtyBreakdown.anak14 +
-    qtyBreakdown.anak16;
+    qtyBreakdown.anak16 +
+    (qtyBreakdown.anak18 || 0);
 
   // Filtered List
   const filteredReturns = returnList.filter((item) => {
@@ -167,7 +169,7 @@ export const ReturnView: React.FC = () => {
     setKategoriCacat('JAHITAN');
     setAlasanCacat('');
     setCatatan('');
-    setQtyBreakdown({ s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0 });
+    setQtyBreakdown({ s: 0, m: 0, l: 0, xl: 0, xxl: 0, anak2: 0, anak4: 0, anak6: 0, anak8: 0, anak10: 0, anak12: 0, anak14: 0, anak16: 0, anak18: 0 });
     setIsCreateModalOpen(true);
   };
 
@@ -892,6 +894,18 @@ export const ReturnView: React.FC = () => {
                       value={qtyBreakdown.anak16}
                       onChange={(e) =>
                         setQtyBreakdown({ ...qtyBreakdown, anak16: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 text-center mb-1">Anak 18</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qtyBreakdown.anak18}
+                      onChange={(e) =>
+                        setQtyBreakdown({ ...qtyBreakdown, anak18: parseInt(e.target.value) || 0 })
                       }
                       className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:border-indigo-500"
                     />

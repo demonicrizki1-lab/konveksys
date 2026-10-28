@@ -40,6 +40,7 @@ const emptySizeBreakdown = (): SizeBreakdown => ({
   anak12: 0,
   anak14: 0,
   anak16: 0,
+  anak18: 0,
 });
 
 const calculateTotalPcs = (sz?: SizeBreakdown): number => {
@@ -57,7 +58,8 @@ const calculateTotalPcs = (sz?: SizeBreakdown): number => {
     (sz.anak10 || 0) +
     (sz.anak12 || 0) +
     (sz.anak14 || 0) +
-    (sz.anak16 || 0)
+    (sz.anak16 || 0) +
+    (sz.anak18 || 0)
   );
 };
 
@@ -75,6 +77,7 @@ const SIZE_DISPLAY_ORDER: { key: keyof SizeBreakdown; label: string }[] = [
   { key: 'anak12', label: 'Anak 12' },
   { key: 'anak14', label: 'Anak 14' },
   { key: 'anak16', label: 'Anak 16' },
+  { key: 'anak18', label: 'Anak 18' },
 ];
 
 interface ArticleSummary {
@@ -276,7 +279,14 @@ export const BarangMasukView: React.FC = () => {
   const filteredSJs = useMemo(() => {
     return suratJalanList.filter((sj) => {
       // Brand filter
-      if (currentBrand !== 'ALL' && sj.brand !== currentBrand) return false;
+      if (currentBrand !== 'ALL') {
+        const sjItems = getSuratJalanItems(sj);
+        const matchBrand =
+          sj.brand === currentBrand ||
+          (sj.brand && sj.brand.split(',').map((b) => b.trim()).includes(currentBrand)) ||
+          sjItems.some((it) => it.brand === currentBrand);
+        if (!matchBrand) return false;
+      }
 
       // Date filter
       const sjDate = (sj.tanggal || '').split('T')[0];
@@ -351,6 +361,7 @@ export const BarangMasukView: React.FC = () => {
               anak12: 0,
               anak14: 0,
               anak16: 0,
+              anak18: 0,
             },
             spkNumbers: it.spkNumber ? [it.spkNumber] : [],
           });
@@ -409,6 +420,7 @@ export const BarangMasukView: React.FC = () => {
       anak12: 0,
       anak14: 0,
       anak16: 0,
+      anak18: 0,
     };
     for (const a of articleSummaries) {
       SIZE_DISPLAY_ORDER.forEach(({ key }) => {
@@ -423,7 +435,14 @@ export const BarangMasukView: React.FC = () => {
     const set = new Set<string>();
     const brandSJs = currentBrand === 'ALL'
       ? suratJalanList
-      : suratJalanList.filter((s) => s.brand === currentBrand);
+      : suratJalanList.filter((s) => {
+          const sjItems = getSuratJalanItems(s);
+          return (
+            s.brand === currentBrand ||
+            (s.brand && s.brand.split(',').map((b) => b.trim()).includes(currentBrand)) ||
+            sjItems.some((it) => it.brand === currentBrand)
+          );
+        });
 
     for (const sj of brandSJs) {
       const items = getSuratJalanItems(sj);

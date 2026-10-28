@@ -69,7 +69,8 @@ returnRoutes.post('/', async (c) => {
     (body.qtyAnak10 || 0) +
     (body.qtyAnak12 || 0) +
     (body.qtyAnak14 || 0) +
-    (body.qtyAnak16 || 0);
+    (body.qtyAnak16 || 0) +
+    (body.qtyAnak18 || 0);
 
   if (totalPcs <= 0) {
     return c.json({ error: 'Jumlah barang retur harus lebih dari 0 pcs' }, 400);
@@ -113,6 +114,7 @@ returnRoutes.post('/', async (c) => {
       qtyAnak12: body.qtyAnak12 || 0,
       qtyAnak14: body.qtyAnak14 || 0,
       qtyAnak16: body.qtyAnak16 || 0,
+      qtyAnak18: body.qtyAnak18 || 0,
       totalPcs,
       qtyReworked: 0,
       qtyRejectTotal: 0,

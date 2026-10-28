@@ -86,6 +86,7 @@ async function main() {
       rateAnak12: h.rateAnak12_16,
       rateAnak14: h.rateAnak12_16,
       rateAnak16: h.rateAnak12_16,
+      rateAnak18: h.rateAnak12_16,
     };
     await prisma.hargaBuyer.upsert({
       where: { brand_produk: { brand: h.brand, produk: h.produk } },

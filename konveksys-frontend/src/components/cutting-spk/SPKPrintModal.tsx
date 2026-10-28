@@ -24,6 +24,7 @@ const ALL_SIZES: { key: keyof SizeBreakdown; label: string }[] = [
   { key: 'anak12', label: 'A-12' },
   { key: 'anak14', label: 'A-14' },
   { key: 'anak16', label: 'A-16' },
+  { key: 'anak18', label: 'A-18' },
 ];
 
 export const SPKPrintModal: React.FC<SPKPrintModalProps> = ({ spk, inboundRolls, onClose }) => {
@@ -88,6 +89,14 @@ export const SPKPrintModal: React.FC<SPKPrintModalProps> = ({ spk, inboundRolls,
       spk.sourcePONumber,
       ...(spk.sourcePONumbers || []),
       ...(items.map(it => it.sourcePONumber)),
+    ].filter(Boolean))
+  ) as string[];
+
+  // Distinct Vendors
+  const distinctVendors = Array.from(
+    new Set([
+      spk.vendor,
+      ...(items.map(it => it.vendor)),
     ].filter(Boolean))
   ) as string[];
 
@@ -175,7 +184,9 @@ export const SPKPrintModal: React.FC<SPKPrintModalProps> = ({ spk, inboundRolls,
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Mitra Konveksi (Penjahit):</span>
-              <strong className="text-slate-900 font-bold">{spk.vendor}</strong>
+              <strong className="text-slate-900 font-bold">
+                {distinctVendors.length > 0 ? distinctVendors.join(', ') : spk.vendor}
+              </strong>
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Target Selesai Jahit:</span>

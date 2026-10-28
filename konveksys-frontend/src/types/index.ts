@@ -80,6 +80,7 @@ export interface HargaBuyer {
   rateAnak12: number;    // Anak Seri Angka: 12
   rateAnak14: number;    // Anak Seri Angka: 14
   rateAnak16: number;    // Anak Seri Angka: 16
+  rateAnak18: number;    // Anak Seri Angka: 18
 }
 
 export type RollStatus = 'MENUNGGU_FISIK' | 'DI_GUDANG' | 'DIPROSES' | 'SELESAI';
@@ -115,6 +116,7 @@ export interface SizeBreakdown {
   anak12: number;
   anak14: number;
   anak16: number;
+  anak18: number;
 }
 
 export interface SPKProductItem {
@@ -451,6 +453,8 @@ export interface BuyerInvoiceSummary {
     rateAnak14: number;
     qtyAnak16: number;
     rateAnak16: number;
+    qtyAnak18: number;
+    rateAnak18: number;
     totalPcs: number;
     totalAmount: number;
     itemPo?: string;
